@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<project basedir="." default="package" name="elyxor-commons">
+    <property environment="env"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.6"/>
+    <property name="source" value="1.6"/>
+    <property name="version" value="0.0.0.1" />
+    <property name="jar.name" value="elyxor-common-${version}.jar" />
+    <property name="mapping.name" value="elyxor-common.mapping" />
+    <property name="dev.dir" value="../../elyxor-win-dev/windev" />
+    <property name="lib.dir" value="../lib" />
+    <property name="builds.dir" value="../builds" />
+	<property name="tomcat.dist" value="${dev.dir}/3rdParty/tomcat" />
+        
+    <path id="elyxor-commons.classpath">
+        <pathelement location="bin"/>
+        <pathelement location="${lib.dir}/log4j-1.2.16.jar"/>
+        <pathelement location="${lib.dir}/mongo-2.7.2.jar"/>
+        <pathelement location="${lib.dir}/morphia-0.99.1-SNAPSHOT.jar"/>
+        <pathelement location="${lib.dir}/morphia-logging-slf4j-0.99.jar"/>
+    </path>
+
+    <target name="init">
+        <mkdir dir="bin"/>
+        <copy includeemptydirs="false" todir="bin">
+            <fileset dir="src">
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+    <target name="clean">
+        <delete dir="bin"/>
+    </target>
+    <target depends="clean" name="cleanall"/>
+    <target depends="build-subprojects,build-project" name="build"/>
+    <target name="build-subprojects"/>
+    <target depends="init" name="build-project">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+            <src path="src"/>
+            <classpath refid="elyxor-commons.classpath"/>
+        </javac>    
+    </target>
+
+	<target depends="build" name="package">
+		<jar jarfile="${builds.dir}/${jar.name}">
+			<fileset dir="bin" includes="**" excludes="${jar.name}, ${mapping.name}" />
+		</jar>
+	</target>
+
+	<target depends="package" name="deploy">
+        <copy file="${builds.dir}/${jar.name}" todir="${tomcat.dist}/lib"/>
+    </target>
+
+</project>

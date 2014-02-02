@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project basedir="." default="package" name="StarterWar">
+    <property environment="env"/>
+    <property name="elyxor-commons.location" value="../elyxor-commons"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.6"/>
+    <property name="source" value="1.6"/>
+	<property name="version" value="0.0.0.1" />
+	<property name="app.name" value="elyxor-starterwar" />
+	<property name="jar.name" value="${app.name}.jar" />
+	<property name="war.name" value="${app.name}-${version}.war" />
+    <property name="dev.dir" value="../../elyxor-win-dev/windev" />
+	<property name="tomcat.dist" value="${dev.dir}/3rdParty/tomcat" />
+    <property name="lib.dir" value="../lib" />
+    <property name="builds.dir" value="../builds" />
+
+    <path id="elyxor-commons.classpath">
+        <pathelement location="${elyxor-commons.location}/bin"/>
+    </path>
+    <path id="tomcat.classpath">
+    	<pathelement location="${tomcat.dist}/lib/annotations-api.jar"/>
+        <pathelement location="${tomcat.dist}/lib/catalina-ant.jar"/>
+        <pathelement location="${tomcat.dist}/lib/catalina-ha.jar"/>
+        <pathelement location="${tomcat.dist}/lib/catalina-tribes.jar"/>
+        <pathelement location="${tomcat.dist}/lib/catalina.jar"/>
+        <pathelement location="${tomcat.dist}/lib/ecj-3.7.jar"/>
+        <pathelement location="${tomcat.dist}/lib/el-api.jar"/>
+        <pathelement location="${tomcat.dist}/lib/jasper-el.jar"/>
+        <pathelement location="${tomcat.dist}/lib/jasper.jar"/>
+        <pathelement location="${tomcat.dist}/lib/jsp-api.jar"/>
+        <pathelement location="${tomcat.dist}/lib/servlet-api.jar"/>
+        <pathelement location="${tomcat.dist}/lib/slf4j-api-1.6.4.jar"/>
+        <pathelement location="${tomcat.dist}/lib/slf4j-log4j12-1.6.4.jar"/>
+        <pathelement location="${tomcat.dist}/lib/tomcat-api.jar"/>
+        <pathelement location="${tomcat.dist}/lib/tomcat-coyote.jar"/>
+        <pathelement location="${tomcat.dist}/lib/tomcat-dbcp.jar"/>
+        <pathelement location="${tomcat.dist}/lib/tomcat-i18n-es.jar"/>
+        <pathelement location="${tomcat.dist}/lib/tomcat-i18n-fr.jar"/>
+        <pathelement location="${tomcat.dist}/lib/tomcat-i18n-ja.jar"/>
+        <pathelement location="${tomcat.dist}/lib/tomcat-jdbc.jar"/>
+        <pathelement location="${tomcat.dist}/lib/tomcat-util.jar"/>
+    </path>
+    <path id="StarterWar.classpath">
+        <pathelement location="build/classes"/>
+        <path refid="elyxor-commons.classpath"/>
+        <path refid="tomcat.classpath"/>
+        <pathelement location="WebContent/WEB-INF/lib/guava-12.0.jar"/>
+        <pathelement location="WebContent/WEB-INF/lib/jdom-1.0.jar"/>
+        <pathelement location="WebContent/WEB-INF/lib/rome-1.0.1.jar"/>
+    	<pathelement location="WebContent/WEB-INF/lib/asm-3.3.1.jar"/>
+    	<pathelement location="WebContent/WEB-INF/lib/jersey-bundle-1.11.jar"/>
+    	<pathelement location="WebContent/WEB-INF/lib/jsr311-api-1.1.1.jar"/>
+
+        <pathelement location="${lib.dir}/log4j-1.2.16.jar"/>
+        <pathelement location="${lib.dir}/mongo-2.7.2.jar"/>    
+        <pathelement location="${lib.dir}/morphia-0.99.1-SNAPSHOT.jar"/>
+        <pathelement location="${lib.dir}/morphia-logging-slf4j-0.99.jar"/>
+    </path>
+
+	<target name="init">
+        <mkdir dir="build/classes"/>
+        <copy includeemptydirs="false" todir="build/classes">
+            <fileset dir="src">
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+   
+	<target name="clean">
+        <delete dir="build/classes"/>
+    </target>
+    
+	<target depends="clean" name="cleanall">
+        <ant antfile="build.xml" dir="${elyxor-commons.location}" inheritAll="false" target="clean"/>
+    </target>
+    
+	<target depends="build-subprojects,build-project" name="build"/>
+    
+	<target name="build-subprojects">
+        <ant antfile="build.xml" dir="${elyxor-commons.location}" inheritAll="false" target="build-project">
+            <propertyset>
+                <propertyref name="build.compiler"/>
+            </propertyset>
+        </ant>
+    </target>
+    
+	<target depends="init" name="build-project">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="build/classes" source="${source}" target="${target}" >
+            <src path="src"/>
+            <classpath refid="StarterWar.classpath"/>
+        </javac>
+    </target>
+
+	<target depends="build" name="package-jar">
+		<jar jarfile="build/${jar.name}">
+			<fileset dir="build/classes" includes="**" excludes="${jar.name}" />
+		</jar>
+	</target>
+
+	<target depends="package-jar" name="package">
+		<war destfile="${builds.dir}/${war.name}" webxml="WebContent/WEB-INF/web.xml">
+			<fileset dir="WebContent/"/>
+			<lib dir="build">
+				<include name="${jar.name}" />
+			</lib>
+<!--			<lib dir="WebContent/WEB-INF/lib"/>-->
+		</war>
+	</target>
+
+	<target depends="package" name="deploy">
+        <copy file="${builds.dir}/${war.name}" todir="${tomcat.dist}/webapps"/>
+    </target>
+
+	<target name="undeploy">
+        <delete file="${tomcat.dist}/${war.name}"/>
+    </target>
+	
+</project>
