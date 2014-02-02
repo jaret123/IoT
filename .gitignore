@@ -1,3 +1,4 @@
 *.class
 SimpleServlet/build/
 builds/
+target/

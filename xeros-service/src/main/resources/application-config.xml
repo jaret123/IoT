@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jaxrs="http://cxf.apache.org/jaxrs" xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd
+    	http://cxf.apache.org/jaxrs http://cxf.apache.org/schemas/jaxrs.xsd">
+
+	<import resource="classpath:META-INF/cxf/cxf.xml" />
+	<import resource="classpath:META-INF/cxf/cxf-servlet.xml" />
+	<bean id="restService" class="com.elyxor.xeros.RSServiceImpl" />
+	<bean id="restServiceFactory" class="org.apache.cxf.jaxrs.spring.SpringResourceFactory">
+		<property name="beanId" value="restService" />
+	</bean>
+
+	<jaxrs:server id="restContainer" address="/">
+		<jaxrs:serviceFactories>
+			<ref bean="restServiceFactory" />
+		</jaxrs:serviceFactories>
+		<jaxrs:providers>
+			<ref bean="jacksonProvider" />
+		</jaxrs:providers>
+	</jaxrs:server>
+
+
+	<bean id="jsonProvider" class="org.apache.cxf.jaxrs.provider.json.JSONProvider">
+		<property name="serializeAsArray" value="true" />
+		<property name="produceMediaTypes" ref="jsonTypes" />
+		<property name="consumeMediaTypes" ref="jsonTypes" />
+	</bean>
+	<bean id="jacksonProvider" class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider">
+		<property name="mapper" ref="jacksonMapper" />
+	</bean>
+	<bean id="jacksonMapper" class="com.elyxor.xeros.RSMapper" />
+	<util:list id="jsonTypes">
+		<value>application/json</value>
+		<value>application/jettison</value>
+	</util:list>
+	<util:map id="propertiesMap" map-class="java.util.Hashtable">
+		<entry key="jaxb.formatted.output">
+			<value type="java.lang.Boolean">true</value>
+		</entry>
+	</util:map>
+
+	<context:annotation-config />
+	<context:component-scan base-package="com.elyxor.xeros" />
+
+</beans>
