@@ -1,12 +1,22 @@
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
                       http://maven.apache.org/xsd/settings-1.0.0.xsd">
 	<servers>
-      <server>
-        <id>xeros-service</id>
-        <username>xerosadmin</username>
-        <password>x3r0s</password>
-      </server>
-  </servers>
+		<server>
+			<id>xeros-service</id>
+			<username>xerosadmin</username>
+			<password>x3r0s</password>
+		</server>
+	</servers>
+
+	<mirrors>
+		<mirror>
+			<id>internal-repository</id>
+			<name>Maven mirror</name>
+			<url>http://repo.rudyjams.com/repo</url>
+			<mirrorOf>central</mirrorOf>
+		</mirror>
+	</mirrors>
+
 </settings>
