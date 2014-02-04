@@ -1,16 +1,17 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.elyxor</groupId>
-  <artifactId>xeros-build</artifactId>
-  <version>1.0</version>
-  <packaging>pom</packaging>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.elyxor</groupId>
+	<artifactId>xeros-build</artifactId>
+	<version>1.0</version>
+	<packaging>pom</packaging>
 	<prerequisites>
-  		<maven>3.0.0</maven>
+		<maven>3.0.0</maven>
 	</prerequisites>
-    <modules>
-        <module>../xeros-ldcs</module>
-        <module>../xeros-service</module>
-    </modules>
+	<modules>
+		<module>../xeros-ldcs</module>
+		<module>../xeros-service</module>
+	</modules>
 	<properties>
 		<java.version>1.7</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -18,60 +19,71 @@
 		<logback.version>1.1.0</logback.version>
 		<slf4j.version>1.7.5</slf4j.version>
 		<junit.version>4.11</junit.version>
+		<cxf.version>2.7.9</cxf.version>
+		<spring.version>4.0.1.RELEASE</spring.version>
 	</properties>
-  <repositories>
-        <repository>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <id>central</id>
-            <name>libs-release</name>
-            <url>http://repo.rudyjams.com/libs-release</url>
-        </repository>
-        <repository>
-            <snapshots />
-            <id>snapshots</id>
-            <name>libs-snapshot</name>
-            <url>http://repo.rudyjams.com/libs-snapshot</url>
-        </repository>
-        <repository>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <id>ext-release</id>
-            <name>ext-libs-release</name>
-            <url>http://repo.rudyjams.com/ext-libs-release</url>
-        </repository>
-    </repositories>
-    <pluginRepositories>
-        <pluginRepository>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <id>central</id>
-            <name>plugins-release</name>
-            <url>http://repo.rudyjams.com/plugins-release</url>
-        </pluginRepository>
-        <pluginRepository>
-            <snapshots />
-            <id>snapshots</id>
-            <name>plugins-snapshot</name>
-            <url>http://repo.rudyjams.com/plugins-snapshot</url>
-        </pluginRepository>
-    </pluginRepositories>
-    <distributionManagement>
-        <snapshotRepository>
-            <id>repo.rudyjams.com</id>
-            <name>RudyJams</name>
-            <url>http://repo.rudyjams.com/artifactory/libs-snapshot-local</url>
-            <uniqueVersion>false</uniqueVersion>
-        </snapshotRepository>
-        <repository>
-            <id>repo.rudyjams.com</id>
-            <name>RudyJams</name>
-            <url>http://repo.rudyjams.com/artifactory/libs-release-local</url>
-            <uniqueVersion>false</uniqueVersion>
-        </repository>
-    </distributionManagement>
-
+	<repositories>
+		<repository>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>central</id>
+			<name>libs-release</name>
+			<url>http://repo.rudyjams.com/libs-release</url>
+		</repository>
+		<repository>
+			<snapshots />
+			<id>snapshots</id>
+			<name>libs-snapshot</name>
+			<url>http://repo.rudyjams.com/libs-snapshot</url>
+		</repository>
+		<repository>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>ext-release</id>
+			<name>ext-libs-release</name>
+			<url>http://repo.rudyjams.com/ext-libs-release</url>
+		</repository>
+	</repositories>
+	<pluginRepositories>
+		<pluginRepository>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>central</id>
+			<name>plugins-release</name>
+			<url>http://repo.rudyjams.com/plugins-release</url>
+		</pluginRepository>
+		<pluginRepository>
+			<snapshots />
+			<id>snapshots</id>
+			<name>plugins-snapshot</name>
+			<url>http://repo.rudyjams.com/plugins-snapshot</url>
+		</pluginRepository>
+	</pluginRepositories>
+	<distributionManagement>
+		<snapshotRepository>
+			<id>repo.rudyjams.com</id>
+			<name>RudyJams</name>
+			<url>http://repo.rudyjams.com/artifactory/libs-snapshot-local</url>
+			<uniqueVersion>false</uniqueVersion>
+		</snapshotRepository>
+		<repository>
+			<id>repo.rudyjams.com</id>
+			<name>RudyJams</name>
+			<url>http://repo.rudyjams.com/artifactory/libs-release-local</url>
+			<uniqueVersion>false</uniqueVersion>
+		</repository>
+	</distributionManagement>
+	<build>
+		<defaultGoal>install</defaultGoal>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.tomcat.maven</groupId>
+				<artifactId>tomcat7-maven-plugin</artifactId>
+				<version>2.2</version>
+			</plugin>
+		</plugins>
+	</build>
 </project>
