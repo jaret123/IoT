@@ -42,19 +42,17 @@ public class DaiCollectionParser {
 	}
 	
 	
-	public void parse(File file) throws Exception {
-		
+	private long getMidnightMillis() { 
 		Calendar today = new GregorianCalendar();
 		today.setTime(new Date());
 		today.set(Calendar.HOUR_OF_DAY, 0);
 		today.set(Calendar.MINUTE, 0);
 		today.set(Calendar.SECOND, 0);
 		today.set(Calendar.MILLISECOND, 0);
-		long midnightInMilliseconds = today.getTimeInMillis();
-		logger.info( String.format("today = %1s", today.toString()));
-		
-		DaiMeterCollection dmc = new DaiMeterCollection();
-				
+		return today.getTimeInMillis();
+	}
+	
+	public void parse(File file) throws Exception {
 		byte[] inputData = IOUtils.toByteArray(new FileReader(file));		
 		StringBuffer fString = new StringBuffer();
 		for ( byte b : inputData ){
@@ -62,10 +60,26 @@ public class DaiCollectionParser {
 				continue;
 			}
 			fString.append((char)b);
-		}
-		CollectionData cd = new CollectionData();
+		}		
 		String[] lines = fString.toString().split("\r");
-		List<String[]> dataLines = new ArrayList<String[]>();
+		List<String> collectionLines = new ArrayList<String>();
+		for(String line: lines) {
+			if ( line.trim().startsWith("File Write") && collectionLines.size()>1 ) {
+				String origHeader = collectionLines.get(collectionLines.size()-1);
+				createCollectionModels(collectionLines);
+				collectionLines.clear();
+				collectionLines.add(origHeader);
+			}
+			collectionLines.add(line);
+		}
+		createCollectionModels(collectionLines);
+	}
+	
+	
+	private void createCollectionModels(List<String> lines) {
+		long midnightInMilliseconds = getMidnightMillis();
+		CollectionData cd = new CollectionData();
+		DaiMeterCollection dmc = new DaiMeterCollection();
 		boolean inEventData = false;
 		for ( String line : lines ) {
 			if (StringUtils.isBlank(line)) {
@@ -75,10 +89,10 @@ public class DaiCollectionParser {
 			if ( cd.fileHeader == null ) {
 				cd.fileHeader = lineData;
 				dmc.setMachineName(cd.fileHeader[0]);
-				dmc.setMachineType(cd.fileHeader[1]);				
+				dmc.setMachineType(cd.fileHeader[1]);
 			}
 			String firstEle = lineData[0].trim();
-			
+						
 			if ( inEventData ) {
 				if (firstEle.contains("Event Count")) {
 					inEventData = false;
@@ -101,6 +115,7 @@ public class DaiCollectionParser {
 			else if ( firstEle.startsWith("File Write") && lineData.length>1 ) {
 				cd.fileWriteTime = Float.parseFloat(lineData[1].trim());
 				dmc.setCollectionTime( new Timestamp( midnightInMilliseconds+ ((int)cd.fileWriteTime*1000) ) );
+				logger.info(String.format("storing collection data for run %1s", dmc ));
 			}
 			else if ( firstEle.equals("Event") ) {
 				cd.elementHeaders = new String[lineData.length];
@@ -144,4 +159,5 @@ public class DaiCollectionParser {
 			daiMeterCollectionDetailRepo.save(dmcd);			
 		}
 	}
+	
 }

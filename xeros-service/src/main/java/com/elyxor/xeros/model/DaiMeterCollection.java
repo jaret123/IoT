@@ -57,5 +57,9 @@ public class DaiMeterCollection {
 		this.machineType = machineType;
 	}
 
-
+	@Override
+	public String toString() {
+		return String.format("DaiMeterCollection [id=%s, machineType=%s, machineName=%s, collectionTime=%s]", 
+				id, machineType, machineName, collectionTime);
+	}
 }

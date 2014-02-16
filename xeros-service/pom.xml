@@ -25,6 +25,11 @@
 			<artifactId>spring-web</artifactId>
 			<version>${spring.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>${spring.version}</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.apache.cxf</groupId>
@@ -41,29 +46,29 @@
 			<artifactId>cxf-rt-core</artifactId>
 			<version>${cxf.version}</version>
 		</dependency>
-		
-		    <dependency>
-        <groupId>org.springframework.data</groupId>
-        <artifactId>spring-data-jpa</artifactId>
-        <version>1.4.3.RELEASE</version>
-    </dependency>
-    <dependency>
-  <groupId>org.hibernate</groupId>
-  <artifactId>hibernate-entitymanager</artifactId>
-  <version>${hibernate.version}</version>
-</dependency>
 
-<dependency>
-    <groupId>org.hibernate</groupId>
-   <artifactId>hibernate-validator</artifactId>
-    <version>${hibernate.version}</version>
- </dependency>
-<dependency>
-    <groupId>org.hibernate</groupId>
-   <artifactId>hibernate-c3p0</artifactId>
-    <version>${hibernate.version}</version>
- </dependency>
-  
+		<dependency>
+			<groupId>org.springframework.data</groupId>
+			<artifactId>spring-data-jpa</artifactId>
+			<version>1.4.3.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-entitymanager</artifactId>
+			<version>${hibernate.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-validator</artifactId>
+			<version>${hibernate.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-c3p0</artifactId>
+			<version>${hibernate.version}</version>
+		</dependency>
+
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>javax.servlet-api</artifactId>
@@ -113,7 +118,6 @@
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<version>${logback.version}</version>
-			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
