@@ -24,6 +24,9 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.io.FileCleaningTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
 
 @WebServlet(asyncSupported = false, 
             name = "UploadServlet", 
@@ -37,6 +40,7 @@ public class UploadServlet extends HttpServlet {
 	private SimpleDateFormat sdf = null;
 	private static final int BUFSIZE = 4096;
 	private static final int MAX_FILE_SIZE = 30000;
+	@Autowired private RSService rsService;
 
 	public String getTempFolder() {
 		return System.getProperty("java.io.tmpdir");
@@ -46,6 +50,8 @@ public class UploadServlet extends HttpServlet {
 	public void init() throws ServletException {
 	    super.init();
 	    sdf = new SimpleDateFormat("yyyyMMdd.HHMMss");
+		WebApplicationContext wac = WebApplicationContextUtils.getWebApplicationContext(getServletContext());
+		rsService = (RSService)wac.getBean("RSServiceImpl");
 	    FileCleaningTracker fileCleaningTracker = FileCleanerCleanup.getFileCleaningTracker(getServletContext());
 	    factory = new DiskFileItemFactory(MAX_FILE_SIZE, new File(getTempFolder()));
 	    ((DiskFileItemFactory)factory).setFileCleaningTracker(fileCleaningTracker);
@@ -58,15 +64,10 @@ public class UploadServlet extends HttpServlet {
 		PrintWriter out = response.getWriter();
         StringBuffer obuf = new StringBuffer();
         
-		try {
-		    String requestUri = request.getPathInfo();
-		    List<FileItem> files = new ArrayList<FileItem>();
-		    Map<String, String> fileMeta = new HashMap<String, String>();
-		    
+		try {		    
 			@SuppressWarnings("unchecked")
             List<FileItem> uploadedItems = upload.parseRequest(request);
-			for( FileItem fileItem : uploadedItems ) {
-			 
+			for( FileItem fileItem : uploadedItems ) {			 
 				String fullFileName = fileItem.getName();
 				String slashType = (fullFileName.lastIndexOf("\\") > 0) ? "\\" : "/";
 				String fileName = fullFileName.substring(fullFileName.lastIndexOf(slashType) + 1, fullFileName.length());
@@ -77,6 +78,7 @@ public class UploadServlet extends HttpServlet {
 				logger.info("Writing to " + uploadedFile.getAbsolutePath() );
 				fileItem.write(uploadedFile);
 				File f = uploadedFile.getAbsoluteFile();
+				rsService.parseCollectionFile(f);
 				obuf.append( "DONE" );
 			}
 		} 

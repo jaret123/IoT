@@ -1,12 +1,11 @@
 package com.elyxor.xeros.ldcs;
 
 import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
-import static java.nio.file.StandardWatchEventKinds.ENTRY_DELETE;
-import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY;
 import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
+import static java.nio.file.StandardCopyOption.*;
 
 import java.io.File;
-import java.io.IOException;
+import java.io.FilenameFilter;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
@@ -14,11 +13,18 @@ import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 
+
+
+
+
+import org.apache.commons.io.IOCase;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,11 +38,25 @@ public class FileWatcher {
 	public void watch() throws Exception {
 		logger.info("Starting LDCS");
 		Path dir = Paths.get(AppConfiguration.getLocalPath());
+		FilenameFilter ff = (FilenameFilter)new WildcardFileFilter(AppConfiguration.getFilePattern(), IOCase.INSENSITIVE);
+		
+		if (dir.toFile().isDirectory()) {
+			File pathFile = dir.toFile();			
+			File[] files = pathFile.listFiles(ff);
+			for (File f : files) {
+				logger.debug(String.format("%1s", f.getAbsolutePath()));
+				Path child = dir.resolve(f.getAbsolutePath());
+	            FileAcquirer fa = new FileAcquirer(child);
+	            fa.run();	
+			}
+		}
+		
+		
 		watcher = FileSystems.getDefault().newWatchService();
 		for (;;) {
 
 		    //wait for key to be signaled
-			WatchKey key = dir.register(watcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+			WatchKey key = dir.register(watcher, ENTRY_CREATE);
 		    try {
 		    	logger.info("watching files in " + dir.toString());
 		        key = watcher.take();
@@ -53,10 +73,12 @@ public class FileWatcher {
 
 		        WatchEvent<Path> ev = (WatchEvent<Path>)event;
 		        Path filename = ev.context();
-
-	            Path child = dir.resolve(filename);
-	            FileAcquirer fa = new FileAcquirer(child);
-	            fa.run();		            
+		        
+		        if ( ff.accept(dir.toFile(), filename.toFile().getName() )) {
+		            Path child = dir.resolve(filename);
+		            FileAcquirer fa = new FileAcquirer(child);
+		            fa.run();		            
+		        }
 		    }
 		    boolean valid = key.reset();
 		    if (!valid) {
@@ -69,18 +91,24 @@ public class FileWatcher {
 	public class FileAcquirer implements Runnable {
 		
 		Path fileToUpload = null;
+		String destFilePath = null;
 		
 		public FileAcquirer(Path path) {
-			this.fileToUpload = path;
+			fileToUpload = path;
+			destFilePath = Paths.get(AppConfiguration.getArchivePath()).toAbsolutePath().toFile().getAbsolutePath();
 		}
 
         @Override
         public void run() {
-        	logger.info("waiting to lock " + fileToUpload.toFile().getName());
+        	String srcFileName = fileToUpload.toFile().getName();
+        	logger.info("waiting to lock " + srcFileName);
         	boolean hasLock = getLock(fileToUpload.toFile());
         	try {
-        		logger.info("uploading " + fileToUpload.toFile().getName());
-        		new HttpFileUploader().postFile(fileToUpload);        		
+        		new HttpFileUploader().postFile(fileToUpload);
+        		// check for good status
+        		Path newFileLocation = Paths.get(String.format("%1s/%2s.%3s", destFilePath, srcFileName, System.currentTimeMillis() ));
+        		Files.move(fileToUpload, newFileLocation);
+        		logger.debug("archived");
         	} catch (Exception ex) {
         		logger.warn("Failed to get/send file", ex);
         	}
@@ -93,19 +121,23 @@ public class FileWatcher {
     	    boolean hasExclusive = false;
     	    
     		try {
-    		    while (!hasExclusive) {
-    		    	channel = new RandomAccessFile(file, "rw").getChannel();
-    			    try {	
+    		    while (!hasExclusive) {    		    	
+    			    try {
+    			    	channel = new RandomAccessFile(file, "rw").getChannel();
     			    	lock = channel.tryLock();
     			    	hasExclusive = true;
-    			    }
+    			    }    			    
     			    catch (OverlappingFileLockException e) {
     			    	logger.info("waiting for release of " + file.getName());
     			    	channel.close();
     			    	Thread.currentThread().sleep(2000);
     			    }
+    			    catch (Exception e) {
+    			    	logger.info("waiting... " + file.getName());
+    			    }
     		    }
     		    lock.release();
+    		    logger.info("locked");
     		} catch (Exception ex) {
     			logger.info("no lock", ex);
     		}

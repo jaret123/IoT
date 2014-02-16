@@ -21,6 +21,7 @@
 		<junit.version>4.11</junit.version>
 		<cxf.version>2.7.9</cxf.version>
 		<spring.version>4.0.1.RELEASE</spring.version>
+		<hibernate.version>4.3.1.Final</hibernate.version>
 	</properties>
 	<repositories>
 		<repository>

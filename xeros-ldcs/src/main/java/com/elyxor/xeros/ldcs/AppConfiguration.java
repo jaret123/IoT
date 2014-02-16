@@ -32,6 +32,8 @@ public class AppConfiguration {
 	public static String getServiceUrl() {
 		return getConfig().getString("serviceurl");
 	}
- 
-
+	
+	public static String getFilePattern() {
+		return getConfig().getString("filepattern");
+	}
 }

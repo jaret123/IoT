@@ -50,6 +50,11 @@
 			<version>1.10</version>
 		</dependency>
 
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.4</version>
+		</dependency>
 	</dependencies>
     <build>
         <directory>target</directory>
@@ -62,6 +67,9 @@
             <resource>
                 <directory>src/main/resources</directory>
                 <excludes>
+                    <!--exclude>application.properties</exclude -->
+                    <exclude>lib/**</exclude>
+                    <exclude>logback.xml</exclude>
                 </excludes>
             </resource>
         </resources>

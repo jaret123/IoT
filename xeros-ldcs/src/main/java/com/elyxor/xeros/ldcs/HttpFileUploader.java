@@ -42,12 +42,14 @@ public class HttpFileUploader {
 			HttpEntity httpEntity = MultipartEntityBuilder.create()
 			    .addBinaryBody("file", file, ContentType.create(contentType), file.getName())
 			    .build();
+			logger.info(String.format("Uploading %1s to %2s", file, url));
 			post.setEntity(httpEntity);
 			HttpResponse response = client.execute(post);
 			HttpEntity resEntity = response.getEntity();
-	        // if ( response.getStatusLine().getStatusCode() == 200 ) {	        }	        
-	        String responseString = EntityUtils.toString(resEntity);
-	        
+	        String responseString = EntityUtils.toString(resEntity);	        
+	        if ( response.getStatusLine().getStatusCode() != 200 ) {
+	        	logger.warn(String.format("Failed to upload file; received \n %1s", responseString));	        	
+	        }
 		} catch (Exception ex) {
 			logger.error("Failed to post file", ex);
 		}
