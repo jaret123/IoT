@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.elyxor.xeros.model.CollectionClassificationMap;
 import com.elyxor.xeros.model.DaiMeterCollection;
 import com.elyxor.xeros.model.DaiMeterCollectionDetail;
 import com.elyxor.xeros.model.DaiMeterCollectionDetailRepository;
@@ -30,6 +31,7 @@ public class DaiCollectionParser {
 	private static Logger logger = LoggerFactory.getLogger(DaiCollectionParser.class);
 	@Autowired DaiMeterCollectionRepository daiMeterCollectionRepo;
 	@Autowired DaiMeterCollectionDetailRepository daiMeterCollectionDetailRepo;
+	@Autowired DaiCollectionMatcher matcher;
 	
 	class CollectionData {
 		String[] fileHeader = null;
@@ -72,11 +74,11 @@ public class DaiCollectionParser {
 			}
 			collectionLines.add(line);
 		}
-		createCollectionModels(collectionLines);
+		DaiMeterCollection dmc = createCollectionModels(collectionLines);		
 	}
 	
 	
-	private void createCollectionModels(List<String> lines) {
+	private DaiMeterCollection createCollectionModels(List<String> lines) {
 		long midnightInMilliseconds = getMidnightMillis();
 		CollectionData cd = new CollectionData();
 		DaiMeterCollection dmc = new DaiMeterCollection();
@@ -158,6 +160,14 @@ public class DaiCollectionParser {
 			dmcd.setDaiMeterCollection(dmc);
 			daiMeterCollectionDetailRepo.save(dmcd);			
 		}
+		dmc.setCollectionDetails(collectionData);
+		
+		CollectionClassificationMap ccm = matcher.match(dmc);
+		if ( ccm != null ) {
+			dmc.setCollectionClassificationMap(ccm);
+			daiMeterCollectionRepo.save(dmc);
+		}
+		return dmc;
 	}
 	
 }
