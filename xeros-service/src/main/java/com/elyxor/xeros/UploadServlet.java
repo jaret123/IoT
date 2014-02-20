@@ -51,7 +51,7 @@ public class UploadServlet extends HttpServlet {
 	    super.init();
 	    sdf = new SimpleDateFormat("yyyyMMdd.HHMMss");
 		WebApplicationContext wac = WebApplicationContextUtils.getWebApplicationContext(getServletContext());
-		rsService = (RSService)wac.getBean("RSServiceImpl");
+		rsService = (RSService)wac.getBean("rssvc");
 	    FileCleaningTracker fileCleaningTracker = FileCleanerCleanup.getFileCleaningTracker(getServletContext());
 	    factory = new DiskFileItemFactory(MAX_FILE_SIZE, new File(getTempFolder()));
 	    ((DiskFileItemFactory)factory).setFileCleaningTracker(fileCleaningTracker);

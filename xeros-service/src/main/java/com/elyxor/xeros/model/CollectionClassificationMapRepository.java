@@ -7,8 +7,6 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface DaiMeterCollectionDetailRepository extends CrudRepository<DaiMeterCollectionDetail, Integer> {
-	@Query public List<DaiMeterCollectionDetail> findByDaiMeterCollection(DaiMeterCollection collection);
+public interface CollectionClassificationMapRepository extends CrudRepository<CollectionClassificationMap, Integer> {
+	@Query public List<CollectionClassificationMap> findByMachine(Machine machine);
 }
-
-

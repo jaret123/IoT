@@ -11,6 +11,7 @@
 
 	<import resource="classpath:META-INF/cxf/cxf.xml" />
 	<import resource="classpath:META-INF/cxf/cxf-servlet.xml" />
+	
 	<bean id="restService" class="com.elyxor.xeros.RSServiceImpl" />
 	<bean id="restServiceFactory" class="org.apache.cxf.jaxrs.spring.SpringResourceFactory">
 		<property name="beanId" value="restService" />
@@ -23,8 +24,28 @@
 		<jaxrs:providers>
 			<ref bean="jacksonProvider" />
 		</jaxrs:providers>
+	    <jaxrs:inInterceptors>
+	        <ref bean="logInbound"/>
+	        <ref bean="jaxrsInbound"/>
+	    </jaxrs:inInterceptors>
+	    <jaxrs:outInterceptors>
+	        <ref bean="logOutbound"/>
+	        <ref bean="jaxrsOutbound"/>
+	    </jaxrs:outInterceptors>
+	    <jaxrs:outFaultInterceptors>
+	        <ref bean="logOutbound"/>
+	        <ref bean="jaxrsOutbound"/>
+	    </jaxrs:outFaultInterceptors>
+	    <jaxrs:inFaultInterceptors>
+	        <ref bean="logInbound"/>
+	    </jaxrs:inFaultInterceptors>
 	</jaxrs:server>
 
+	<bean id="logInbound" class="org.apache.cxf.interceptor.LoggingInInterceptor"/>
+    <bean id="logOutbound" class="org.apache.cxf.interceptor.LoggingOutInterceptor"/>
+    <bean id="jaxrsInbound" class="org.apache.cxf.jaxrs.interceptor.JAXRSInInterceptor"/>
+    <bean id="jaxrsOutbound" class="org.apache.cxf.jaxrs.interceptor.JAXRSOutInterceptor"/>
+    
 
 	<bean id="jsonProvider" class="org.apache.cxf.jaxrs.provider.json.JSONProvider">
 		<property name="serializeAsArray" value="true" />
@@ -34,7 +55,7 @@
 	<bean id="jacksonProvider" class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider">
 		<property name="mapper" ref="jacksonMapper" />
 	</bean>
-	<bean id="jacksonMapper" class="com.elyxor.xeros.RSMapper" />
+    <bean id="jacksonMapper" class="com.elyxor.xeros.RSMapper" />
 	<util:list id="jsonTypes">
 		<value>application/json</value>
 		<value>application/jettison</value>

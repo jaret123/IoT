@@ -20,13 +20,12 @@ import javax.validation.constraints.NotNull;
 @Table(name = "xeros_dai_meter_collection_detail")
 public class DaiMeterCollectionDetail {
 
-    private long id;
-    
+    private int id;    
     private String meterType;
     private float meterValue;
     private Timestamp timestamp;
     private float duration;
-    private DaiMeterCollection getDaiMeterCollection;
+    private DaiMeterCollection daiMeterCollection;
     
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 
@@ -34,25 +33,26 @@ public class DaiMeterCollectionDetail {
 
 
     @Id
+    @Column(columnDefinition = "INT unsigned")
     @GeneratedValue(strategy=GenerationType.AUTO)
-	public long getId() {
+	public int getId() {
 		return id;
 	}
 
-	public void setId(long id) {
+	public void setId(int id) {
 		this.id = id;
 	}
 
 
 	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "collection_id", referencedColumnName = "id")
-	public DaiMeterCollection getGetDaiMeterCollection() {
-		return getDaiMeterCollection;
+	public DaiMeterCollection getDaiMeterCollection() {
+		return daiMeterCollection;
 	}
 
 
-	public void setGetDaiMeterCollection(DaiMeterCollection getDaiMeterCollection) {
-		this.getDaiMeterCollection = getDaiMeterCollection;
+	public void setDaiMeterCollection(DaiMeterCollection daiMeterCollection) {
+		this.daiMeterCollection = daiMeterCollection;
 	}
 
 

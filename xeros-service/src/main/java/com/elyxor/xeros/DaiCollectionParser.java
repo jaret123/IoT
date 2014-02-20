@@ -147,15 +147,15 @@ public class DaiCollectionParser {
 		for(String[] wmEntry : cd.wmData) {
 			DaiMeterCollectionDetail dmcd = new DaiMeterCollectionDetail();
 			dmcd.setMeterType(wmEntry[0].trim());
-			dmcd.setMeterValue(Float.parseFloat(wmEntry[2]));
-			dmcd.setDuration(Float.parseFloat(wmEntry[1]));
+			dmcd.setMeterValue(Float.parseFloat(wmEntry[1]));
+			dmcd.setDuration(Float.parseFloat(wmEntry[2]));
 			dmcd.setTimestamp(dmc.getCollectionTime());
 			collectionData.add(dmcd);
 		}
 		
 		daiMeterCollectionRepo.save(dmc);
 		for(DaiMeterCollectionDetail dmcd : collectionData) {
-			dmcd.setGetDaiMeterCollection(dmc);
+			dmcd.setDaiMeterCollection(dmc);
 			daiMeterCollectionDetailRepo.save(dmcd);			
 		}
 	}
