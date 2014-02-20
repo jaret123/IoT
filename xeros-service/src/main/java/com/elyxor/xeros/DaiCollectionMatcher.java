@@ -60,6 +60,7 @@ public class DaiCollectionMatcher {
 				}
 				if ( matches == normalizedDetails.size() ) {
 					matchedMap = collMap;
+					break;
 				} else {
 					logger.info(String.format("no match..."));
 				}

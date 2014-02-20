@@ -146,7 +146,7 @@ public class DaiCollectionParser {
 		}	
 		for(String[] wmEntry : cd.wmData) {
 			DaiMeterCollectionDetail dmcd = new DaiMeterCollectionDetail();
-			dmcd.setMeterType(wmEntry[0].trim());
+			dmcd.setMeterType(wmEntry[0].trim().replaceAll(" ", "").replaceAll(":", ""));
 			dmcd.setMeterValue(Float.parseFloat(wmEntry[1]));
 			dmcd.setDuration(Float.parseFloat(wmEntry[2]));
 			dmcd.setTimestamp(dmc.getCollectionTime());
