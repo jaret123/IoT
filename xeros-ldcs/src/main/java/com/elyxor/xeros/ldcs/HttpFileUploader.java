@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
+import java.util.TimeZone;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -32,7 +33,7 @@ public class HttpFileUploader {
 	
 	private static Logger logger = LoggerFactory.getLogger(HttpFileUploader.class);
 		
-	public void postFile(Path filePath) {
+	public void postFile(Path filePath, long createTime) {
 		try {
 			String contentType = Files.probeContentType(filePath);
 			File file = filePath.toFile();
@@ -41,6 +42,10 @@ public class HttpFileUploader {
 			HttpClient client = getHttpClient(url);
 			HttpEntity httpEntity = MultipartEntityBuilder.create()
 			    .addBinaryBody("file", file, ContentType.create(contentType), file.getName())
+			    .addTextBody("current_system_time", Long.toString(System.currentTimeMillis()))
+			    .addTextBody("file_create_time", Long.toString(createTime))
+			    .addTextBody("olson_timezone_id", TimeZone.getDefault().getID())
+			    .addTextBody("location_id", AppConfiguration.getLocationId())
 			    .build();
 			logger.info(String.format("Uploading %1s to %2s", file, url));
 			post.setEntity(httpEntity);

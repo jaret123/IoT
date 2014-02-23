@@ -8,6 +8,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -20,8 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.elyxor.xeros.model.CollectionClassificationMap;
 import com.elyxor.xeros.model.DaiMeterCollection;
 import com.elyxor.xeros.model.DaiMeterCollectionDetail;
-import com.elyxor.xeros.model.DaiMeterCollectionDetailRepository;
-import com.elyxor.xeros.model.DaiMeterCollectionRepository;
+import com.elyxor.xeros.model.repository.DaiMeterCollectionDetailRepository;
+import com.elyxor.xeros.model.repository.DaiMeterCollectionRepository;
 
 
 @Transactional
@@ -54,7 +55,7 @@ public class DaiCollectionParser {
 		return today.getTimeInMillis();
 	}
 	
-	public void parse(File file) throws Exception {
+	public void parse(File file, Map<String, String> fileMeta) throws Exception {
 		byte[] inputData = IOUtils.toByteArray(new FileReader(file));		
 		StringBuffer fString = new StringBuffer();
 		for ( byte b : inputData ){
@@ -62,26 +63,33 @@ public class DaiCollectionParser {
 				continue;
 			}
 			fString.append((char)b);
-		}		
+		}
+	    
+		DaiMeterCollection dmc = null;
 		String[] lines = fString.toString().split("\r");
 		List<String> collectionLines = new ArrayList<String>();
 		for(String line: lines) {
+			dmc = new DaiMeterCollection();
+			dmc.setLocationIdentifier(fileMeta.get("location_id"));
+			dmc.setOlsonTimezoneId(fileMeta.get("olson_timezone_id"));
+			dmc.setFileUploadTime(new Timestamp( Long.parseLong(fileMeta.get("current_system_time")) ));
+			dmc.setFileCreateTime(new Timestamp( Long.parseLong(fileMeta.get("file_create_time")) ));
+
 			if ( line.trim().startsWith("File Write") && collectionLines.size()>1 ) {
 				String origHeader = collectionLines.get(collectionLines.size()-1);
-				createCollectionModels(collectionLines);
+				createCollectionModels(dmc, collectionLines);
 				collectionLines.clear();
 				collectionLines.add(origHeader);
 			}
 			collectionLines.add(line);
 		}
-		DaiMeterCollection dmc = createCollectionModels(collectionLines);		
+		dmc = createCollectionModels(dmc, collectionLines);		
 	}
 	
 	
-	private DaiMeterCollection createCollectionModels(List<String> lines) {
+	private DaiMeterCollection createCollectionModels(DaiMeterCollection dmc, List<String> lines) {
 		long midnightInMilliseconds = getMidnightMillis();
-		CollectionData cd = new CollectionData();
-		DaiMeterCollection dmc = new DaiMeterCollection();
+		CollectionData cd = new CollectionData();		 
 		boolean inEventData = false;
 		for ( String line : lines ) {
 			if (StringUtils.isBlank(line)) {
@@ -90,8 +98,8 @@ public class DaiCollectionParser {
 			String[] lineData = line.split(",");
 			if ( cd.fileHeader == null ) {
 				cd.fileHeader = lineData;
-				dmc.setMachineName(cd.fileHeader[0]);
-				dmc.setMachineType(cd.fileHeader[1]);
+				dmc.setDaiIdentifier(cd.fileHeader[0]);
+				dmc.setMachineIdentifier(cd.fileHeader[1]);
 			}
 			String firstEle = lineData[0].trim();
 						
@@ -116,7 +124,7 @@ public class DaiCollectionParser {
 			}			
 			else if ( firstEle.startsWith("File Write") && lineData.length>1 ) {
 				cd.fileWriteTime = Float.parseFloat(lineData[1].trim());
-				dmc.setCollectionTime( new Timestamp( midnightInMilliseconds+ ((int)cd.fileWriteTime*1000) ) );
+				dmc.setDaiCollectionTime( new Timestamp( midnightInMilliseconds+ ((int)cd.fileWriteTime*1000) ) );
 				logger.info(String.format("storing collection data for run %1s", dmc ));
 			}
 			else if ( firstEle.equals("Event") ) {
@@ -151,7 +159,7 @@ public class DaiCollectionParser {
 			dmcd.setMeterType(wmEntry[0].trim().replaceAll(" ", "").replaceAll(":", ""));
 			dmcd.setMeterValue(Float.parseFloat(wmEntry[1]));
 			dmcd.setDuration(Float.parseFloat(wmEntry[2]));
-			dmcd.setTimestamp(dmc.getCollectionTime());
+			dmcd.setTimestamp(dmc.getDaiCollectionTime());
 			collectionData.add(dmcd);
 		}
 		

@@ -2,7 +2,6 @@ package com.elyxor.xeros.ldcs;
 
 import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
-import static java.nio.file.StandardCopyOption.*;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -13,15 +12,10 @@ import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
-
-
-
-
 
 import org.apache.commons.io.IOCase;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
@@ -92,10 +86,12 @@ public class FileWatcher {
 		
 		Path fileToUpload = null;
 		String destFilePath = null;
+		long createTime;
 		
 		public FileAcquirer(Path path) {
 			fileToUpload = path;
 			destFilePath = Paths.get(AppConfiguration.getArchivePath()).toAbsolutePath().toFile().getAbsolutePath();
+			createTime = System.currentTimeMillis();
 		}
 
         @Override
@@ -104,7 +100,7 @@ public class FileWatcher {
         	logger.info("waiting to lock " + srcFileName);
         	boolean hasLock = getLock(fileToUpload.toFile());
         	try {
-        		new HttpFileUploader().postFile(fileToUpload);
+        		new HttpFileUploader().postFile(fileToUpload, createTime);
         		// check for good status
         		Path newFileLocation = Paths.get(String.format("%1s/%2s.%3s", destFilePath, srcFileName, System.currentTimeMillis() ));
         		Files.move(fileToUpload, newFileLocation);
@@ -128,12 +124,12 @@ public class FileWatcher {
     			    	hasExclusive = true;
     			    }    			    
     			    catch (OverlappingFileLockException e) {
-    			    	logger.info("waiting for release of " + file.getName());
+    			    	logger.debug("waiting for release of " + file.getName());
     			    	channel.close();
     			    	Thread.currentThread().sleep(2000);
     			    }
     			    catch (Exception e) {
-    			    	logger.info("waiting... " + file.getName());
+    			    	logger.debug("waiting... " + file.getName());
     			    }
     		    }
     		    lock.release();

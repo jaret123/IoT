@@ -1,6 +1,7 @@
 package com.elyxor.xeros;
 
 import java.io.File;
+import java.util.Map;
 
 import javax.jws.WebService;
 import javax.ws.rs.core.Response;
@@ -20,9 +21,9 @@ public class RSServiceImpl implements RSService {
 	}
 
 	@Override
-	public Response parseCollectionFile(File f) {
+	public Response parseCollectionFile(File f, Map<String, String> fileMeta) {
 		try {
-			daiCollectionParser.parse(f);
+			daiCollectionParser.parse(f, fileMeta);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

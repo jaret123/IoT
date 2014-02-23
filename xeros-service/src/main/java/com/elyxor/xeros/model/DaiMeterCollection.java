@@ -22,9 +22,15 @@ public class DaiMeterCollection {
 	public DaiMeterCollection() {}
 
     private int id;
-    private String machineType;
-    private String machineName;
-    private Timestamp collectionTime;
+    private String machineIdentifier;
+    private String locationIdentifier;
+    private String daiIdentifier;
+    
+    private String olsonTimezoneId;
+    private Timestamp daiCollectionTime;
+    private Timestamp fileCreateTime;
+    private Timestamp fileUploadTime;
+        
     private Machine machine;
     private CollectionClassificationMap collectionClassificationMap;
     private Collection<DaiMeterCollectionDetail> collectionDetails;
@@ -40,24 +46,33 @@ public class DaiMeterCollection {
 		this.id = id;
 	}
 
-	@Column(name = "machine_name")
-	public String getMachineName() {
-		return machineName;
+	@Column(name = "machine_identifier")
+	public String getMachineIdentifier() {
+		return machineIdentifier;
 	}
 
-	public void setMachineName(String machineName) {
-		this.machineName = machineName;
+	public void setMachineIdentifier(String machineIdentifier) {
+		this.machineIdentifier = machineIdentifier;
 	}
 
-	@Column(name = "timestamp")
-	public Timestamp getCollectionTime() {
-		return collectionTime;
+	@Column(name = "dai_write_timestamp")
+	public Timestamp getDaiCollectionTime() {
+		return daiCollectionTime;
 	}
 
-	public void setCollectionTime(Timestamp collectionTime) {
-		this.collectionTime = collectionTime;
+	public void setDaiCollectionTime(Timestamp daiCollectionTime) {
+		this.daiCollectionTime = daiCollectionTime;
 	}
 	
+	@Column(name="file_upload_timestamp")
+	public Timestamp getFileUploadTime() {
+		return fileUploadTime;
+	}
+
+	public void setFileUploadTime(Timestamp fileUploadTime) {
+		this.fileUploadTime = fileUploadTime;
+	}
+
 	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "machine_id", referencedColumnName = "machine_id")
 	public Machine getMachine() {
@@ -68,13 +83,40 @@ public class DaiMeterCollection {
 		this.machine = machine;
 	}
 
-	@Column(name = "machine_type")
-	public String getMachineType() {
-		return machineType;
+	@Column(name = "olson_timezone_id", length=64)
+	public String getOlsonTimezoneId() {
+		return olsonTimezoneId;
 	}
 
-	public void setMachineType(String machineType) {
-		this.machineType = machineType;
+	public void setOlsonTimezoneId(String olsonTimezoneId) {
+		this.olsonTimezoneId = olsonTimezoneId;
+	}
+
+	@Column(name = "file_create_timestamp")
+	public Timestamp getFileCreateTime() {
+		return fileCreateTime;
+	}
+
+	public void setFileCreateTime(Timestamp fileCreateTime) {
+		this.fileCreateTime = fileCreateTime;
+	}
+
+	@Column(name = "location_identifier", length=64)
+	public String getLocationIdentifier() {
+		return locationIdentifier;
+	}
+
+	public void setLocationIdentifier(String locationIdentifier) {
+		this.locationIdentifier = locationIdentifier;
+	}
+
+	@Column(name = "dai_identifier", length=64)
+	public String getDaiIdentifier() {
+		return daiIdentifier;
+	}
+
+	public void setDaiIdentifier(String daiIdentifier) {
+		this.daiIdentifier = daiIdentifier;
 	}
 
 	@ManyToOne(fetch = FetchType.LAZY)
@@ -99,7 +141,6 @@ public class DaiMeterCollection {
 
 	@Override
 	public String toString() {
-		return String.format("DaiMeterCollection [id=%s, machineType=%s, machineName=%s, collectionTime=%s]", 
-				id, machineType, machineName, collectionTime);
+		return String.format("DaiMeterCollection [id=%s, dai=%s, machine=%s, collectionTime=%s]", id, daiIdentifier, machineIdentifier, daiCollectionTime);
 	}
 }

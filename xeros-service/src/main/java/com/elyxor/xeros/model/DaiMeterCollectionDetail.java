@@ -68,7 +68,7 @@ public class DaiMeterCollectionDetail {
 
 
 	@NotNull
-	@Column(name = "meter_value")	
+	@Column(name = "meter_value", scale=10, precision=2)	
 	public float getMeterValue() {
 		return meterValue;
 	}
@@ -88,7 +88,7 @@ public class DaiMeterCollectionDetail {
 	}
 
 
-	@Column(name = "duration")	
+	@Column(name = "duration", scale=10, precision=2)	
 	public float getDuration() {
 		return duration;
 	}

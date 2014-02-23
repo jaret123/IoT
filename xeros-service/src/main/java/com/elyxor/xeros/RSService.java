@@ -1,6 +1,7 @@
 package com.elyxor.xeros;
 
 import java.io.File;
+import java.util.Map;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -18,7 +19,7 @@ public interface RSService {
     @Path("/healthcheck")
 	Response healthcheck();    
     
-    Response parseCollectionFile(File f);
+    Response parseCollectionFile(File f, Map<String, String> meta);
     
     @GET
     @Path("/collection-match/{collectionId}")

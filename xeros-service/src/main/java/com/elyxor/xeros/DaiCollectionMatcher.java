@@ -12,12 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.elyxor.xeros.model.CollectionClassificationMap;
 import com.elyxor.xeros.model.CollectionClassificationMapDetail;
-import com.elyxor.xeros.model.CollectionClassificationMapDetailRepository;
-import com.elyxor.xeros.model.CollectionClassificationMapRepository;
 import com.elyxor.xeros.model.DaiMeterCollection;
 import com.elyxor.xeros.model.DaiMeterCollectionDetail;
-import com.elyxor.xeros.model.DaiMeterCollectionDetailRepository;
-import com.elyxor.xeros.model.DaiMeterCollectionRepository;
+import com.elyxor.xeros.model.repository.CollectionClassificationMapDetailRepository;
+import com.elyxor.xeros.model.repository.CollectionClassificationMapRepository;
+import com.elyxor.xeros.model.repository.DaiMeterCollectionDetailRepository;
+import com.elyxor.xeros.model.repository.DaiMeterCollectionRepository;
 
 @Transactional
 @Service

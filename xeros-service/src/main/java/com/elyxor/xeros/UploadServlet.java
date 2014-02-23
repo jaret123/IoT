@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -37,8 +36,7 @@ public class UploadServlet extends HttpServlet {
 	
 	private static final Logger logger = LoggerFactory.getLogger(UploadServlet.class);	
 	private FileItemFactory factory;
-	private SimpleDateFormat sdf = null;
-	private static final int BUFSIZE = 4096;
+	private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd.HHMMss");
 	private static final int MAX_FILE_SIZE = 30000;
 	@Autowired private RSService rsService;
 
@@ -49,7 +47,6 @@ public class UploadServlet extends HttpServlet {
 	@Override
 	public void init() throws ServletException {
 	    super.init();
-	    sdf = new SimpleDateFormat("yyyyMMdd.HHMMss");
 		WebApplicationContext wac = WebApplicationContextUtils.getWebApplicationContext(getServletContext());
 		rsService = (RSService)wac.getBean("rssvc");
 	    FileCleaningTracker fileCleaningTracker = FileCleanerCleanup.getFileCleaningTracker(getServletContext());
@@ -67,20 +64,28 @@ public class UploadServlet extends HttpServlet {
 		try {		    
 			@SuppressWarnings("unchecked")
             List<FileItem> uploadedItems = upload.parseRequest(request);
-			for( FileItem fileItem : uploadedItems ) {			 
-				String fullFileName = fileItem.getName();
-				String slashType = (fullFileName.lastIndexOf("\\") > 0) ? "\\" : "/";
-				String fileName = fullFileName.substring(fullFileName.lastIndexOf(slashType) + 1, fullFileName.length());
-				fileName = String.format( "%1s_%2s", sdf.format(new Date()), fileName );
-				String uploadedFileName = getTempFolder() + "/" + fileName;
-				logger.info("Resolving " + uploadedFileName );
-				File uploadedFile = new File( uploadedFileName );
-				logger.info("Writing to " + uploadedFile.getAbsolutePath() );
-				fileItem.write(uploadedFile);
-				File f = uploadedFile.getAbsoluteFile();
-				rsService.parseCollectionFile(f);
-				obuf.append( "DONE" );
+			logger.info("Parsing incoming file");
+			Map<String, String> fileMeta = new HashMap<String, String>();
+			File f = null;
+			for( FileItem fileItem : uploadedItems ) {
+				if ( fileItem.isFormField() ) {
+					fileMeta.put(fileItem.getFieldName(), fileItem.getString());
+				} else {
+					String fullFileName = fileItem.getName();
+					String slashType = (fullFileName.lastIndexOf("\\") > 0) ? "\\" : "/";
+					String fileName = fullFileName.substring(fullFileName.lastIndexOf(slashType) + 1, fullFileName.length());
+					fileName = String.format( "%1s_%2s", sdf.format(new Date()), fileName );
+					String uploadedFileName = getTempFolder() + "/" + fileName;
+					logger.info("Resolving " + uploadedFileName );
+					File uploadedFile = new File( uploadedFileName );
+					logger.info("Writing to " + uploadedFile.getAbsolutePath() );
+					fileItem.write(uploadedFile);
+					f = uploadedFile.getAbsoluteFile();
+				}				
 			}
+			rsService.parseCollectionFile(f, fileMeta);
+			logger.info("Processed file " + f.getAbsolutePath());
+			obuf.append( "DONE" );
 		} 
 		catch (Exception e) {
 		    logger.error("Failed to upload file", e); 

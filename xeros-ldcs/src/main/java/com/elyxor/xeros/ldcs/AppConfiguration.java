@@ -33,6 +33,10 @@ public class AppConfiguration {
 		return getConfig().getString("serviceurl");
 	}
 	
+	public static String getLocationId() {
+		return getConfig().getString("location_id", "none");
+	}
+	
 	public static String getFilePattern() {
 		return getConfig().getString("filepattern");
 	}

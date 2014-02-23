@@ -52,7 +52,7 @@ public class CollectionClassificationMapDetail {
 		this.meterType = meterType;
 	}
 
-	@Column(name = "duration")
+	@Column(name = "duration", scale=10, precision=2)
 	public float getDuration() {
 		return duration;
 	}
@@ -61,7 +61,7 @@ public class CollectionClassificationMapDetail {
 		this.duration = duration;
 	}
 
-	@Column(name = "start_time")
+	@Column(name = "start_time", scale=10, precision=2)
 	public float getStartTime() {
 		return startTime;
 	}
