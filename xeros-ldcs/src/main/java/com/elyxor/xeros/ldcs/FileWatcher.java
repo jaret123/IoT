@@ -16,6 +16,8 @@ import java.nio.file.Paths;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import org.apache.commons.io.IOCase;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
@@ -26,6 +28,7 @@ import org.slf4j.LoggerFactory;
 public class FileWatcher {
 	
 	private static Logger logger = LoggerFactory.getLogger(FileWatcher.class);
+	private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
 	
 	WatchService watcher = null;
 	
@@ -45,14 +48,14 @@ public class FileWatcher {
 			}
 		}
 		
+		logger.info("watching files in " + dir.toString());
 		
 		watcher = FileSystems.getDefault().newWatchService();
 		for (;;) {
 
 		    //wait for key to be signaled
 			WatchKey key = dir.register(watcher, ENTRY_CREATE);
-		    try {
-		    	logger.info("watching files in " + dir.toString());
+		    try {		    	
 		        key = watcher.take();
 		    } catch (InterruptedException x) {
 		        return;
@@ -63,8 +66,7 @@ public class FileWatcher {
 		        if (kind == OVERFLOW) {
 		            continue;
 		        }
-		        logger.info("caught " + kind.toString());
-
+		        
 		        WatchEvent<Path> ev = (WatchEvent<Path>)event;
 		        Path filename = ev.context();
 		        
@@ -101,10 +103,11 @@ public class FileWatcher {
         	boolean hasLock = getLock(fileToUpload.toFile());
         	try {
         		new HttpFileUploader().postFile(fileToUpload, createTime);
-        		// check for good status
-        		Path newFileLocation = Paths.get(String.format("%1s/%2s.%3s", destFilePath, srcFileName, System.currentTimeMillis() ));
+        		// check for good status        		
+        		String uploadTime = sdf.format(new Date());
+        		Path newFileLocation = Paths.get(String.format("%1s/%2s.%3s", destFilePath, srcFileName, uploadTime ));
         		Files.move(fileToUpload, newFileLocation);
-        		logger.debug("archived");
+        		logger.info("archived " + newFileLocation.toString());
         	} catch (Exception ex) {
         		logger.warn("Failed to get/send file", ex);
         	}

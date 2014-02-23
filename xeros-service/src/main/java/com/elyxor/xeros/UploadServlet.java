@@ -36,7 +36,7 @@ public class UploadServlet extends HttpServlet {
 	
 	private static final Logger logger = LoggerFactory.getLogger(UploadServlet.class);	
 	private FileItemFactory factory;
-	private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd.HHMMss");
+	private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd.HHmmss");
 	private static final int MAX_FILE_SIZE = 30000;
 	@Autowired private RSService rsService;
 
