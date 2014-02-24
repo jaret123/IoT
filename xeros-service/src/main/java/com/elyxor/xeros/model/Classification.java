@@ -14,6 +14,7 @@ public class Classification {
 	public Classification() {}
 	
 	private int id;
+	private String name;
 	
     @Id
     @Column(name = "classification_id", columnDefinition = "INT unsigned")
@@ -26,7 +27,13 @@ public class Classification {
 		this.id = id;
 	}
 
-	
+	@Column(name="name", length=255)
+	public String getName() {
+		return name;
+	}
 
-	
+	public void setName(String name) {
+		this.name = name;
+	}
+
 }

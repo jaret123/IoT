@@ -55,7 +55,7 @@ public class DaiCollectionParser {
 		return today.getTimeInMillis();
 	}
 	
-	public void parse(File file, Map<String, String> fileMeta) throws Exception {
+	public List<DaiMeterCollection> parse(File file, Map<String, String> fileMeta) throws Exception {
 		byte[] inputData = IOUtils.toByteArray(new FileReader(file));		
 		StringBuffer fString = new StringBuffer();
 		for ( byte b : inputData ){
@@ -65,11 +65,13 @@ public class DaiCollectionParser {
 			fString.append((char)b);
 		}
 	    
+		List<DaiMeterCollection> parsedCollections = new ArrayList<DaiMeterCollection>();
 		DaiMeterCollection dmc = null;
 		String[] lines = fString.toString().split("\r");
 		List<String> collectionLines = new ArrayList<String>();
 		for(String line: lines) {
 			dmc = new DaiMeterCollection();
+			parsedCollections.add(dmc);
 			dmc.setLocationIdentifier(fileMeta.get("location_id"));
 			dmc.setOlsonTimezoneId(fileMeta.get("olson_timezone_id"));
 			dmc.setFileUploadTime(new Timestamp( Long.parseLong(fileMeta.get("current_system_time")) ));
@@ -83,7 +85,8 @@ public class DaiCollectionParser {
 			}
 			collectionLines.add(line);
 		}
-		dmc = createCollectionModels(dmc, collectionLines);		
+		dmc = createCollectionModels(dmc, collectionLines);
+		return parsedCollections;
 	}
 	
 	
@@ -170,10 +173,14 @@ public class DaiCollectionParser {
 		}
 		dmc.setCollectionDetails(collectionData);
 		
-		CollectionClassificationMap ccm = matcher.match(dmc);
-		if ( ccm != null ) {
-			dmc.setCollectionClassificationMap(ccm);
-			daiMeterCollectionRepo.save(dmc);
+		try {
+			CollectionClassificationMap ccm = matcher.match(dmc);
+			if ( ccm != null ) {
+				dmc.setCollectionClassificationMap(ccm);
+				daiMeterCollectionRepo.save(dmc);
+			}
+		} catch (Exception e) {
+			logger.info("no matched collection map found");
 		}
 		return dmc;
 	}

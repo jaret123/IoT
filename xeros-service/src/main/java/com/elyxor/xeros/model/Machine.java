@@ -22,6 +22,7 @@ public class Machine {
 	private int steam;
 	private int fuel_type;
 	private Location location;
+	private String machineIdentifier;
 	private String machineType;
 	private String hotWaterMeterType;
 	private String coldWaterMeterType;
@@ -94,6 +95,15 @@ public class Machine {
 
 	public void setMachineType(String machineType) {
 		this.machineType = machineType;
+	}
+
+	@Column(name="machine_identifier", length=255)
+	public String getMachineIdentifier() {
+		return machineIdentifier;
+	}
+
+	public void setMachineIdentifier(String machineIdentifier) {
+		this.machineIdentifier = machineIdentifier;
 	}
 
 	@Column(name="hot_water_meter_type", length=32)

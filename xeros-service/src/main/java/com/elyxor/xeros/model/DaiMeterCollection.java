@@ -46,7 +46,7 @@ public class DaiMeterCollection {
 		this.id = id;
 	}
 
-	@Column(name = "machine_identifier")
+	@Column(name = "machine_identifier", length=255)
 	public String getMachineIdentifier() {
 		return machineIdentifier;
 	}

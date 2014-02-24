@@ -24,4 +24,9 @@ public interface RSService {
     @GET
     @Path("/collection-match/{collectionId}")
     Response matchCollection(@PathParam("collectionId") int collectionId );
+    
+    @GET
+    @Path("/collection-classification/{collectionId}/{classificationId}")
+    Response createCollectionClassificationMap(@PathParam("collectionId") int collectionId, @PathParam("classificationId") int classificationId);
+    
 }

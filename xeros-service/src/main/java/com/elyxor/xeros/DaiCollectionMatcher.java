@@ -12,8 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.elyxor.xeros.model.CollectionClassificationMap;
 import com.elyxor.xeros.model.CollectionClassificationMapDetail;
+import com.elyxor.xeros.model.DaiMeterActual;
 import com.elyxor.xeros.model.DaiMeterCollection;
 import com.elyxor.xeros.model.DaiMeterCollectionDetail;
+import com.elyxor.xeros.model.Machine;
+import com.elyxor.xeros.model.repository.ClassificationRepository;
 import com.elyxor.xeros.model.repository.CollectionClassificationMapDetailRepository;
 import com.elyxor.xeros.model.repository.CollectionClassificationMapRepository;
 import com.elyxor.xeros.model.repository.DaiMeterCollectionDetailRepository;
@@ -24,24 +27,38 @@ import com.elyxor.xeros.model.repository.DaiMeterCollectionRepository;
 public class DaiCollectionMatcher {
 
 	private static Logger logger = LoggerFactory.getLogger(DaiCollectionMatcher.class);
-	
+
+	@Autowired ClassificationRepository classificationRepository;
 	@Autowired DaiMeterCollectionRepository daiMeterCollectionRepo;
 	@Autowired DaiMeterCollectionDetailRepository daiMeterCollectionDetailRepo;
 	@Autowired CollectionClassificationMapRepository collectionClassificationMapRepo;
 	@Autowired CollectionClassificationMapDetailRepository collectionClassificationMapDetailRepo;
 	
-	public int match(int collectionId) {
-		CollectionClassificationMap matchedMap = this.match(daiMeterCollectionRepo.findOne(collectionId));
-		if (matchedMap!=null) {
-			return matchedMap.getId();
-		}
-		return 0;
+	
+	public CollectionClassificationMap match(int collectionId) throws Exception {
+		return this.match(daiMeterCollectionRepo.findOne(collectionId));
 	}
 	
-	public CollectionClassificationMap match(DaiMeterCollection collectionData) {
+	public CollectionClassificationMap match(DaiMeterCollection collectionData) throws Exception {
+		if ( collectionData.getMachine() == null ) {
+			collectionData.setMachine(findMachine(collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier()));
+		}
+		if ( collectionData.getMachine() == null ) {
+			throw new Exception(String.format("Unable to find the machine for collection %1s", collectionData.toString()));
+		}
+		Iterable<CollectionClassificationMap> existingCollections = this.collectionClassificationMapRepo.findByMachine(collectionData.getMachine());
+		CollectionClassificationMap matchedMap = findMatches(collectionData, existingCollections);
+		return matchedMap;
+	}
+	
+	
+	private Machine findMachine(String daiIdentifier, String machineIdentifier) {
+		
+		return null;
+	}
+	
+	private CollectionClassificationMap findMatches(DaiMeterCollection collectionData, Iterable<CollectionClassificationMap> existingCollections) {
 		CollectionClassificationMap matchedMap = null;
-		// Collection<CollectionClassificationMap> existingCollections = this.collectionClassificationMapRepo.findByMachine(collectionData.getMachine());
-		Iterable<CollectionClassificationMap> existingCollections = this.collectionClassificationMapRepo.findAll();
 		if ( existingCollections!=null && existingCollections.iterator().hasNext() ) {
 			List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData.getCollectionDetails());
 			// for each collection...
@@ -87,6 +104,27 @@ public class DaiCollectionMatcher {
 			normalizedDetails.add(ccd);			 
 		}
 		return normalizedDetails;		
+	}
+
+	
+	public CollectionClassificationMap createCollectionClassificationMap(int collectionId, int classificationId) throws Exception {
+		DaiMeterCollection dmc = this.daiMeterCollectionRepo.findOne(collectionId);
+		if ( dmc.getMachine()==null ) {
+			throw new Exception(String.format("The machine for collectionId %1s is unknown.  Mapping not created.", collectionId));
+		}
+		CollectionClassificationMap ccm = new CollectionClassificationMap();
+		ccm.setMachine(dmc.getMachine());
+		ccm.setClassification(classificationRepository.findOne(classificationId));
+		ccm.setCollectionDetails(normalizeCollectionDetails(dmc.getCollectionDetails()));
+		for ( CollectionClassificationMapDetail ccmd : ccm.getCollectionDetails() ) {
+			ccmd.setCollectionClassificationMap(ccm);
+		}
+		this.collectionClassificationMapRepo.save(ccm);
+		return ccm;
+	}
+	
+	public DaiMeterActual createActual(int collectionId){
+		return null;
 	}
 
 }
