@@ -17,8 +17,9 @@ public class ActiveDai {
 	public ActiveDai() {}
 	
 	private int id;
-	private int drySmart;
+	private Integer drySmart;
 	private Machine machine;
+	private String daiIdentifier;
 	
     @Id
     @Column(name = "active_dai_id", columnDefinition = "INT unsigned")
@@ -32,11 +33,11 @@ public class ActiveDai {
 	}
 	
 	@Column(name = "dry_smart", columnDefinition = "INT unsigned")
-	public int getDrySmart() {
+	public Integer getDrySmart() {
 		return drySmart;
 	}
 
-	public void setDrySmart(int drySmart) {
+	public void setDrySmart(Integer drySmart) {
 		this.drySmart = drySmart;
 	}
 
@@ -48,6 +49,15 @@ public class ActiveDai {
 
 	public void setMachine(Machine machine) {
 		this.machine = machine;
+	}
+
+	@Column(name="dai_identifier")
+	public String getDaiIdentifier() {
+		return daiIdentifier;
+	}
+
+	public void setDaiIdentifier(String daiIdentifier) {
+		this.daiIdentifier = daiIdentifier;
 	}
 
 			

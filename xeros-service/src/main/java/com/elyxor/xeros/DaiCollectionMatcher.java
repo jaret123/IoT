@@ -10,17 +10,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.elyxor.xeros.model.ActiveDai;
 import com.elyxor.xeros.model.CollectionClassificationMap;
 import com.elyxor.xeros.model.CollectionClassificationMapDetail;
 import com.elyxor.xeros.model.DaiMeterActual;
 import com.elyxor.xeros.model.DaiMeterCollection;
 import com.elyxor.xeros.model.DaiMeterCollectionDetail;
 import com.elyxor.xeros.model.Machine;
+import com.elyxor.xeros.model.repository.ActiveDaiRepository;
 import com.elyxor.xeros.model.repository.ClassificationRepository;
 import com.elyxor.xeros.model.repository.CollectionClassificationMapDetailRepository;
 import com.elyxor.xeros.model.repository.CollectionClassificationMapRepository;
+import com.elyxor.xeros.model.repository.DaiMeterActualRepository;
 import com.elyxor.xeros.model.repository.DaiMeterCollectionDetailRepository;
 import com.elyxor.xeros.model.repository.DaiMeterCollectionRepository;
+import com.elyxor.xeros.model.repository.MachineRepository;
 
 @Transactional
 @Service
@@ -28,11 +32,14 @@ public class DaiCollectionMatcher {
 
 	private static Logger logger = LoggerFactory.getLogger(DaiCollectionMatcher.class);
 
+	@Autowired ActiveDaiRepository activeDaiRepository;
 	@Autowired ClassificationRepository classificationRepository;
+	@Autowired DaiMeterActualRepository daiMeterActualRepository;
 	@Autowired DaiMeterCollectionRepository daiMeterCollectionRepo;
 	@Autowired DaiMeterCollectionDetailRepository daiMeterCollectionDetailRepo;
 	@Autowired CollectionClassificationMapRepository collectionClassificationMapRepo;
 	@Autowired CollectionClassificationMapDetailRepository collectionClassificationMapDetailRepo;
+	@Autowired MachineRepository machineRepository;
 	
 	
 	public CollectionClassificationMap match(int collectionId) throws Exception {
@@ -41,21 +48,92 @@ public class DaiCollectionMatcher {
 	
 	public CollectionClassificationMap match(DaiMeterCollection collectionData) throws Exception {
 		if ( collectionData.getMachine() == null ) {
-			collectionData.setMachine(findMachine(collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier()));
+			List<Machine> machines = machineRepository.findByLocationIdAndMachineIdentifier(Integer.parseInt(collectionData.getLocationIdentifier()), 
+					collectionData.getMachineIdentifier());
+			if ( machines != null && machines.size()>0 ) {
+				collectionData.setMachine(machines.iterator().next());
+			}
+			daiMeterCollectionRepo.save(collectionData);
 		}
 		if ( collectionData.getMachine() == null ) {
 			throw new Exception(String.format("Unable to find the machine for collection %1s", collectionData.toString()));
 		}
 		Iterable<CollectionClassificationMap> existingCollections = this.collectionClassificationMapRepo.findByMachine(collectionData.getMachine());
 		CollectionClassificationMap matchedMap = findMatches(collectionData, existingCollections);
+		if ( matchedMap!=null ) {
+			collectionData.setCollectionClassificationMap(matchedMap);
+			daiMeterCollectionRepo.save(collectionData);
+		}
+		if ( collectionData.getCollectionClassificationMap()!=null && collectionData.getDaiMeterActual()==null) {
+			collectionData.setDaiMeterActual(createDaiMeterActual(collectionData));
+			daiMeterCollectionRepo.save(collectionData);
+		}
 		return matchedMap;
 	}
 	
 	
-	private Machine findMachine(String daiIdentifier, String machineIdentifier) {
-		
-		return null;
+	private Float calculateRunTime(DaiMeterCollection c) {
+		Machine m = c.getMachine();
+		if ( m.getDoorLockMeterType() !=null ) {
+			for ( DaiMeterCollectionDetail cd : c.getCollectionDetails() ) {
+				if ( cd.getMeterType().equals(m.getDoorLockMeterType()) ) {
+					int startOffset = m.getStartTimeOffset()!=null?m.getStartTimeOffset():0;
+					int endOffset = m.getStopTimeOffset()!=null?m.getStopTimeOffset():0;
+					return new Float(cd.getDuration() + startOffset + endOffset);
+				}
+			}
+		}
+		return new Float(0);
 	}
+	
+	
+
+	private Float calculateColdWater(DaiMeterCollection c) {
+		Machine m = c.getMachine();
+		if ( m.getDoorLockMeterType() !=null ) {
+			for ( DaiMeterCollectionDetail cd : c.getCollectionDetails() ) {
+				if ( cd.getMeterType().equals(m.getColdWaterMeterType()) ) {
+					return new Float(cd.getDuration());
+				}
+			}
+		}
+		return new Float(0);
+	}
+	
+
+	private Float calculateHotWater(DaiMeterCollection c) {
+		Machine m = c.getMachine();
+		if ( m.getDoorLockMeterType() !=null ) {
+			for ( DaiMeterCollectionDetail cd : c.getCollectionDetails() ) {
+				if ( cd.getMeterType().equals(m.getHotWaterMeterType()) ) {
+					return new Float(cd.getDuration());
+				}
+			}
+		}
+		return new Float(0);
+	}
+
+	
+	public DaiMeterActual createDaiMeterActual(DaiMeterCollection collectionData) throws Exception {
+		// TODO : tons of checking for valid matches 
+		DaiMeterActual daia = null;
+		List<ActiveDai> dais = this.activeDaiRepository.findByDaiIdentifierAndMachine(collectionData.getDaiIdentifier(), collectionData.getMachine());
+		if ( dais!=null && dais.iterator().hasNext()) {
+			daia = new DaiMeterActual();
+			daia.setActiveDai(dais.iterator().next());
+			daia.setClassification(collectionData.getCollectionClassificationMap().getClassification());
+			daia.setMachine(collectionData.getMachine());
+			daia.setRunTime(new Float(calculateRunTime(collectionData)).intValue());
+			daia.setColdWater(new Float(calculateColdWater(collectionData)).intValue());
+			daia.setHotWater(new Float(calculateHotWater(collectionData)).intValue());
+			daiMeterActualRepository.save(daia);
+		} else {
+			throw new Exception( String.format("no active dai found for [dai:%1s, machine: %2s]", collectionData.getDaiIdentifier(), collectionData.getMachine() ));
+		}
+		return daia;
+	}
+	
+		
 	
 	private CollectionClassificationMap findMatches(DaiMeterCollection collectionData, Iterable<CollectionClassificationMap> existingCollections) {
 		CollectionClassificationMap matchedMap = null;
@@ -121,10 +199,6 @@ public class DaiCollectionMatcher {
 		}
 		this.collectionClassificationMapRepo.save(ccm);
 		return ccm;
-	}
-	
-	public DaiMeterActual createActual(int collectionId){
-		return null;
 	}
 
 }

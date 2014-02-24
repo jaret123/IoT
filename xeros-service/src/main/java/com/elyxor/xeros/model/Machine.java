@@ -14,21 +14,22 @@ import javax.persistence.Table;
 @Table(name = "xeros_machine")
 public class Machine {
 
+
 	public Machine() {}
 	
 	private int id;
 	private String serialNumber;
 	private String manufacturer;
-	private int steam;
-	private int fuel_type;
+	private Integer steam;
+	private Integer fuel_type;
 	private Location location;
 	private String machineIdentifier;
 	private String machineType;
 	private String hotWaterMeterType;
 	private String coldWaterMeterType;
 	private String doorLockMeterType;
-	private int startTimeOffset;
-	private int stopTimeOffset;
+	private Integer startTimeOffset;
+	private Integer stopTimeOffset;
 	
 	
     @Id
@@ -134,24 +135,30 @@ public class Machine {
 	}
 
 	@Column(name = "start_time_offset", scale=10)
-	public int getStartTimeOffset() {
+	public Integer getStartTimeOffset() {
 		return startTimeOffset;
 	}
 
-	public void setStartTimeOffset(int startTimeOffset) {
+	public void setStartTimeOffset(Integer startTimeOffset) {
 		this.startTimeOffset = startTimeOffset;
 	}
 
 	@Column(name = "stop_time_offset", scale=10)
-	public int getStopTimeOffset() {
+	public Integer getStopTimeOffset() {
 		return stopTimeOffset;
 	}
 
-	public void setStopTimeOffset(int stopTimeOffset) {
+	public void setStopTimeOffset(Integer stopTimeOffset) {
 		this.stopTimeOffset = stopTimeOffset;
 	}
 
 	
+	@Override
+	public String toString() {
+		return String
+				.format("Machine [id=%s, manufacturer=%s, machineIdentifier=%s, machineType=%s]",
+						id, manufacturer, machineIdentifier, machineType);
+	}
 
 	
 }

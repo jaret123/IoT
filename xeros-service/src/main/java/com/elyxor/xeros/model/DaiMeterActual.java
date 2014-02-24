@@ -22,9 +22,9 @@ public class DaiMeterActual {
 	private Timestamp timestamp;
 	private ActiveDai activeDai;
 	private Classification classification;
-	private float hotWater;
-	private float coldWater;
-	private int runTime;
+	private Float hotWater;
+	private Float coldWater;
+	private Integer runTime;
 	private Machine machine;
 	
 	
@@ -70,7 +70,7 @@ public class DaiMeterActual {
 	}
 
 	@Column(name = "hot_water", scale=10, precision=2)
-	public float getHotWater() {
+	public Float getHotWater() {
 		return hotWater;
 	}
 
@@ -79,7 +79,7 @@ public class DaiMeterActual {
 	}
 
 	@Column(name = "cold_water", scale=10, precision=2)
-	public float getColdWater() {
+	public Float getColdWater() {
 		return coldWater;
 	}
 
@@ -88,7 +88,7 @@ public class DaiMeterActual {
 	}
 
 	@Column(name = "run_time", scale=10)	
-	public int getRunTime() {
+	public Integer getRunTime() {
 		return runTime;
 	}
 

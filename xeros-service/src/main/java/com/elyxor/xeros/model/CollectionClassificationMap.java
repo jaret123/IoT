@@ -46,7 +46,7 @@ public class CollectionClassificationMap {
 		this.machine = machine;
 	}
 
-	@ManyToOne(fetch = FetchType.LAZY)
+	@ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "classification_id", referencedColumnName = "classification_id")
 	public Classification getClassification() {
 		return classification;

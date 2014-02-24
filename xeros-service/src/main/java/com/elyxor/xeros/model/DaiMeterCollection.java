@@ -13,6 +13,7 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
 @Entity
@@ -34,6 +35,7 @@ public class DaiMeterCollection {
     private Machine machine;
     private CollectionClassificationMap collectionClassificationMap;
     private Collection<DaiMeterCollectionDetail> collectionDetails;
+    private DaiMeterActual daiMeterActual;
 
     @Id
     @Column(columnDefinition = "INT unsigned")
@@ -117,6 +119,16 @@ public class DaiMeterCollection {
 
 	public void setDaiIdentifier(String daiIdentifier) {
 		this.daiIdentifier = daiIdentifier;
+	}
+
+	@OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "dai_meter_actual_id", referencedColumnName = "dai_meter_actual_id")
+	public DaiMeterActual getDaiMeterActual() {
+		return daiMeterActual;
+	}
+
+	public void setDaiMeterActual(DaiMeterActual daiMeterActual) {
+		this.daiMeterActual = daiMeterActual;
 	}
 
 	@ManyToOne(fetch = FetchType.LAZY)

@@ -13,6 +13,5 @@ import com.elyxor.xeros.model.DaiMeterActual;
 import com.elyxor.xeros.model.Machine;
 
 @Repository
-public interface ActiveDaiRepository extends CrudRepository<ActiveDai, Integer> {
-	@Query List<ActiveDai> findByDaiIdentifierAndMachine(String daiIdentifier, Machine machine);
+public interface DaiMeterActualRepository extends CrudRepository<DaiMeterActual, Integer> {
 }
