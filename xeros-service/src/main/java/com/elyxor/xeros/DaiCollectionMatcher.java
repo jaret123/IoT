@@ -142,7 +142,7 @@ public class DaiCollectionMatcher {
 			// for each collection...
 			for ( CollectionClassificationMap collMap : existingCollections ) {
 				// validate all values...
-				int matches = 0;				
+				int matches = 0;
 				for(CollectionClassificationMapDetail collMapDetail : collMap.getCollectionDetails() ) {
 					for ( CollectionClassificationMapDetail normalizedDetail : normalizedDetails ) {
 						logger.info(String.format("MATCH?  E: %1s == NEW: %2s", collMapDetail.toString(), normalizedDetail.toString()) );
@@ -153,7 +153,7 @@ public class DaiCollectionMatcher {
 						}
 					}
 				}
-				if ( matches == normalizedDetails.size() ) {
+				if (matches == normalizedDetails.size()) {
 					matchedMap = collMap;
 					break;
 				} else {
@@ -174,12 +174,16 @@ public class DaiCollectionMatcher {
 			earliestValue = ( collectionDetail.getMeterValue()<earliestValue )?collectionDetail.getMeterValue():earliestValue;
 		}
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {
+			if (collectionDetail.getMeterType().startsWith("WM") || collectionDetail.getMeterType().equals("SENSOR_4")) {
+				continue;
+			}
 			float normalizedValue = (collectionDetail.getMeterValue() == earliestValue || collectionDetail.getMeterType().startsWith("WM") )?0:collectionDetail.getMeterValue()-earliestValue;
 			CollectionClassificationMapDetail ccd = new CollectionClassificationMapDetail();
 			ccd.setMeterType(collectionDetail.getMeterType());
 			ccd.setStartTime(normalizedValue);
 			ccd.setDuration(collectionDetail.getDuration());
-			normalizedDetails.add(ccd);			 
+			normalizedDetails.add(ccd);
+			
 		}
 		return normalizedDetails;		
 	}
