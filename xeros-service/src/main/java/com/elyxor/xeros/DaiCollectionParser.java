@@ -177,11 +177,11 @@ public class DaiCollectionParser {
 			CollectionClassificationMap ccm = matcher.match(dmc);
 			if ( ccm != null ) {
 				dmc.setCollectionClassificationMap(ccm);
-				daiMeterCollectionRepo.save(dmc);
 			}
 		} catch (Exception e) {
 			logger.info("no matched collection map found");
 		}
+		daiMeterCollectionRepo.save(dmc);
 		return dmc;
 	}
 	
