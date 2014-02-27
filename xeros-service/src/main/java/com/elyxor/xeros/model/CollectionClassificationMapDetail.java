@@ -71,9 +71,12 @@ public class CollectionClassificationMapDetail {
 	}
 	
 	public boolean matches(CollectionClassificationMapDetail other) {
-		return (this.meterType.equals(other.getMeterType()) &&
-				this.duration == other.getDuration() &&
-				this.startTime == other.getStartTime() );
+		
+		boolean rtn = (this.meterType.equals(other.getMeterType()) && this.duration == other.getDuration());
+		if (rtn && 	this.duration > 0) {
+			rtn = rtn && (this.startTime == other.getStartTime() );
+		}
+		return rtn;
 	}
 	
 	@Override

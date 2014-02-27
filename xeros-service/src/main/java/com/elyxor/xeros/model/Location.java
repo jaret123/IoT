@@ -17,8 +17,7 @@ public class Location {
 	private int id;
 
 	@Id
-	@Column(name = "location_id", columnDefinition = "INT unsigned")
-	@GeneratedValue(strategy = GenerationType.AUTO)
+	@Column(name = "location_id", columnDefinition = "INT unsigned", updatable=false, insertable=false)
 	public int getId() {
 		return id;
 	}
