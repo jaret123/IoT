@@ -126,6 +126,7 @@ public class DaiCollectionMatcher {
 			daia.setRunTime(new Float(calculateRunTime(collectionData)).intValue());
 			daia.setColdWater(new Float(calculateColdWater(collectionData)).intValue());
 			daia.setHotWater(new Float(calculateHotWater(collectionData)).intValue());
+			daia.setTimestamp(collectionData.getDaiCollectionTime());
 			daiMeterActualRepository.save(daia);
 		} else {
 			throw new Exception( String.format("no active dai found for [dai:%1s, machine: %2s]", collectionData.getDaiIdentifier(), collectionData.getMachine() ));
@@ -138,7 +139,7 @@ public class DaiCollectionMatcher {
 	private CollectionClassificationMap findMatches(DaiMeterCollection collectionData, Iterable<CollectionClassificationMap> existingCollections) {
 		CollectionClassificationMap matchedMap = null;
 		if ( existingCollections!=null && existingCollections.iterator().hasNext() ) {
-			List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData.getCollectionDetails());
+			List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData.getCollectionDetails(), collectionData.getMachine());
 			// for each collection...
 			for ( CollectionClassificationMap collMap : existingCollections ) {
 				// validate all values...
@@ -164,7 +165,7 @@ public class DaiCollectionMatcher {
 		return matchedMap;
 	}
 	
-	private List<CollectionClassificationMapDetail> normalizeCollectionDetails(Collection<DaiMeterCollectionDetail> collDetails) {
+	private List<CollectionClassificationMapDetail> normalizeCollectionDetails(Collection<DaiMeterCollectionDetail> collDetails, Machine machine) {
 		List<CollectionClassificationMapDetail> normalizedDetails = new ArrayList<CollectionClassificationMapDetail>();		
 		float earliestValue = Float.MAX_VALUE;
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {
@@ -174,7 +175,7 @@ public class DaiCollectionMatcher {
 			earliestValue = ( collectionDetail.getMeterValue()<earliestValue )?collectionDetail.getMeterValue():earliestValue;
 		}
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {
-			if (collectionDetail.getMeterType().startsWith("WM") || collectionDetail.getMeterType().equals("SENSOR_4")) {
+			if (collectionDetail.getMeterType().startsWith("WM") || collectionDetail.getMeterType().equals(machine.getDoorLockMeterType())) {
 				continue;
 			}
 			float normalizedValue = (collectionDetail.getMeterValue() == earliestValue || collectionDetail.getMeterType().startsWith("WM") )?0:collectionDetail.getMeterValue()-earliestValue;
@@ -197,7 +198,7 @@ public class DaiCollectionMatcher {
 		CollectionClassificationMap ccm = new CollectionClassificationMap();
 		ccm.setMachine(dmc.getMachine());
 		ccm.setClassification(classificationRepository.findOne(classificationId));
-		ccm.setCollectionDetails(normalizeCollectionDetails(dmc.getCollectionDetails()));
+		ccm.setCollectionDetails(normalizeCollectionDetails(dmc.getCollectionDetails(), ccm.getMachine()));
 		for ( CollectionClassificationMapDetail ccmd : ccm.getCollectionDetails() ) {
 			ccmd.setCollectionClassificationMap(ccm);
 		}

@@ -31,24 +31,17 @@ public class FileWatcher {
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
 	
 	WatchService watcher = null;
+	Path watchDir = Paths.get(AppConfiguration.getLocalPath());
+	FilenameFilter fileFilter = (FilenameFilter)new WildcardFileFilter(AppConfiguration.getFilePattern(), IOCase.INSENSITIVE);
+	
+	
 	
 	public void watch() throws Exception {
 		logger.info("Starting LDCS");
 		Path dir = Paths.get(AppConfiguration.getLocalPath());
-		FilenameFilter ff = (FilenameFilter)new WildcardFileFilter(AppConfiguration.getFilePattern(), IOCase.INSENSITIVE);
-		
-		if (dir.toFile().isDirectory()) {
-			File pathFile = dir.toFile();			
-			File[] files = pathFile.listFiles(ff);
-			for (File f : files) {
-				logger.debug(String.format("%1s", f.getAbsolutePath()));
-				Path child = dir.resolve(f.getAbsolutePath());
-	            FileAcquirer fa = new FileAcquirer(child);
-	            fa.run();	
-			}
-		}
 		
 		logger.info("watching files in " + dir.toString());
+		new Thread(new FileScanner()).start();
 		
 		watcher = FileSystems.getDefault().newWatchService();
 		for (;;) {
@@ -67,10 +60,11 @@ public class FileWatcher {
 		            continue;
 		        }
 		        
-		        WatchEvent<Path> ev = (WatchEvent<Path>)event;
+		        @SuppressWarnings("unchecked")
+				WatchEvent<Path> ev = (WatchEvent<Path>)event;
 		        Path filename = ev.context();
 		        
-		        if ( ff.accept(dir.toFile(), filename.toFile().getName() )) {
+		        if ( fileFilter.accept(dir.toFile(), filename.toFile().getName() )) {
 		            Path child = dir.resolve(filename);
 		            FileAcquirer fa = new FileAcquirer(child);
 		            fa.run();		            
@@ -82,6 +76,36 @@ public class FileWatcher {
 		    }
 		}
 		logger.info("Ending LDCS");
+	}
+	
+	public class FileScanner implements Runnable {
+		
+		public FileScanner() {}
+		
+		public void scanFiles() {		
+			if (watchDir.toFile().isDirectory()) {
+				logger.info("scanning for files in " + watchDir.toString());
+				File pathFile = watchDir.toFile();
+				File[] files = pathFile.listFiles(fileFilter);				
+				for (File f : files) {
+					logger.debug(String.format("%1s", f.getAbsolutePath()));
+					Path child = watchDir.resolve(f.getAbsolutePath());
+					new Thread(new FileAcquirer(child)).start();
+				}
+			}
+		}
+
+		@Override
+		public void run() {
+			try {
+				for (;;) {
+					scanFiles();
+					Thread.sleep(30000);
+				}				
+			} catch(Exception ex) {
+				logger.warn("Exception caught scanning files", ex);
+			}						
+		}
 	}
 	
 	public class FileAcquirer implements Runnable {
@@ -99,15 +123,18 @@ public class FileWatcher {
         @Override
         public void run() {
         	String srcFileName = fileToUpload.toFile().getName();
-        	logger.info("waiting to lock " + srcFileName);
-        	boolean hasLock = getLock(fileToUpload.toFile());
+        	logger.info("waiting to lock " + srcFileName);        	
         	try {
-        		new HttpFileUploader().postFile(fileToUpload, createTime);
-        		// check for good status        		
-        		String uploadTime = sdf.format(new Date());
-        		Path newFileLocation = Paths.get(String.format("%1s/%2s.%3s", destFilePath, srcFileName, uploadTime ));
-        		Files.move(fileToUpload, newFileLocation);
-        		logger.info("archived " + newFileLocation.toString());
+        		Thread.sleep(AppConfiguration.getFileLockWait());
+        		int responseStatus = new HttpFileUploader().postFile(fileToUpload, createTime);
+        		if (responseStatus == 200 ) {
+	        		String uploadTime = sdf.format(new Date());
+	        		Path newFileLocation = Paths.get(String.format("%1s/%2s.%3s", destFilePath, srcFileName, uploadTime ));
+	        		Files.move(fileToUpload, newFileLocation);
+	        		logger.info("archived " + newFileLocation.toString());
+        		} else {
+        			logger.warn("not moving file due to http post response");
+        		}
         	} catch (Exception ex) {
         		logger.warn("Failed to get/send file", ex);
         	}
@@ -129,7 +156,7 @@ public class FileWatcher {
     			    catch (OverlappingFileLockException e) {
     			    	logger.debug("waiting for release of " + file.getName());
     			    	channel.close();
-    			    	Thread.currentThread().sleep(2000);
+						Thread.sleep(AppConfiguration.getFileLockWait());
     			    }
     			    catch (Exception e) {
     			    	logger.debug("waiting... " + file.getName());

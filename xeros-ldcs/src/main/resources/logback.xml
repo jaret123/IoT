@@ -1,27 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- configuration file for LogBack (slf4J implementation) See here for more 
-	details: http://gordondickens.com/wordpress/2013/03/27/sawing-through-the-java-loggers/ -->
 <configuration scan="true" scanPeriod="30 seconds">
 
 	<contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
 		<resetJUL>true</resetJUL>
 	</contextListener>
-
-	<!-- To enable JMX Management -->
 	<jmxConfigurator />
 
 	<appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>xeros_service.log</file>
-		<append>true</append>
-		<encoder>
-			<pattern>%-4relative [%thread] %-5level %logger{35} - %msg%n
-			</pattern>
-		</encoder>
-	</appender>
+    	<file>./logs/xeros-ldcs.log</file>
+    	<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>xeros-ldcs-%d{yyyy-MM-dd}.log</fileNamePattern>
+      		<maxHistory>30</maxHistory>
+    	</rollingPolicy>
+    	<encoder>
+    		<pattern>%date{dd-MM-yyyy HH:mm:ss} [%thread] %-5level %logger{35} - %msg%n</pattern>      		
+    	</encoder>
+  	</appender>
 
 	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">
 		<encoder>
-			<pattern>%-5level %logger{0} - %msg%n</pattern>
+			<pattern>%date{dd-MM-yyyy HH:mm:ss} [%thread] %-5level %logger{35} - %msg%n</pattern>
 		</encoder>
 	</appender>
 

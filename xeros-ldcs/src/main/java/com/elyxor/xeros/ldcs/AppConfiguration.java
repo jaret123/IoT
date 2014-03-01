@@ -1,7 +1,10 @@
 package com.elyxor.xeros.ldcs;
 
+import java.io.InputStream;
+import java.util.Properties;
+
 import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration.MapConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,10 +14,18 @@ public class AppConfiguration {
 	private static Logger logger = LoggerFactory.getLogger(AppConfiguration.class);
 	
 	public static Configuration getConfig() {
+		Properties properties = new Properties();
 		try {
-		if ( config == null ) {
-			config = new PropertiesConfiguration("application.properties");
-		}
+			if ( config == null ) {
+				logger.info("loading config from [ldcs.properties]");
+				InputStream is = AppConfiguration.class.getClassLoader().getResourceAsStream("ldcs.properties");
+				if (is==null) {
+					logger.warn("ldcs.properties not found; loading config from [application.properties]");
+					is = AppConfiguration.class.getClassLoader().getResourceAsStream("application.properties");
+				}
+				properties.load(is);
+				config = new MapConfiguration(properties);
+			}
 		} catch (Exception ex) {
 			logger.error("Failed to build configuration", ex);
 		}
@@ -23,6 +34,10 @@ public class AppConfiguration {
 	
 	public static String getLocalPath(){
 		return getConfig().getString("localpath");
+	}
+	
+	public static Long getFileLockWait(){
+		return getConfig().getLong("file_lock_wait_ms", 10000);
 	}
 	
 	public static String getArchivePath() {

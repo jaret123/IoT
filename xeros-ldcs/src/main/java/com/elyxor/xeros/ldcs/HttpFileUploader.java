@@ -33,7 +33,8 @@ public class HttpFileUploader {
 	
 	private static Logger logger = LoggerFactory.getLogger(HttpFileUploader.class);
 		
-	public void postFile(Path filePath, long createTime) {
+	public int postFile(Path filePath, long createTime) {
+		int httpStatus = 0;
 		try {
 			String contentType = Files.probeContentType(filePath);
 			File file = filePath.toFile();
@@ -55,9 +56,11 @@ public class HttpFileUploader {
 	        if ( response.getStatusLine().getStatusCode() != 200 ) {
 	        	logger.warn(String.format("Failed to upload file; received \n %1s", responseString));	        	
 	        }
+	        httpStatus = response.getStatusLine().getStatusCode();
 		} catch (Exception ex) {
 			logger.error("Failed to post file", ex);
 		}
+		return httpStatus;
 	}
 
 	public HttpClient getHttpClient(String url) throws Exception {
