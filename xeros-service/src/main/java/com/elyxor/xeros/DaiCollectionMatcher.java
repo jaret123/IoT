@@ -48,10 +48,14 @@ public class DaiCollectionMatcher {
 	
 	public CollectionClassificationMap match(DaiMeterCollection collectionData) throws Exception {
 		if ( collectionData.getMachine() == null ) {
-			List<Machine> machines = machineRepository.findByLocationIdAndMachineIdentifier(Integer.parseInt(collectionData.getLocationIdentifier()), 
-					collectionData.getMachineIdentifier());
-			if ( machines != null && machines.size()>0 ) {
-				collectionData.setMachine(machines.iterator().next());
+			List<ActiveDai> dais = this.activeDaiRepository.findByDaiIdentifierAndMachineMachineIdentifier(collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier());			
+			if ( dais != null && dais.size()>0 ) {
+				Machine m = dais.iterator().next().getMachine(); 
+				if (collectionData.getLocationIdentifier().equals( String.valueOf(m.getLocation().getId()))) {
+					collectionData.setMachine(m);
+				} else {
+					logger.warn("Mismatched locationID:{} for dai:{} machine:{}", collectionData.getLocationIdentifier(), collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier());
+				}
 			}
 			daiMeterCollectionRepo.save(collectionData);
 		}
@@ -117,7 +121,7 @@ public class DaiCollectionMatcher {
 	public DaiMeterActual createDaiMeterActual(DaiMeterCollection collectionData) throws Exception {
 		// TODO : tons of checking for valid matches 
 		DaiMeterActual daia = null;
-		List<ActiveDai> dais = this.activeDaiRepository.findByDaiIdentifierAndMachine(collectionData.getDaiIdentifier(), collectionData.getMachine());
+		List<ActiveDai> dais = this.activeDaiRepository.findByDaiIdentifierAndMachineMachineIdentifier(collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier());
 		if ( dais!=null && dais.iterator().hasNext()) {
 			daia = new DaiMeterActual();
 			daia.setActiveDai(dais.iterator().next());
