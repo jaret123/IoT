@@ -233,7 +233,8 @@ public class DaiCollectionMatcher {
 	}
 
 	public List<CollectionClassificationMapDetail> normalize(int collectionId) {
-		return this.normalize(collectionId);
+		DaiMeterCollection dmc = this.daiMeterCollectionRepo.findOne(collectionId);
+		return this.normalizeCollectionDetails(dmc.getCollectionDetails(), dmc.getMachine());
 	}
 
 }
