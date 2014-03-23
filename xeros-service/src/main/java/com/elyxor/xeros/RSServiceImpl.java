@@ -72,4 +72,15 @@ public class RSServiceImpl implements RSService {
 		return r.build();
 	}
 
+	@Override
+	public Response normalizeCollection(int collectionId) {
+		ResponseBuilder r = Response.ok();
+		try {
+			r.entity(daiCollectionMatcher.normalize(collectionId));
+		} catch (Exception e) {
+			r = Response.serverError().entity(e.toString());
+		}
+		return r.build();
+	}
+
 }

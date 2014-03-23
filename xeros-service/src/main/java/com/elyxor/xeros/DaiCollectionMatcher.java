@@ -232,4 +232,8 @@ public class DaiCollectionMatcher {
 		return true;
 	}
 
+	public List<CollectionClassificationMapDetail> normalize(int collectionId) {
+		return this.normalize(collectionId);
+	}
+
 }

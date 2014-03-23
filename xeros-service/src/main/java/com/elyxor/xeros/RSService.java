@@ -32,5 +32,9 @@ public interface RSService {
     @GET
     @Path("/classify/{collectionId}/{classificationId}")
     Response createCollectionClassificationMap(@PathParam("collectionId") int collectionId, @PathParam("classificationId") int classificationId);
+
+    @GET
+    @Path("/normalize/{collectionId}")
+    Response normalizeCollection(@PathParam("collectionId") int collectionId);
     
 }
