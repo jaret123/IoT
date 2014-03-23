@@ -60,4 +60,16 @@ public class RSServiceImpl implements RSService {
 		return r.build();
 	}
 
+	@Override
+	public Response unmatchCollection(int collectionId) {
+		ResponseBuilder r = Response.ok();
+		try {
+			boolean success = daiCollectionMatcher.unmatch(collectionId);
+			r.entity(success);
+		} catch (Exception e) {
+			r = Response.serverError().entity(e.toString());
+		}
+		return r.build();
+	}
+
 }

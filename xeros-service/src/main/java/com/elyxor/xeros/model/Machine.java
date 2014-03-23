@@ -30,7 +30,8 @@ public class Machine {
 	private String doorLockMeterType;
 	private Integer startTimeOffset;
 	private Integer stopTimeOffset;
-	
+	private Integer doorLockDurationMatchVariance;
+	private Integer sensorStartTimeVariance;
 	
     @Id
     @Column(name = "machine_id", columnDefinition = "INT unsigned")
@@ -96,6 +97,32 @@ public class Machine {
 
 	public void setMachineType(String machineType) {
 		this.machineType = machineType;
+	}
+
+	@Column(name = "door_lock_duration_match_variance", scale=10)
+	public Integer getDoorLockDurationMatchVariance() {
+		return doorLockDurationMatchVariance;
+	}
+
+	public void setDoorLockDurationMatchVariance(Integer doorLockDurationMatchVariance) {
+		this.doorLockDurationMatchVariance = doorLockDurationMatchVariance;
+	}
+
+	@Column(name = "sensor_start_match_variance", scale=10)
+	public Integer getSensorStartTimeVariance() {
+		return sensorStartTimeVariance;
+	}
+
+	public void setSensorStartTimeVariance(Integer sensorStartTimeVariance) {
+		this.sensorStartTimeVariance = sensorStartTimeVariance;
+	}
+
+	public void setSteam(Integer steam) {
+		this.steam = steam;
+	}
+
+	public void setFuel_type(Integer fuel_type) {
+		this.fuel_type = fuel_type;
 	}
 
 	@Column(name="machine_identifier", length=255)

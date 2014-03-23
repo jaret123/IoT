@@ -70,11 +70,10 @@ public class CollectionClassificationMapDetail {
 		this.startTime = startTime;
 	}
 	
-	public boolean matches(CollectionClassificationMapDetail other) {
-		
-		boolean rtn = (this.meterType.equals(other.getMeterType()) && this.duration == other.getDuration());
-		if (rtn && 	this.duration > 0) {
-			rtn = rtn && (this.startTime == other.getStartTime() );
+	public boolean matches(CollectionClassificationMapDetail other, int startVariance, int durationVariance) {		
+		boolean rtn = (this.meterType.equals(other.getMeterType()) && ( Math.abs(this.duration-other.getDuration())<=durationVariance ));
+		if (rtn && this.duration > 0) {
+			rtn = rtn && ( Math.abs(this.startTime-other.getStartTime())<=startVariance );
 		}
 		return rtn;
 	}

@@ -142,29 +142,37 @@ public class DaiCollectionMatcher {
 	
 	private CollectionClassificationMap findMatches(DaiMeterCollection collectionData, Iterable<CollectionClassificationMap> existingCollections) {
 		CollectionClassificationMap matchedMap = null;
-		if ( existingCollections!=null && existingCollections.iterator().hasNext() ) {
-			List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData.getCollectionDetails(), collectionData.getMachine());
-			// for each collection...
-			for ( CollectionClassificationMap collMap : existingCollections ) {
-				// validate all values...
-				int matches = 0;
-				for(CollectionClassificationMapDetail collMapDetail : collMap.getCollectionDetails() ) {
-					for ( CollectionClassificationMapDetail normalizedDetail : normalizedDetails ) {
-						logger.info(String.format("MATCH?  E: %1s == NEW: %2s", collMapDetail.toString(), normalizedDetail.toString()) );
-						if ( normalizedDetail.matches(collMapDetail) ) {
-							logger.info(String.format("MATCHED!"));
-							matches++;
-							break;
+		try {
+			if ( existingCollections!=null && existingCollections.iterator().hasNext() ) {
+				Machine collectionMachine = collectionData.getMachine();
+				List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData.getCollectionDetails(), collectionMachine);
+				// for each collection...
+				for ( CollectionClassificationMap collMap : existingCollections ) {
+					// validate all values...
+					int matches = 0;
+					for(CollectionClassificationMapDetail collMapDetail : collMap.getCollectionDetails() ) {
+						for ( CollectionClassificationMapDetail normalizedDetail : normalizedDetails ) {
+							logger.info(String.format("MATCH?  E: %1s == NEW: %2s", collMapDetail.toString(), normalizedDetail.toString()) );							
+							int startVariance = (collectionMachine.getSensorStartTimeVariance()!=null?collectionMachine.getSensorStartTimeVariance():0);
+							int durationVariance = collectionMachine.getDoorLockMeterType().equals(collMapDetail.getMeterType())?
+									(collectionMachine.getDoorLockDurationMatchVariance()!=null?60:collectionMachine.getDoorLockDurationMatchVariance()):1;						
+							if ( normalizedDetail.matches(collMapDetail, startVariance, durationVariance) ) {
+								logger.info(String.format("MATCHED!"));
+								matches++;
+								break;
+							}
 						}
 					}
-				}
-				if (matches == normalizedDetails.size()) {
-					matchedMap = collMap;
-					break;
-				} else {
-					logger.info(String.format("no match..."));
+					if (matches == normalizedDetails.size()) {
+						matchedMap = collMap;
+						break;
+					} else {
+						logger.info(String.format("no match..."));
+					}
 				}
 			}
+		} catch (Exception e) {
+			logger.warn("Failed to match", e);
 		}
 		return matchedMap;
 	}
@@ -176,10 +184,15 @@ public class DaiCollectionMatcher {
 			if ( collectionDetail.getMeterType().startsWith("WM")) {
 				continue;
 			}
+			if ( collectionDetail.getDuration()==0) {
+				continue;
+			}
 			earliestValue = ( collectionDetail.getMeterValue()<earliestValue )?collectionDetail.getMeterValue():earliestValue;
 		}
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {
-			if (collectionDetail.getMeterType().startsWith("WM") || collectionDetail.getMeterType().equals(machine.getDoorLockMeterType())) {
+			if (collectionDetail.getMeterType().startsWith("WM") ||
+					collectionDetail.getDuration()==0 ||
+					collectionDetail.getMeterType().equals(machine.getDoorLockMeterType())) {
 				continue;
 			}
 			float normalizedValue = (collectionDetail.getMeterValue() == earliestValue || collectionDetail.getMeterType().startsWith("WM") )?0:collectionDetail.getMeterValue()-earliestValue;
@@ -208,6 +221,15 @@ public class DaiCollectionMatcher {
 		}
 		this.collectionClassificationMapRepo.save(ccm);
 		return ccm;
+	}
+
+	public boolean unmatch(int collectionId) {
+		DaiMeterCollection dmc = daiMeterCollectionRepo.findOne(collectionId);
+		daiMeterActualRepository.delete(dmc.getDaiMeterActual());
+		dmc.setCollectionClassificationMap(null);
+		dmc.setDaiMeterActual(null);
+		daiMeterCollectionRepo.save(dmc);
+		return true;
 	}
 
 }

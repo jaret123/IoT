@@ -22,11 +22,15 @@ public interface RSService {
     Response parseCollectionFile(File f, Map<String, String> meta);
     
     @GET
-    @Path("/collection-match/{collectionId}")
+    @Path("/match/{collectionId}")
     Response matchCollection(@PathParam("collectionId") int collectionId );
     
     @GET
-    @Path("/collection-classification/{collectionId}/{classificationId}")
+    @Path("/unmatch/{collectionId}")
+    Response unmatchCollection(@PathParam("collectionId") int collectionId );
+    
+    @GET
+    @Path("/classify/{collectionId}/{classificationId}")
     Response createCollectionClassificationMap(@PathParam("collectionId") int collectionId, @PathParam("classificationId") int classificationId);
     
 }
