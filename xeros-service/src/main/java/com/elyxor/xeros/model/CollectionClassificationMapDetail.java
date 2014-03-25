@@ -72,9 +72,9 @@ public class CollectionClassificationMapDetail {
 	
 	public boolean matches(CollectionClassificationMapDetail other, int startVariance, int durationVariance) {		
 		boolean rtn = (this.meterType.equals(other.getMeterType()) && ( Math.abs(this.duration-other.getDuration())<=durationVariance ));
-		if (rtn && this.duration > 0) {
-			rtn = rtn && ( Math.abs(this.startTime-other.getStartTime())<=startVariance );
-		}
+		//if (rtn && this.duration > 0) {
+		//	rtn = rtn && ( Math.abs(this.startTime-other.getStartTime())<=startVariance );
+		//}
 		return rtn;
 	}
 	

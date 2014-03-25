@@ -32,6 +32,7 @@ public class Machine {
 	private Integer stopTimeOffset;
 	private Integer doorLockDurationMatchVariance;
 	private Integer sensorStartTimeVariance;
+	private Integer durationMatchVariance;
 	
     @Id
     @Column(name = "machine_id", columnDefinition = "INT unsigned")
@@ -185,6 +186,15 @@ public class Machine {
 		return String
 				.format("Machine [id=%s, manufacturer=%s, machineIdentifier=%s, machineType=%s]",
 						id, manufacturer, machineIdentifier, machineType);
+	}
+	
+	@Column (name = "duration_match_variance", scale=10)
+	public Integer getDurationMatchVariance() {
+		return durationMatchVariance;
+	}
+
+	public void setDurationMatchVariance(Integer durationMatchVariance) {
+		this.durationMatchVariance = durationMatchVariance;
 	}
 
 	
