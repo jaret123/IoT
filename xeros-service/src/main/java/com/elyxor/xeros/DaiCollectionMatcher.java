@@ -78,14 +78,16 @@ public class DaiCollectionMatcher {
 	
 	private Float calculateRunTime(DaiMeterCollection c) {
 		Machine m = c.getMachine();
+		Float runTime = new Float(0);
 		if ( m.getDoorLockMeterType() !=null ) {
 			for ( DaiMeterCollectionDetail cd : c.getCollectionDetails() ) {
 				if ( cd.getMeterType().equals(m.getDoorLockMeterType()) ) {
 					int startOffset = m.getStartTimeOffset()!=null?m.getStartTimeOffset():0;
 					int endOffset = m.getStopTimeOffset()!=null?m.getStopTimeOffset():0;
-					return new Float(cd.getDuration() + startOffset + endOffset);
+					runTime += new Float(cd.getDuration() + startOffset + endOffset);
 				}
 			}
+			return runTime;
 		}
 		return new Float(0);
 	}
