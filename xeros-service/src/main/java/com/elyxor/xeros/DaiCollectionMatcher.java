@@ -207,16 +207,15 @@ public class DaiCollectionMatcher {
 				continue;
 			}
 			
-			/* Removed to allow rinse and spins to map without defaulting to unknown
 			if ( collectionDetail.getDuration()==0) {
 				continue;
 			}
-			*/
 			earliestValue = ( collectionDetail.getMeterValue()<earliestValue )?collectionDetail.getMeterValue():earliestValue;
 		}
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {
 			if (collectionDetail.getMeterType().startsWith("WM") ||
-					collectionDetail.getDuration()==0 ||
+					
+					// removed to allow rinse and spins to map properly collectionDetail.getDuration()==0 ||
 					//check ignore array
 					Arrays.asList(ignoreMeterTypes).contains(collectionDetail.getMeterType()) ||
 					collectionDetail.getMeterType().equals(machine.getDoorLockMeterType())) {
