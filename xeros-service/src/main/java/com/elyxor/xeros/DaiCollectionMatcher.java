@@ -214,8 +214,7 @@ public class DaiCollectionMatcher {
 		}
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {
 			if (collectionDetail.getMeterType().startsWith("WM") ||
-					
-					// removed to allow rinse and spins to map properly collectionDetail.getDuration()==0 ||
+					collectionDetail.getDuration()==0 ||
 					//check ignore array
 					Arrays.asList(ignoreMeterTypes).contains(collectionDetail.getMeterType()) ||
 					collectionDetail.getMeterType().equals(machine.getDoorLockMeterType())) {
