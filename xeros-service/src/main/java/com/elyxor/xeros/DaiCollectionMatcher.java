@@ -75,7 +75,7 @@ public class DaiCollectionMatcher {
 		}
 		//if no matches found, map to 9999 and create dai actual record
 		if (matchedMap==null && collectionData.getDaiMeterActual()==null) {
-			collectionData.setCollectionClassificationMap(collectionClassificationMapRepo.findOne(9999));
+			collectionData.setCollectionClassificationMap(collectionClassificationMapRepo.findOne(collectionData.getMachine().getUnknownClass()));
 			collectionData.setDaiMeterActual(createDaiMeterActual(collectionData));
 			daiMeterCollectionRepo.save(collectionData);
 		}
@@ -206,9 +206,12 @@ public class DaiCollectionMatcher {
 			if ( collectionDetail.getMeterType().startsWith("WM")) {
 				continue;
 			}
+			
+			/* Removed to allow rinse and spins to map without defaulting to unknown
 			if ( collectionDetail.getDuration()==0) {
 				continue;
 			}
+			*/
 			earliestValue = ( collectionDetail.getMeterValue()<earliestValue )?collectionDetail.getMeterValue():earliestValue;
 		}
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {

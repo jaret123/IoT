@@ -29,6 +29,7 @@ public class Machine {
 	private String coldWaterMeterType;
 	private String doorLockMeterType;
 	private String ignoreMeterType;
+	private Integer unknownClass;
 	private Integer startTimeOffset;
 	private Integer stopTimeOffset;
 	private Integer doorLockDurationMatchVariance;
@@ -206,6 +207,14 @@ public class Machine {
 	public void setIgnoreMeterType(String ignoreMeterType) {
 		this.ignoreMeterType = ignoreMeterType;
 	}
-
 	
+	//setter and getter for unknown collection map
+	@Column (name = "unknown_class", scale=10)
+	public Integer getUnknownClass() {
+		return unknownClass;
+	}
+
+	public void setUnknownClass(Integer unknownClass) {
+		this.unknownClass = unknownClass;
+	}
 }
