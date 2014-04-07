@@ -1,6 +1,7 @@
 package com.elyxor.xeros;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -69,6 +70,12 @@ public class DaiCollectionMatcher {
 			daiMeterCollectionRepo.save(collectionData);
 		}
 		if ( collectionData.getCollectionClassificationMap()!=null && collectionData.getDaiMeterActual()==null) {
+			collectionData.setDaiMeterActual(createDaiMeterActual(collectionData));
+			daiMeterCollectionRepo.save(collectionData);
+		}
+		//if no matches found, map to 9999 and create dai actual record
+		if (matchedMap==null && collectionData.getDaiMeterActual()==null) {
+			collectionData.setCollectionClassificationMap(collectionClassificationMapRepo.findOne(9999));
 			collectionData.setDaiMeterActual(createDaiMeterActual(collectionData));
 			daiMeterCollectionRepo.save(collectionData);
 		}
@@ -150,6 +157,10 @@ public class DaiCollectionMatcher {
 				List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData.getCollectionDetails(), collectionMachine);
 				// for each collection...
 				for ( CollectionClassificationMap collMap : existingCollections ) {
+					//if size of collection and map do not match, stop
+					if (collMap.getCollectionDetails().size() != normalizedDetails.size()) {
+						continue;
+					}
 					// validate all values...
 					int matches = 0;
 					for(CollectionClassificationMapDetail collMapDetail : collMap.getCollectionDetails() ) {
@@ -182,6 +193,15 @@ public class DaiCollectionMatcher {
 	private List<CollectionClassificationMapDetail> normalizeCollectionDetails(Collection<DaiMeterCollectionDetail> collDetails, Machine machine) {
 		List<CollectionClassificationMapDetail> normalizedDetails = new ArrayList<CollectionClassificationMapDetail>();		
 		float earliestValue = Float.MAX_VALUE;
+		
+		//get ignore meters and split into array
+		String ignoreMeterType = machine.getIgnoreMeterType();
+		String[] ignoreMeterTypes = {"string"};
+		
+		if (ignoreMeterType!=null) {
+			ignoreMeterTypes = ignoreMeterType.split(",");
+		}
+		
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {
 			if ( collectionDetail.getMeterType().startsWith("WM")) {
 				continue;
@@ -194,6 +214,8 @@ public class DaiCollectionMatcher {
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {
 			if (collectionDetail.getMeterType().startsWith("WM") ||
 					collectionDetail.getDuration()==0 ||
+					//check ignore array
+					Arrays.asList(ignoreMeterTypes).contains(collectionDetail.getMeterType()) ||
 					collectionDetail.getMeterType().equals(machine.getDoorLockMeterType())) {
 				continue;
 			}

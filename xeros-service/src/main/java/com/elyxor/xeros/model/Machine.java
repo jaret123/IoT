@@ -28,6 +28,7 @@ public class Machine {
 	private String hotWaterMeterType;
 	private String coldWaterMeterType;
 	private String doorLockMeterType;
+	private String ignoreMeterType;
 	private Integer startTimeOffset;
 	private Integer stopTimeOffset;
 	private Integer doorLockDurationMatchVariance;
@@ -195,6 +196,15 @@ public class Machine {
 
 	public void setDurationMatchVariance(Integer durationMatchVariance) {
 		this.durationMatchVariance = durationMatchVariance;
+	}
+	//setter and getter for ignore meter type
+	@Column (name = "ignore_meter_type", scale=10)
+	public String getIgnoreMeterType() {
+		return ignoreMeterType;
+	}
+
+	public void setIgnoreMeterType(String ignoreMeterType) {
+		this.ignoreMeterType = ignoreMeterType;
 	}
 
 	
