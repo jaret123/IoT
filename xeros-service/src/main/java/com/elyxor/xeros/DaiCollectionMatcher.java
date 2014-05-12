@@ -169,7 +169,8 @@ public class DaiCollectionMatcher {
 							int startVariance = (collectionMachine.getSensorStartTimeVariance()!=null?collectionMachine.getSensorStartTimeVariance():0);
 							int durationVariance = collectionMachine.getDoorLockMeterType().equals(collMapDetail.getMeterType())?
 									(collectionMachine.getDoorLockDurationMatchVariance()!=null?collectionMachine.getDoorLockDurationMatchVariance():60):collectionMachine.getDurationMatchVariance();						
-							if ( normalizedDetail.matches(collMapDetail, startVariance, durationVariance) ) {
+							int useStartTime = collectionMachine.getUseStartTime()!=null?collectionMachine.getUseStartTime():0;
+							if ( normalizedDetail.matches(collMapDetail, startVariance, durationVariance, useStartTime) ) {
 								logger.info(String.format("MATCHED!"));
 								matches++;
 								break;

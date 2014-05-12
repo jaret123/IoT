@@ -35,6 +35,7 @@ public class Machine {
 	private Integer doorLockDurationMatchVariance;
 	private Integer sensorStartTimeVariance;
 	private Integer durationMatchVariance;
+	private Integer useStartTime;
 	
     @Id
     @Column(name = "machine_id", columnDefinition = "INT unsigned")
@@ -216,5 +217,13 @@ public class Machine {
 
 	public void setUnknownClass(Integer unknownClass) {
 		this.unknownClass = unknownClass;
+	}
+	@Column (name = "use_start_time", scale=10)
+	public Integer getUseStartTime() {
+		return useStartTime;
+	}
+
+	public void setUseStartTime(Integer useStartTime) {
+		this.useStartTime = useStartTime;
 	}
 }
