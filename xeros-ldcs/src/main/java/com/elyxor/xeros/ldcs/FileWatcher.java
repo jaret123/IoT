@@ -33,7 +33,7 @@ public class FileWatcher {
 	WatchService watcher = null;
 	Path watchDir = Paths.get(AppConfiguration.getLocalPath());
 	FilenameFilter fileFilter = (FilenameFilter)new WildcardFileFilter(AppConfiguration.getFilePattern(), IOCase.INSENSITIVE);
-	
+	private Boolean fileLockToken = false;
 	
 	
 	public void watch() throws Exception {
@@ -84,13 +84,15 @@ public class FileWatcher {
 		
 		public void scanFiles() {		
 			if (watchDir.toFile().isDirectory()) {
-				logger.info("scanning for files in " + watchDir.toString());
+				logger.debug("scanning for files in " + watchDir.toString());
 				File pathFile = watchDir.toFile();
-				File[] files = pathFile.listFiles(fileFilter);				
-				for (File f : files) {
-					logger.debug(String.format("%1s", f.getAbsolutePath()));
-					Path child = watchDir.resolve(f.getAbsolutePath());
-					new Thread(new FileAcquirer(child)).start();
+				synchronized(fileLockToken) {
+					File[] files = pathFile.listFiles(fileFilter);				
+					for (File f : files) {
+						logger.debug(String.format("%1s", f.getAbsolutePath()));
+						Path child = watchDir.resolve(f.getAbsolutePath());
+						new Thread(new FileAcquirer(child)).start();
+					}
 				}
 			}
 		}
