@@ -69,6 +69,7 @@
                 <excludes>
                     <exclude>lib/**</exclude>
                     <exclude>ldcs.properties</exclude>
+                    <exclude>rudy.properties</exclude>
                 </excludes>
             </resource>
         </resources>
