@@ -125,22 +125,25 @@ public class FileWatcher {
         @Override
         public void run() {
         	String srcFileName = fileToUpload.toFile().getName();
-        	logger.info("waiting to lock " + srcFileName);        	
-        	try {
-        		Thread.sleep(AppConfiguration.getFileLockWait());
-        		int responseStatus = new HttpFileUploader().postFile(fileToUpload, createTime);
-        		if (responseStatus == 200 ) {
-	        		String uploadTime = sdf.format(new Date());
-	        		Path newFileLocation = Paths.get(String.format("%1s/%2s.%3s", destFilePath, srcFileName, uploadTime ));
-	        		Files.move(fileToUpload, newFileLocation);
-	        		logger.info("archived " + newFileLocation.toString());
-        		} else {
-        			logger.warn("not moving file due to http post response");
-        		}
-        	} catch (Exception ex) {
-        		logger.warn("Failed to get/send file", ex);
-        	}
-        	
+        	synchronized(fileLockToken) {
+	        	logger.info("waiting to lock " + srcFileName);        	
+	        	try {        		
+	        		Thread.sleep(AppConfiguration.getFileLockWait());
+	        		if ( getLock(fileToUpload.toFile())) {
+		        		int responseStatus = new HttpFileUploader().postFile(fileToUpload, createTime);
+		        		if (responseStatus == 200 ) {
+			        		String uploadTime = sdf.format(new Date());
+			        		Path newFileLocation = Paths.get(String.format("%1s/%2s.%3s", destFilePath, srcFileName, uploadTime ));
+			        		Files.move(fileToUpload, newFileLocation);
+			        		logger.info("archived " + newFileLocation.toString());
+		        		} else {
+		        			logger.warn("not moving file due to http post response");
+		        		}
+	        		}
+	        	} catch (Exception ex) {
+	        		logger.warn("Failed to get/send file", ex);
+	        	}
+        	}        	
         }
         
     	public boolean getLock(File file) {
@@ -166,6 +169,7 @@ public class FileWatcher {
     		    }
     		    lock.release();
     		    logger.info("locked");
+    		    return true;
     		} catch (Exception ex) {
     			logger.info("no lock", ex);
     		}
@@ -179,10 +183,5 @@ public class FileWatcher {
     		}
     		return false;
     	}
-
     }
-
-
-	
-
 }

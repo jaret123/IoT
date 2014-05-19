@@ -7,6 +7,8 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +17,8 @@ import com.elyxor.xeros.model.DaiMeterCollection;
 
 @Service("rssvc")
 public class RSServiceImpl implements RSService {
-	
+
+	private static Logger logger = LoggerFactory.getLogger(RSService.class);
 	@Autowired DaiCollectionParser daiCollectionParser;
 	@Autowired DaiCollectionMatcher daiCollectionMatcher;
 
@@ -31,6 +34,7 @@ public class RSServiceImpl implements RSService {
 			List<DaiMeterCollection> parsedCollections = daiCollectionParser.parse(f, fileMeta);
 			r.entity(parsedCollections);
 		} catch (Exception e) {
+			logger.info("Failed to save", e);
 			r = Response.serverError().entity(e.toString());
 		}
 		return r.build();
@@ -81,6 +85,12 @@ public class RSServiceImpl implements RSService {
 			r = Response.serverError().entity(e.toString());
 		}
 		return r.build();
+	}
+
+	@Override
+	public Response ping(DaiStatus daiStatus) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

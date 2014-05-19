@@ -9,6 +9,6 @@ import org.springframework.stereotype.Repository;
 import com.elyxor.xeros.model.Machine;
 
 @Repository
-public interface MachineRepository extends CrudRepository<Machine, Integer> {
-	@Query List<Machine> findByLocationIdAndMachineIdentifier(Integer locationId, String machineIdentifier);
+public interface MachineRepository extends CrudRepository<Machine, Integer> {	
+	@Query List<Machine> findByDaiDaiIdentifierAndMachineIdentifier(String daiIdentifier, String machineIdentifier);
 }

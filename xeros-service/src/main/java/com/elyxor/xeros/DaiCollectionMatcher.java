@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.elyxor.xeros.model.ActiveDai;
 import com.elyxor.xeros.model.CollectionClassificationMap;
 import com.elyxor.xeros.model.CollectionClassificationMapDetail;
 import com.elyxor.xeros.model.DaiMeterActual;
@@ -49,9 +48,9 @@ public class DaiCollectionMatcher {
 	
 	public CollectionClassificationMap match(DaiMeterCollection collectionData) throws Exception {
 		if ( collectionData.getMachine() == null ) {
-			List<ActiveDai> dais = this.activeDaiRepository.findByDaiIdentifierAndMachineMachineIdentifier(collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier());			
-			if ( dais != null && dais.size()>0 ) {
-				Machine m = dais.iterator().next().getMachine(); 
+			List<Machine> machines = machineRepository.findByDaiDaiIdentifierAndMachineIdentifier(collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier());			
+			if ( machines != null && machines.size()>0 ) {
+				Machine m = machines.iterator().next(); 
 				if (collectionData.getLocationIdentifier().equals( String.valueOf(m.getLocation().getId()))) {
 					collectionData.setMachine(m);
 				} else {
@@ -74,10 +73,20 @@ public class DaiCollectionMatcher {
 			daiMeterCollectionRepo.save(collectionData);
 		}
 		//if no matches found, map to 9999 and create dai actual record
-		if (matchedMap==null && collectionData.getDaiMeterActual()==null) {
-			collectionData.setCollectionClassificationMap(collectionClassificationMapRepo.findOne(collectionData.getMachine().getUnknownClass()));
-			collectionData.setDaiMeterActual(createDaiMeterActual(collectionData));
-			daiMeterCollectionRepo.save(collectionData);
+		try {
+			if (matchedMap==null && collectionData.getDaiMeterActual()==null) {
+				Integer uc = collectionData.getMachine().getUnknownClass();
+				if ( uc!=null ) {
+					CollectionClassificationMap ccm = collectionClassificationMapRepo.findOne(uc);
+					if (ccm!=null) {
+						collectionData.setCollectionClassificationMap(ccm);
+						collectionData.setDaiMeterActual(createDaiMeterActual(collectionData));
+						daiMeterCollectionRepo.save(collectionData);
+					}
+				}
+			}
+		} catch (Exception ex) {
+			logger.warn("Failed to find unknown map", ex);
 		}
 		return matchedMap;
 	}
@@ -130,10 +139,11 @@ public class DaiCollectionMatcher {
 	public DaiMeterActual createDaiMeterActual(DaiMeterCollection collectionData) throws Exception {
 		// TODO : tons of checking for valid matches 
 		DaiMeterActual daia = null;
-		List<ActiveDai> dais = this.activeDaiRepository.findByDaiIdentifierAndMachineMachineIdentifier(collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier());
-		if ( dais!=null && dais.iterator().hasNext()) {
+		List<Machine> machines = this.machineRepository.findByDaiDaiIdentifierAndMachineIdentifier(collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier());
+		if ( machines!=null && machines.iterator().hasNext()) {
 			daia = new DaiMeterActual();
-			daia.setActiveDai(dais.iterator().next());
+			Machine m = machines.iterator().next();
+			daia.setActiveDai(m.getDai());
 			daia.setClassification(collectionData.getCollectionClassificationMap().getClassification());
 			daia.setMachine(collectionData.getMachine());
 			daia.setRunTime(new Float(calculateRunTime(collectionData)).intValue());
