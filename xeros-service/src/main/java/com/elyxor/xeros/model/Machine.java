@@ -23,6 +23,7 @@ public class Machine {
 	private Integer steam;
 	private Integer fuel_type;
 	private Location location;
+	private ActiveDai dai;
 	private String machineIdentifier;
 	private String machineType;
 	private String hotWaterMeterType;
@@ -93,6 +94,17 @@ public class Machine {
 	public void setLocation(Location location) {
 		this.location = location;
 	}
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "active_dai_id", referencedColumnName = "active_dai_id")
+	public ActiveDai getDai() {
+		return dai;
+	}
+
+	public void setDai(ActiveDai dai) {
+		this.dai = dai;
+	}
+
 
 	@Column(name="machine_type")
 	public String getMachineType() {
@@ -226,4 +238,5 @@ public class Machine {
 	public void setUseStartTime(Integer useStartTime) {
 		this.useStartTime = useStartTime;
 	}
+
 }

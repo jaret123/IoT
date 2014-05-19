@@ -51,7 +51,7 @@ public abstract class ApplicationConfig {
 	@Bean
 	public JpaVendorAdapter jpaVendorAdapter() {
 		HibernateJpaVendorAdapter hibernateJpaVendorAdapter = new HibernateJpaVendorAdapter();
-		hibernateJpaVendorAdapter.setShowSql(false);
+		hibernateJpaVendorAdapter.setShowSql(Boolean.parseBoolean(env.getProperty("hibernate.show_sql")));
 		hibernateJpaVendorAdapter.setGenerateDdl(true);
 		hibernateJpaVendorAdapter.setDatabase(Database.MYSQL);
 		return hibernateJpaVendorAdapter;

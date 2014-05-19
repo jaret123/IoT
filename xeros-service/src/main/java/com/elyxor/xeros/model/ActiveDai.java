@@ -1,13 +1,12 @@
 package com.elyxor.xeros.model;
 
+import java.sql.Timestamp;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 @Entity
@@ -18,8 +17,8 @@ public class ActiveDai {
 	
 	private int id;
 	private Integer drySmart;
-	private Machine machine;
 	private String daiIdentifier;
+	private Timestamp lastPing;
 	
     @Id
     @Column(name = "active_dai_id", columnDefinition = "INT unsigned")
@@ -41,16 +40,6 @@ public class ActiveDai {
 		this.drySmart = drySmart;
 	}
 
-	@ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "machine_profile_id", referencedColumnName = "machine_id")
-	public Machine getMachine() {
-		return machine;
-	}
-
-	public void setMachine(Machine machine) {
-		this.machine = machine;
-	}
-
 	@Column(name="dai_identifier")
 	public String getDaiIdentifier() {
 		return daiIdentifier;
@@ -58,6 +47,15 @@ public class ActiveDai {
 
 	public void setDaiIdentifier(String daiIdentifier) {
 		this.daiIdentifier = daiIdentifier;
+	}
+
+	@Column(name="last_ping")
+	public Timestamp getLastPing() {
+		return lastPing;
+	}
+
+	public void setLastPing(Timestamp lastPing) {
+		this.lastPing = lastPing;
 	}
 
 			
