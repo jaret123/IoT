@@ -27,13 +27,13 @@ import org.slf4j.LoggerFactory;
 
 public class FileWatcher {
 	
-	final static Logger logger = LoggerFactory.getLogger(FileWatcher.class);
+	private static Logger logger = LoggerFactory.getLogger(FileWatcher.class);
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
 	
 	WatchService watcher = null;
 	Path watchDir = Paths.get(AppConfiguration.getLocalPath());
 	FilenameFilter fileFilter = (FilenameFilter)new WildcardFileFilter(AppConfiguration.getFilePattern(), IOCase.INSENSITIVE);
-	
+	private Boolean fileLockToken = false;
 	
 	
 	public void watch() throws Exception {
@@ -84,13 +84,15 @@ public class FileWatcher {
 		
 		public void scanFiles() {		
 			if (watchDir.toFile().isDirectory()) {
-				logger.info("scanning for files in " + watchDir.toString());
+				logger.debug("scanning for files in " + watchDir.toString());
 				File pathFile = watchDir.toFile();
-				File[] files = pathFile.listFiles(fileFilter);				
-				for (File f : files) {
-					logger.debug(String.format("%1s", f.getAbsolutePath()));
-					Path child = watchDir.resolve(f.getAbsolutePath());
-					new Thread(new FileAcquirer(child)).start();
+				synchronized(fileLockToken) {
+					File[] files = pathFile.listFiles(fileFilter);				
+					for (File f : files) {
+						logger.debug(String.format("%1s", f.getAbsolutePath()));
+						Path child = watchDir.resolve(f.getAbsolutePath());
+						new Thread(new FileAcquirer(child)).start();
+					}
 				}
 			}
 		}
@@ -123,22 +125,25 @@ public class FileWatcher {
         @Override
         public void run() {
         	String srcFileName = fileToUpload.toFile().getName();
-        	logger.info("waiting to lock " + srcFileName);        	
-        	try {
-        		Thread.sleep(AppConfiguration.getFileLockWait());
-        		int responseStatus = new HttpFileUploader().postFile(fileToUpload, createTime);
-        		if (responseStatus == 200 ) {
-	        		String uploadTime = sdf.format(new Date());
-	        		Path newFileLocation = Paths.get(String.format("%1s/%2s.%3s", destFilePath, srcFileName, uploadTime ));
-	        		Files.move(fileToUpload, newFileLocation);
-	        		logger.info("archived " + newFileLocation.toString());
-        		} else {
-        			logger.warn("not moving file due to http post response");
-        		}
-        	} catch (Exception ex) {
-        		logger.warn("Failed to get/send file", ex);
-        	}
-        	
+        	synchronized(fileLockToken) {
+	        	logger.info("waiting to lock " + srcFileName);        	
+	        	try {        		
+	        		Thread.sleep(AppConfiguration.getFileLockWait());
+	        		if ( getLock(fileToUpload.toFile())) {
+		        		int responseStatus = new HttpFileUploader().postFile(fileToUpload, createTime);
+		        		if (responseStatus == 200 ) {
+			        		String uploadTime = sdf.format(new Date());
+			        		Path newFileLocation = Paths.get(String.format("%1s/%2s.%3s", destFilePath, srcFileName, uploadTime ));
+			        		Files.move(fileToUpload, newFileLocation);
+			        		logger.info("archived " + newFileLocation.toString());
+		        		} else {
+		        			logger.warn("not moving file due to http post response");
+		        		}
+	        		}
+	        	} catch (Exception ex) {
+	        		logger.warn("Failed to get/send file", ex);
+	        	}
+        	}        	
         }
         
     	public boolean getLock(File file) {
@@ -164,6 +169,7 @@ public class FileWatcher {
     		    }
     		    lock.release();
     		    logger.info("locked");
+    		    return true;
     		} catch (Exception ex) {
     			logger.info("no lock", ex);
     		}
@@ -177,10 +183,5 @@ public class FileWatcher {
     		}
     		return false;
     	}
-
     }
-
-
-	
-
 }

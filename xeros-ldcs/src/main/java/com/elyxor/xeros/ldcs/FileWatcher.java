@@ -119,7 +119,7 @@ public class FileWatcher {
 		public FileAcquirer(Path path) {
 			fileToUpload = path;
 			destFilePath = Paths.get(AppConfiguration.getArchivePath()).toAbsolutePath().toFile().getAbsolutePath();
-			createTime = System.currentTimeMillis();
+			createTime = path.toFile().lastModified();
 		}
 
         @Override

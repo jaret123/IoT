@@ -35,6 +35,8 @@ public class SerialListener {
 	public static int nextDaiNum;
 	public static String daiName = "";
 	
+	private static final String EOT = new String(new char[] {'\004','\012'}); 
+	
 	static volatile boolean portFinderRunning;
 
 //	public static void main(String[] args) {
@@ -185,6 +187,7 @@ public class SerialListener {
 						if (!localPorts.contains(portAddress)) {
 							DaiPort activePort = portList.get(portAddress);
 							activePort.closeDaiPort();
+							nextDaiNum = activePort.getDaiNum();
 						}
 					}
 				}
@@ -226,7 +229,7 @@ public class SerialListener {
 					}
 					if (!eventBuffer.isEmpty() && eventBuffer.equals("***")) {
 						logBuffer = daiPort.sendRequest();
-						if (!logBuffer.isEmpty() && logBuffer.endsWith("EOT\n")) {
+						if (!logBuffer.isEmpty() && logBuffer.endsWith(EOT)) {
 							daiPort.writeLogFile(logBuffer);
 						}
 					}
@@ -273,7 +276,7 @@ public class SerialListener {
 				if (daiId == 0 || !(daiId == nextDaiNum)) {
 					this.setRemoteDaiId(nextDaiNum);
 					portList.put(portAddress, this);
-			    	logger.info("Assigned DAI ID "+daiName+" to port "+portAddress);	
+			    	logger.info("Assigned DAI ID "+daiName+nextDaiNum+" to port "+portAddress);	
 				}
 				
 				port.addEventListener(new SerialReader(this)); //TODO:switch to test version
