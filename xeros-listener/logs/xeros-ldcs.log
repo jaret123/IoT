@@ -1,0 +1,32 @@
+18-05-2014 17:22:57 [main] INFO  com.elyxor.xeros.ldcs.FileWatcher - Starting LDCS
+18-05-2014 17:22:57 [main] INFO  com.elyxor.xeros.ldcs.FileWatcher - watching files in /home/sterling/Desktop/ldcs/input
+18-05-2014 17:23:43 [main] INFO  c.e.xeros.ldcs.AppConfiguration - loading config from [ldcs.properties]
+18-05-2014 17:23:43 [Thread-0] INFO  c.e.xeros.ldcs.AppConfiguration - loading config from [ldcs.properties]
+18-05-2014 17:23:43 [main] WARN  c.e.xeros.ldcs.AppConfiguration - ldcs.properties not found; loading config from [application.properties]
+18-05-2014 17:23:43 [Thread-0] WARN  c.e.xeros.ldcs.AppConfiguration - ldcs.properties not found; loading config from [application.properties]
+18-05-2014 17:23:43 [Thread-1] INFO  c.elyxor.xeros.ldcs.SerialListener - Watching for new serial devices
+18-05-2014 17:23:43 [Thread-0] INFO  c.elyxor.xeros.ldcs.SerialListener - Listening to command line inputs
+18-05-2014 17:23:43 [main] INFO  com.elyxor.xeros.ldcs.FileWatcher - Starting LDCS
+18-05-2014 17:23:43 [main] INFO  com.elyxor.xeros.ldcs.FileWatcher - watching files in /home/will/ldcs/input
+18-05-2014 17:23:43 [Thread-3] INFO  com.elyxor.xeros.ldcs.FileWatcher - scanning for files in /home/will/ldcs/input
+18-05-2014 17:24:13 [Thread-3] INFO  com.elyxor.xeros.ldcs.FileWatcher - scanning for files in /home/will/ldcs/input
+18-05-2014 17:37:46 [main] INFO  c.e.xeros.ldcs.AppConfiguration - loading config from [ldcs.properties]
+18-05-2014 17:37:46 [Thread-0] INFO  c.e.xeros.ldcs.AppConfiguration - loading config from [ldcs.properties]
+18-05-2014 17:37:46 [Thread-0] WARN  c.e.xeros.ldcs.AppConfiguration - ldcs.properties not found; loading config from [application.properties]
+18-05-2014 17:37:46 [main] WARN  c.e.xeros.ldcs.AppConfiguration - ldcs.properties not found; loading config from [application.properties]
+18-05-2014 17:37:46 [Thread-0] INFO  c.elyxor.xeros.ldcs.SerialListener - Listening to command line inputs
+18-05-2014 17:37:46 [Thread-1] INFO  c.elyxor.xeros.ldcs.SerialListener - Watching for new serial devices
+18-05-2014 17:37:46 [main] INFO  com.elyxor.xeros.ldcs.FileWatcher - Starting LDCS
+18-05-2014 17:37:46 [main] INFO  com.elyxor.xeros.ldcs.FileWatcher - watching files in /home/will/ldcs/input
+18-05-2014 17:37:46 [Thread-3] INFO  com.elyxor.xeros.ldcs.FileWatcher - scanning for files in /home/will/ldcs/input
+18-05-2014 17:37:57 [Thread-0] INFO  c.elyxor.xeros.ldcs.SerialListener - Listening to command line inputs
+18-05-2014 17:37:57 [Thread-1] INFO  c.elyxor.xeros.ldcs.SerialListener - Watching for new serial devices
+18-05-2014 17:38:16 [Thread-0] INFO  c.e.xeros.ldcs.AppConfiguration - loading config from [ldcs.properties]
+18-05-2014 17:38:16 [main] INFO  c.e.xeros.ldcs.AppConfiguration - loading config from [ldcs.properties]
+18-05-2014 17:38:16 [main] WARN  c.e.xeros.ldcs.AppConfiguration - ldcs.properties not found; loading config from [application.properties]
+18-05-2014 17:38:16 [Thread-0] WARN  c.e.xeros.ldcs.AppConfiguration - ldcs.properties not found; loading config from [application.properties]
+18-05-2014 17:38:16 [Thread-0] INFO  c.elyxor.xeros.ldcs.SerialListener - Listening to command line inputs
+18-05-2014 17:38:16 [Thread-1] INFO  c.elyxor.xeros.ldcs.SerialListener - Watching for new serial devices
+18-05-2014 17:38:16 [main] INFO  com.elyxor.xeros.ldcs.FileWatcher - Starting LDCS
+18-05-2014 17:38:16 [main] INFO  com.elyxor.xeros.ldcs.FileWatcher - watching files in /home/will/ldcs/input
+18-05-2014 17:38:16 [Thread-3] INFO  com.elyxor.xeros.ldcs.FileWatcher - scanning for files in /home/will/ldcs/input

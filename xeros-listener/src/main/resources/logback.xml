@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="30 seconds">
+
+	<contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+		<resetJUL>true</resetJUL>
+	</contextListener>
+	<jmxConfigurator />
+
+	<appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    	<file>./logs/xeros-ldcs.log</file>
+    	<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>xeros-ldcs-%d{yyyy-MM-dd}.log</fileNamePattern>
+      		<maxHistory>30</maxHistory>
+    	</rollingPolicy>
+    	<encoder>
+    		<pattern>%date{dd-MM-yyyy HH:mm:ss} [%thread] %-5level %logger{35} - %msg%n</pattern>      		
+    	</encoder>
+  	</appender>
+
+	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>%date{dd-MM-yyyy HH:mm:ss} [%thread] %-5level %logger{35} - %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	<root level="info">
+		<appender-ref ref="console" />
+		<appender-ref ref="file" />
+	</root>
+</configuration>
