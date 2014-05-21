@@ -33,6 +33,7 @@ import com.elyxor.xeros.model.repository.DaiMeterCollectionRepository;
 public class DaiCollectionParser {
 	
 	SimpleDateFormat daiSdf = new SimpleDateFormat("HH : mm : ss");
+	SimpleDateFormat daiDurationSdf = new SimpleDateFormat("HH : mm : ss.SSS");
 	
 	private static Logger logger = LoggerFactory.getLogger(DaiCollectionParser.class);
 	@Autowired DaiMeterCollectionRepository daiMeterCollectionRepo;
@@ -109,9 +110,6 @@ public class DaiCollectionParser {
 		boolean inEventData = false;
 		for ( String line : lines ) {
 			if (StringUtils.isBlank(line)) {
-				if ( inEventData ) {
-					inEventData = false;
-				}
 				continue;
 			}
 			String[] lineData = line.split(",");
@@ -139,17 +137,24 @@ public class DaiCollectionParser {
 					cd.elementHeaders[lcv] = lineData[lcv].trim();
 				}				
 			}
-			else if ( firstEle.startsWith("WM") ) {				
+			else if ( firstEle.startsWith("WM") ) {
+				if ( inEventData ) {
+					inEventData = false;
+				}
 				cd.wmData.add(lineData);
 			}
-			else if (inEventData) {
+			else if (inEventData && !firstEle.startsWith("Event")) {
 				List<String> eventData = new ArrayList<String>();
-				for( String eValue : lineData) {
-					try {
-						eventData.add(eValue);
-					} catch(NumberFormatException nfe) {}
+				try {
+					for( String eValue : lineData) {
+						eventData.add(StringUtils.trim(eValue));						
+					}
+					Integer eventId = Integer.parseInt(eventData.get(0));
+					logger.info("parsing event {}", eventData.get(0));
+					cd.sensorEventData.add(eventData);
+				} catch(NumberFormatException nfe) {
+					logger.info("not an event: {}", lineData);
 				}
-				cd.sensorEventData.add(eventData);
 			} else {
 				List eCounts = new ArrayList<Integer>();				 
 				for( String eCount : lineData) {
@@ -163,10 +168,13 @@ public class DaiCollectionParser {
 			}
 		}
 		
-		List<DaiMeterCollectionDetail> collectionData = new ArrayList<DaiMeterCollectionDetail>(); 
-		for( int sensorIx = 0; sensorIx < cd.sensorEventData.size(); sensorIx++ ) {			
+		List<DaiMeterCollectionDetail> collectionData = new ArrayList<DaiMeterCollectionDetail>();		
+		for( int sensorIx = 0; sensorIx < cd.sensorEventData.size(); sensorIx++ ) {
+			boolean newFormat = StringUtils.isEmpty(StringUtils.trim(cd.sensorEventData.get(sensorIx).get(1)));			
 			for( int lcv=0; lcv < cd.sensorEventCounts.size(); lcv++ ) {
-				String startStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(lcv*2+2));
+				
+				int startIx = newFormat?(lcv*2+2):(lcv*2+1);
+				String startStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(startIx));
 				Calendar startTs = null;
 				float start = 0;
 				try {
@@ -180,7 +188,9 @@ public class DaiCollectionParser {
 				} catch (Exception ex) {
 					logger.debug("Failed to parse {}", startStr);
 				}
-				String durStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(lcv*2+3));
+				
+				int durationIx = newFormat?(lcv*2+3):(lcv*2+2);
+				String durStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(durationIx));
 				float duration = 0;
 				try {
 					try {
@@ -235,8 +245,16 @@ public class DaiCollectionParser {
 	
 	private Calendar parseTimestamp(String ts, String olsonTz) throws ParseException {
 		Calendar now = new GregorianCalendar();
-		now.setTime(new Date());
-		Date parsedDate = daiSdf.parse(ts.trim());
+		now.setTime(new Date());		
+		Date parsedDate = null;
+		try {
+			parsedDate = daiDurationSdf.parse(ts.trim());
+			long adjustMillis = parsedDate.getTime() % 1000;
+			long newTime = parsedDate.getTime()-adjustMillis+(adjustMillis*100);
+			parsedDate.setTime(newTime);
+		} catch (ParseException px) {
+			parsedDate = daiSdf.parse(ts.trim());
+		}
 		Calendar c = Calendar.getInstance(TimeZone.getTimeZone(olsonTz));
 		c.setTime(parsedDate);
 		c.set(now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH));				
