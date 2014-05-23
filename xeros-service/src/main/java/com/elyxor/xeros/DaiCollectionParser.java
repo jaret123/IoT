@@ -108,6 +108,9 @@ public class DaiCollectionParser {
 		long midnightInMilliseconds = getMidnightMillis();
 		CollectionData cd = new CollectionData();		 
 		boolean inEventData = false;
+		Boolean isNewFormat = null;
+		
+		
 		for ( String line : lines ) {
 			if (StringUtils.isBlank(line)) {
 				continue;
@@ -143,15 +146,18 @@ public class DaiCollectionParser {
 				}
 				cd.wmData.add(lineData);
 			}
-			else if (inEventData && !firstEle.startsWith("Event")) {
+			else if (inEventData && !firstEle.startsWith("Event") && (isNewFormat==null||isNewFormat==false||StringUtils.isEmpty(lineData[1])) ) {
 				List<String> eventData = new ArrayList<String>();
-				try {
+				try {					
 					for( String eValue : lineData) {
 						eventData.add(StringUtils.trim(eValue));						
 					}
+					if ( isNewFormat==null ) {
+						isNewFormat = StringUtils.isEmpty(lineData[1]);
+					}
 					Integer eventId = Integer.parseInt(eventData.get(0));
-					logger.info("parsing event {}", eventData.get(0));
-					cd.sensorEventData.add(eventData);
+					logger.info("parsing event {} : {}", eventData.get(0), eventData);
+					cd.sensorEventData.add(eventData);					
 				} catch(NumberFormatException nfe) {
 					logger.info("not an event: {}", lineData);
 				}
@@ -173,7 +179,7 @@ public class DaiCollectionParser {
 			boolean newFormat = StringUtils.isEmpty(StringUtils.trim(cd.sensorEventData.get(sensorIx).get(1)));			
 			for( int lcv=0; lcv < cd.sensorEventCounts.size(); lcv++ ) {
 				
-				int startIx = newFormat?(lcv*2+2):(lcv*2+1);
+				int startIx = newFormat?(lcv*2+2):(lcv*3+1);
 				String startStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(startIx));
 				Calendar startTs = null;
 				float start = 0;
@@ -189,21 +195,22 @@ public class DaiCollectionParser {
 					logger.debug("Failed to parse {}", startStr);
 				}
 				
-				int durationIx = newFormat?(lcv*2+3):(lcv*2+2);
+				int durationIx = newFormat?(lcv*2+3):(lcv*3+2);
 				String durStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(durationIx));
 				float duration = 0;
 				try {
 					try {
 						Calendar c = parseTimestamp(durStr, dmc.getOlsonTimezoneId());
-						duration = c.getTimeInMillis()-midnightInMilliseconds;
-						duration = duration>0?duration/1000:duration;
+						duration = c.get(Calendar.HOUR_OF_DAY)*3600 + c.get(Calendar.MINUTE)*60 + c.get(Calendar.SECOND);
+						duration += ((float)c.get(Calendar.MILLISECOND))/1000;
 					} catch (ParseException ex) {
-						duration = Float.parseFloat(startStr);
+						duration = Float.parseFloat(durStr);
 					}
 				} catch (Exception ex) {
-					logger.debug("Failed to parse {}", startStr);
-				}				
-				if ( start >= 0 ) {
+					logger.debug("Failed to parse {}", durStr);
+				}
+				if ( start > 0 ) {
+					logger.info("{}={} {}={}", startIx, start, durationIx, duration);
 					DaiMeterCollectionDetail dmcd = new DaiMeterCollectionDetail();
 					dmcd.setMeterType(String.format("SENSOR_%1s", lcv+1));
 					dmcd.setMeterValue(start);					
