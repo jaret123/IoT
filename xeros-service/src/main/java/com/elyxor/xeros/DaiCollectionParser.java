@@ -51,8 +51,8 @@ public class DaiCollectionParser {
 	}
 	
 	
-	private long getMidnightMillis() { 
-		Calendar today = new GregorianCalendar();
+	private long getMidnightMillis(String olsonTz) {		
+		Calendar today = olsonTz==null?new GregorianCalendar():Calendar.getInstance(TimeZone.getTimeZone(olsonTz));
 		today.setTime(new Date());
 		today.set(Calendar.HOUR_OF_DAY, 0);
 		today.set(Calendar.MINUTE, 0);
@@ -105,7 +105,6 @@ public class DaiCollectionParser {
 	
 	
 	private DaiMeterCollection createCollectionModels(DaiMeterCollection dmc, List<String> lines) {
-		long midnightInMilliseconds = getMidnightMillis();
 		CollectionData cd = new CollectionData();		 
 		boolean inEventData = false;
 		Boolean isNewFormat = null;
@@ -129,7 +128,7 @@ public class DaiCollectionParser {
 					dmc.setDaiCollectionTime( new Timestamp( c.getTimeInMillis() ) );
 				} catch (ParseException ex) {
 					cd.fileWriteTime = Float.parseFloat(lineData[1].trim());
-					dmc.setDaiCollectionTime( new Timestamp( midnightInMilliseconds+ ((int)cd.fileWriteTime*1000) ) );
+					dmc.setDaiCollectionTime( new Timestamp( getMidnightMillis(null)+ ((int)cd.fileWriteTime*1000) ) );
 				}
 				logger.info(String.format("storing collection data for run %1s", dmc ));
 				inEventData = true;
@@ -188,7 +187,7 @@ public class DaiCollectionParser {
 				try {
 					try {
 						startTs = parseTimestamp(startStr, dmc.getOlsonTimezoneId());
-						start = startTs.getTimeInMillis()-midnightInMilliseconds;
+						start = startTs.getTimeInMillis()-getMidnightMillis(dmc.getOlsonTimezoneId());
 						start = start>0?start/1000:start;
 					} catch (ParseException ex) {
 						start = Float.parseFloat(startStr);
@@ -214,9 +213,9 @@ public class DaiCollectionParser {
 					logger.info("{}={} {}={}", startIx, start, startIx+1, duration);
 					DaiMeterCollectionDetail dmcd = new DaiMeterCollectionDetail();
 					dmcd.setMeterType(String.format("SENSOR_%1s", lcv+1));
-					dmcd.setMeterValue(start);					
+					dmcd.setMeterValue(start);
 					dmcd.setDuration(duration);
-					dmcd.setTimestamp(new Timestamp(startTs!=null?startTs.getTimeInMillis():midnightInMilliseconds));
+					dmcd.setTimestamp(new Timestamp(startTs!=null?startTs.getTimeInMillis():getMidnightMillis(null)));
 					collectionData.add(dmcd);
 				}
 			}			
