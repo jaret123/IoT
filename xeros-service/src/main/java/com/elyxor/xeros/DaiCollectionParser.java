@@ -179,8 +179,10 @@ public class DaiCollectionParser {
 			boolean newFormat = StringUtils.isEmpty(StringUtils.trim(cd.sensorEventData.get(sensorIx).get(1)));			
 			for( int lcv=0; lcv < cd.sensorEventCounts.size(); lcv++ ) {
 				
-				int startIx = newFormat?(lcv*2+2):(lcv*3+1);
+				int startIx = newFormat?(lcv*3+2):(lcv*3+1);				
 				String startStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(startIx));
+				String durStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(startIx+1));
+				
 				Calendar startTs = null;
 				float start = 0;
 				try {
@@ -194,9 +196,8 @@ public class DaiCollectionParser {
 				} catch (Exception ex) {
 					logger.debug("Failed to parse {}", startStr);
 				}
+								
 				
-				int durationIx = newFormat?(lcv*2+3):(lcv*3+2);
-				String durStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(durationIx));
 				float duration = 0;
 				try {
 					try {
@@ -210,7 +211,7 @@ public class DaiCollectionParser {
 					logger.debug("Failed to parse {}", durStr);
 				}
 				if ( start > 0 ) {
-					logger.info("{}={} {}={}", startIx, start, durationIx, duration);
+					logger.info("{}={} {}={}", startIx, start, startIx+1, duration);
 					DaiMeterCollectionDetail dmcd = new DaiMeterCollectionDetail();
 					dmcd.setMeterType(String.format("SENSOR_%1s", lcv+1));
 					dmcd.setMeterValue(start);					
