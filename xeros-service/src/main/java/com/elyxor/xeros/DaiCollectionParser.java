@@ -251,7 +251,7 @@ public class DaiCollectionParser {
 	}
 	
 	private Calendar parseTimestamp(String ts, String olsonTz) throws ParseException {
-		Calendar now = new GregorianCalendar();
+		Calendar now = Calendar.getInstance(TimeZone.getTimeZone(olsonTz));
 		now.setTime(new Date());		
 		Date parsedDate = null;
 		try {
