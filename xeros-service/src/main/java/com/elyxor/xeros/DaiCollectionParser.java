@@ -15,6 +15,11 @@ import java.util.TimeZone;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +38,11 @@ import com.elyxor.xeros.model.repository.DaiMeterCollectionRepository;
 public class DaiCollectionParser {
 	
 	SimpleDateFormat daiSdf = new SimpleDateFormat("HH : mm : ss");
+	SimpleDateFormat daiDurationSdf = new SimpleDateFormat("HH : mm : ss.SSS");
+	
+	DateTimeFormatter startDtf = DateTimeFormat.forPattern("HH : mm : ss");
+	DateTimeFormatter durationDtf = DateTimeFormat.forPattern("HH : mm : ss.SSS");
+
 	
 	private static Logger logger = LoggerFactory.getLogger(DaiCollectionParser.class);
 	@Autowired DaiMeterCollectionRepository daiMeterCollectionRepo;
@@ -50,14 +60,12 @@ public class DaiCollectionParser {
 	}
 	
 	
-	private long getMidnightMillis() { 
-		Calendar today = new GregorianCalendar();
-		today.setTime(new Date());
-		today.set(Calendar.HOUR_OF_DAY, 0);
-		today.set(Calendar.MINUTE, 0);
-		today.set(Calendar.SECOND, 0);
-		today.set(Calendar.MILLISECOND, 0);
-		return today.getTimeInMillis();
+	private long getMidnightMillis(DateTimeZone tz) {
+		return LocalTime.MIDNIGHT.toDateTimeToday(tz).getMillis();
+	}
+
+	private long getMidnightMillis() {
+		return LocalTime.MIDNIGHT.toDateTimeToday().getMillis();
 	}
 	
 	public List<DaiMeterCollection> parse(File file, Map<String, String> fileMeta) throws Exception {
@@ -104,14 +112,19 @@ public class DaiCollectionParser {
 	
 	
 	private DaiMeterCollection createCollectionModels(DaiMeterCollection dmc, List<String> lines) {
-		long midnightInMilliseconds = getMidnightMillis();
 		CollectionData cd = new CollectionData();		 
 		boolean inEventData = false;
+		Boolean isNewFormat = null;
+		DateTimeZone tz = null;
+		
+		try {
+			tz = DateTimeZone.forID(dmc.getOlsonTimezoneId());
+		} catch (Exception ex) {
+			logger.info("Failed to get tz for {}", dmc.getOlsonTimezoneId());
+		}
+				
 		for ( String line : lines ) {
 			if (StringUtils.isBlank(line)) {
-				if ( inEventData ) {
-					inEventData = false;
-				}
 				continue;
 			}
 			String[] lineData = line.split(",");
@@ -123,12 +136,12 @@ public class DaiCollectionParser {
 				dmc.setMachineIdentifier(StringUtils.trim(cd.fileHeader[1]));
 			} else if ( firstEle.startsWith("File Write") && lineData.length>1 ) {
 				try {
-					Calendar c = parseTimestamp(lineData[1].trim(), dmc.getOlsonTimezoneId());
-					cd.fileWriteTime = c.getTimeInMillis();
-					dmc.setDaiCollectionTime( new Timestamp( c.getTimeInMillis() ) );
-				} catch (ParseException ex) {
+					DateTime collectionTime = parseTime(StringUtils.trim(lineData[1]));
+					cd.fileWriteTime = collectionTime.getMillis();
+					dmc.setDaiCollectionTime( new Timestamp( collectionTime.getMillis() ) );
+				} catch (Exception ex) {
 					cd.fileWriteTime = Float.parseFloat(lineData[1].trim());
-					dmc.setDaiCollectionTime( new Timestamp( midnightInMilliseconds+ ((int)cd.fileWriteTime*1000) ) );
+					dmc.setDaiCollectionTime( new Timestamp( getMidnightMillis(null)+ ((int)cd.fileWriteTime*1000) ) );
 				}
 				logger.info(String.format("storing collection data for run %1s", dmc ));
 				inEventData = true;
@@ -139,17 +152,27 @@ public class DaiCollectionParser {
 					cd.elementHeaders[lcv] = lineData[lcv].trim();
 				}				
 			}
-			else if ( firstEle.startsWith("WM") ) {				
+			else if ( firstEle.startsWith("WM") ) {
+				if ( inEventData ) {
+					inEventData = false;
+				}
 				cd.wmData.add(lineData);
 			}
-			else if (inEventData) {
+			else if (inEventData && !firstEle.startsWith("Event") && (isNewFormat==null||isNewFormat==false||StringUtils.isEmpty(lineData[1])) ) {
 				List<String> eventData = new ArrayList<String>();
-				for( String eValue : lineData) {
-					try {
-						eventData.add(eValue);
-					} catch(NumberFormatException nfe) {}
+				try {					
+					for( String eValue : lineData) {
+						eventData.add(StringUtils.trim(eValue));						
+					}
+					if ( isNewFormat==null ) {
+						isNewFormat = StringUtils.isEmpty(lineData[1]);
+					}
+					Integer eventId = Integer.parseInt(eventData.get(0));
+					logger.info("parsing event {} : {}", eventData.get(0), eventData);
+					cd.sensorEventData.add(eventData);					
+				} catch(NumberFormatException nfe) {
+					logger.info("not an event: {}", lineData);
 				}
-				cd.sensorEventData.add(eventData);
 			} else {
 				List eCounts = new ArrayList<Integer>();				 
 				for( String eCount : lineData) {
@@ -163,42 +186,49 @@ public class DaiCollectionParser {
 			}
 		}
 		
-		List<DaiMeterCollectionDetail> collectionData = new ArrayList<DaiMeterCollectionDetail>(); 
-		for( int sensorIx = 0; sensorIx < cd.sensorEventData.size(); sensorIx++ ) {			
+		List<DaiMeterCollectionDetail> collectionData = new ArrayList<DaiMeterCollectionDetail>();		
+		for( int sensorIx = 0; sensorIx < cd.sensorEventData.size(); sensorIx++ ) {
+			boolean newFormat = StringUtils.isEmpty(StringUtils.trim(cd.sensorEventData.get(sensorIx).get(1)));			
 			for( int lcv=0; lcv < cd.sensorEventCounts.size(); lcv++ ) {
-				String startStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(lcv*2+2));
-				Calendar startTs = null;
+				
+				int startIx = newFormat?(lcv*3+2):(lcv*3+1);				
+				String startStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(startIx));
+				String durStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(startIx+1));
+				DateTime startTime = null;
+				
 				float start = 0;
 				try {
 					try {
-						startTs = parseTimestamp(startStr, dmc.getOlsonTimezoneId());
-						start = startTs.getTimeInMillis()-midnightInMilliseconds;
+						startTime = parseTime(startStr);
+						start = startTime.getMillis() - this.getMidnightMillis();
 						start = start>0?start/1000:start;
-					} catch (ParseException ex) {
+					} catch (Exception ex) {
 						start = Float.parseFloat(startStr);
 					}
 				} catch (Exception ex) {
 					logger.debug("Failed to parse {}", startStr);
 				}
-				String durStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(lcv*2+3));
+								
+				
 				float duration = 0;
 				try {
 					try {
-						Calendar c = parseTimestamp(durStr, dmc.getOlsonTimezoneId());
-						duration = c.getTimeInMillis()-midnightInMilliseconds;
-						duration = duration>0?duration/1000:duration;
-					} catch (ParseException ex) {
-						duration = Float.parseFloat(startStr);
+						DateTime durationTime = parseTime(durStr);
+						duration = durationTime.getMillis() - this.getMidnightMillis();
+						duration = duration>0?((float)duration)/1000:duration;
+					} catch (Exception ex) {
+						duration = Float.parseFloat(durStr);
 					}
 				} catch (Exception ex) {
-					logger.debug("Failed to parse {}", startStr);
-				}				
-				if ( start >= 0 ) {
+					logger.debug("Failed to parse {}", durStr);
+				}
+				if ( start > 0 ) {
+					logger.info("{}={} {}={}", startIx, start, startIx+1, duration);
 					DaiMeterCollectionDetail dmcd = new DaiMeterCollectionDetail();
 					dmcd.setMeterType(String.format("SENSOR_%1s", lcv+1));
-					dmcd.setMeterValue(start);					
+					dmcd.setMeterValue(start);
 					dmcd.setDuration(duration);
-					dmcd.setTimestamp(new Timestamp(startTs!=null?startTs.getTimeInMillis():midnightInMilliseconds));
+					dmcd.setTimestamp(new Timestamp(startTime!=null?startTime.getMillis():getMidnightMillis()));
 					collectionData.add(dmcd);
 				}
 			}			
@@ -233,16 +263,16 @@ public class DaiCollectionParser {
 		return dmc;
 	}
 	
-	private Calendar parseTimestamp(String ts, String olsonTz) throws ParseException {
-		Calendar now = new GregorianCalendar();
-		now.setTime(new Date());
-		Date parsedDate = daiSdf.parse(ts.trim());
-		Calendar c = Calendar.getInstance(TimeZone.getTimeZone(olsonTz));
-		c.setTime(parsedDate);
-		c.set(now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH));				
-		
-		logger.info(new SimpleDateFormat("yyyy-MM-dd.HH:mm:ss").format(c.getTime()));
-		return c;
+	private DateTime parseTime(String ts) {
+		LocalTime fileWriteTime = null;
+		try {
+			fileWriteTime = LocalTime.parse(ts, durationDtf);
+		} catch (IllegalArgumentException px) {
+			fileWriteTime = LocalTime.parse(ts, startDtf);
+		}
+		DateTime collectionTime = fileWriteTime.toDateTimeToday(); 
+		return collectionTime;
 	}
 	
+
 }
