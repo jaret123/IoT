@@ -4,10 +4,9 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import jssc.SerialPort;
 import jssc.SerialPortList;
 
-public class PortFinder implements Runnable {
+public class PortFinder implements Runnable, PortFinderInterface {
 	
 	PortChangedListenerInterface _portListener;
 	public boolean portFinderRunning;
@@ -15,6 +14,7 @@ public class PortFinder implements Runnable {
 	public void addListener(PortChangedListenerInterface pcli) {		
 		if (null != pcli) {
 			_portListener = pcli;
+			new Thread(this).start();
 		}
 	}
 

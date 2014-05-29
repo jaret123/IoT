@@ -32,6 +32,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		if (null != pfi) {
 			_pf = pfi;
 			_pf.addListener(this);
+			logger.info("Started watching ports for changes");
 		}
 	}
 	

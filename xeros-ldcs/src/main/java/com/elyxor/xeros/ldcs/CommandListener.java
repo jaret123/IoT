@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elyxor.xeros.ldcs.dai.DaiPortInterface;
+import com.elyxor.xeros.ldcs.dai.PortFinder;
 import com.elyxor.xeros.ldcs.dai.PortManager;
 import com.elyxor.xeros.ldcs.dai.PortManagerInterface;
 
@@ -19,7 +20,10 @@ public class CommandListener implements Runnable {
 	private PortManagerInterface _portManager = null;
     
 	public static void main(String[] args) {
-		(new Thread(new CommandListener())).start();
+		CommandListener commandListener = new CommandListener();
+		(new Thread(commandListener)).start();
+		PortManagerInterface manager = commandListener.getPortManager();
+		manager.getPortFinder(new PortFinder());
 	}
 	
     public CommandListener setPortManager(PortManagerInterface portManager) {

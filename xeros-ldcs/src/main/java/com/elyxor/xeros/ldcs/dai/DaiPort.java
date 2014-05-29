@@ -11,7 +11,6 @@ import jssc.SerialPortEvent;
 import jssc.SerialPortException;
 import jssc.SerialPortEventListener;
 
-import com.elyxor.xeros.ldcs.AppConfiguration;
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 
 public class DaiPort implements DaiPortInterface, SerialPortEventListener {
