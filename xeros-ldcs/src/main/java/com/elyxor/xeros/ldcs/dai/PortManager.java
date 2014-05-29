@@ -20,13 +20,13 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 
 	final static Logger logger = LoggerFactory.getLogger(PortManager.class);
 	private String daiPrefix = AppConfiguration.getDaiName();
+	
 	private Path path = Paths.get(AppConfiguration.getLocalPath());
 	
 	private Map<String,DaiPortInterface> portList = new LinkedHashMap<String,DaiPortInterface>();
 
 	PortFinderInterface _pf;
 	private int nextDaiNum = 1;
-	
 	
 	public void getPortFinder(PortFinderInterface pfi) {
 		if (null != pfi) {
@@ -36,8 +36,16 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	}
 	
 	public boolean portAdded(String portName) {
-		DaiPortInterface daiPort = new DaiPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"));
+		DaiPortInterface daiPort = new DaiPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix);
+		String daiId = "";
+		
 		if (daiPort.openPort()) {
+			daiId = daiPort.getRemoteDaiId();
+			if (daiId == "0") {
+				daiPort.setRemoteDaiId(nextDaiNum);
+		    	logger.info("Assigned DAI ID "+daiPrefix+nextDaiNum+" to port "+portName);	
+			}
+			
 			portList.put(portName, daiPort);
 			nextDaiNum++;
 			return true;

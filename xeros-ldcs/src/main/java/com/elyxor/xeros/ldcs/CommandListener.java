@@ -18,6 +18,10 @@ public class CommandListener implements Runnable {
 
 	private PortManagerInterface _portManager = null;
     
+	public static void main(String[] args) {
+		(new Thread(new CommandListener())).start();
+	}
+	
     public CommandListener setPortManager(PortManagerInterface portManager) {
     	_portManager = portManager;
     	return this;
@@ -91,7 +95,7 @@ public class CommandListener implements Runnable {
 	public void sendX(BufferedReader in, PrintStream out) {
 		
 		int port = this.readIntFromBufferedReader(in, out);
-		DaiPortInterface daiPort = findDaiPort(port);
+		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (null != daiPort) {
 			String result = daiPort.sendXerosRequest();
 			out.println(result);
@@ -101,7 +105,7 @@ public class CommandListener implements Runnable {
 	public void clearPortBuffer(BufferedReader in, PrintStream out) {		
 		
 		int port = this.readIntFromBufferedReader(in, out);
-		DaiPortInterface daiPort = findDaiPort(port);
+		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (null != daiPort) {
 			String result = daiPort.clearPortBuffer();
 			out.println(result);
@@ -110,7 +114,7 @@ public class CommandListener implements Runnable {
 
 	public void setClock(BufferedReader in, PrintStream out) {
 		int port = this.readIntFromBufferedReader(in, out);
-		DaiPortInterface daiPort = findDaiPort(port);
+		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (null != daiPort) {
 			String result = daiPort.setClock();
 			out.println(result);
@@ -119,7 +123,7 @@ public class CommandListener implements Runnable {
 	
 	public void readClock(BufferedReader in, PrintStream out) {
 		int port = this.readIntFromBufferedReader(in, out);
-		DaiPortInterface daiPort = findDaiPort(port);
+		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (null != daiPort) {
 			String result = daiPort.readClock();
 			out.println(result);

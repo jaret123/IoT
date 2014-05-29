@@ -17,22 +17,20 @@ import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 
 	final static Logger logger = LoggerFactory.getLogger(DaiPort.class);
-	private static final String EOT = new String(new char[] {'\004','\012'}); 
+	private static final String EOT = new String(new char[] {'','',''}); 
 
-	private static String daiName = "";
-	
 	private SerialPort serialPort;
 	private int daiNum;
-
+	private String daiPrefix;
 	private LogWriterInterface _logWriter;
 	
-	public DaiPort (SerialPort port, int num, LogWriterInterface logWriter) { 
+	public DaiPort (SerialPort port, int num, LogWriterInterface logWriter, String Prefix) { 
 		this.serialPort = port;
 		this.daiNum = num;
 		this._logWriter = logWriter;
+		this.daiPrefix = Prefix;
 	}
 		
-
 	public SerialPort getSerialPort() {
 		return serialPort;
 	}
@@ -72,29 +70,14 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 	
 	public boolean openPort() {
 		SerialPort port = this.serialPort;
-		String portAddress = port.getPortName();
-		
+
 		boolean result = false;
-		String daiId = "";
-		
 		try {
 			result = port.openPort();
-			
-			// Where do these magic values come from?  Should they be configurable?
-			port.setParams(4800, 7, 1, 2, false, false);
-			
-			daiId = this.getRemoteDaiId();
-										
-			if (daiId == "0" || !(daiId == ""+nextDaiNum)) {
-				this.setRemoteDaiId(nextDaiNum);
-//				portList.put(portAddress, this);
-		    	logger.info("Assigned DAI ID "+daiName+nextDaiNum+" to port "+portAddress);	
-			}
-			
-			port.addEventListener(this); 
+			port.setParams(4800, 7, 1, 2, false, false);											
+			port.addEventListener(this);
 			
 	    	logger.info("Started listening on port " + port.getPortName());
-
 		} catch (Exception ex) {
 			logger.warn("Could not open port", ex);
 			result = false;
@@ -109,7 +92,7 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 		}
 		catch (Exception e) {
 			String msg = "Failed to clear port buffer: ";
-			logger.warn(msg , e);get
+			logger.warn(msg , e);
 			result = msg + e.getMessage();
 		}
 		return result;
@@ -257,7 +240,7 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 		//		Path dir = Paths.get(AppConfiguration.getLocalPath());
 		//daiPrefix+daiNum+"log.txt";
 		try {
-			this._logWriter.write(daiPrefix + buffer);		
+			this._logWriter.write(this.daiPrefix + buffer);		
 		} catch (IOException e) {
 			logger.warn("Failed to write '" + buffer + "' to log file", e);
 		}
