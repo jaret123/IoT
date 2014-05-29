@@ -1,11 +1,6 @@
 package com.elyxor.xeros.ldcs.dai;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 
 import org.slf4j.Logger;
@@ -24,8 +19,6 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 	final static Logger logger = LoggerFactory.getLogger(DaiPort.class);
 	private static final String EOT = new String(new char[] {'\004','\012'}); 
 
-	public static String daiPrefix = AppConfiguration.getDaiName()+"00";
-	private static int nextDaiNum;
 	private static String daiName = "";
 	
 	private SerialPort serialPort;
@@ -55,7 +48,7 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 	public void setDaiNum(int id) {
 		this.daiNum = id;
 	}
-	
+		
 	public void serialEvent(SerialPortEvent event) {
 		String eventBuffer = "";
 		String logBuffer ;
@@ -82,7 +75,7 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 		String portAddress = port.getPortName();
 		
 		boolean result = false;
-		int daiId = 0;
+		String daiId = "";
 		
 		try {
 			result = port.openPort();
@@ -92,7 +85,7 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 			
 			daiId = this.getRemoteDaiId();
 										
-			if (daiId == 0 || !(daiId == nextDaiNum)) {
+			if (daiId == "0" || !(daiId == ""+nextDaiNum)) {
 				this.setRemoteDaiId(nextDaiNum);
 //				portList.put(portAddress, this);
 		    	logger.info("Assigned DAI ID "+daiName+nextDaiNum+" to port "+portAddress);	
@@ -110,24 +103,23 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 	}
 	
 	public String clearPortBuffer() {
-
 		String result = "";
 		try {
 			result = this.serialPort.readString();
 		}
 		catch (Exception e) {
 			String msg = "Failed to clear port buffer: ";
-			logger.warn(msg , e);
+			logger.warn(msg , e);get
 			result = msg + e.getMessage();
 		}
 		return result;
 	}
 	
-	public int getRemoteDaiId() {
-		int daiId = 0;
+	public String getRemoteDaiId() {
+		String daiId = "";
 		try {
-			this.serialPort.writeString("13\n");
-			daiId = this.serialPort.readBytes(1)[0];
+			this.serialPort.writeString("19\n");
+			daiId = this.serialPort.readString();
 		}
 		catch (Exception e) {
 			logger.warn("Couldn't read dai id", e);
@@ -138,7 +130,7 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 	public String setRemoteDaiId(int id) {
 		String daiId = "";
 		try {
-			this.serialPort.writeString("0 13\n");
+			this.serialPort.writeString("0 19 \n");
 			Thread.sleep(2000);
 			daiId = this.serialPort.readString();
 			this.serialPort.writeString(id+"\n");

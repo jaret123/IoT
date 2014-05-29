@@ -65,4 +65,12 @@ public class AppConfiguration {
 	public static String getFilePattern() {
 		return getConfig().getString("filepattern");
 	}
+	
+	public static String getDaiName() {
+		return getConfig().getString("dainame");
+	}
+	
+	public static boolean getWaterOnly() {
+		return getConfig().getBoolean("water_only");
+	}
 }
