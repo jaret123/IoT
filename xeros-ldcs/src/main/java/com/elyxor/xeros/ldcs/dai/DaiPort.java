@@ -7,16 +7,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jssc.SerialPort;
-import jssc.SerialPortEvent;
 import jssc.SerialPortException;
-import jssc.SerialPortEventListener;
 
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
+import com.elyxor.xeros.ldcs.util.SerialReader;
 
-public class DaiPort implements DaiPortInterface, SerialPortEventListener {
+public class DaiPort implements DaiPortInterface {
 
 	final static Logger logger = LoggerFactory.getLogger(DaiPort.class);
-	private static final String EOT = new String(new char[] {'','',''}); 
 
 	private SerialPort serialPort;
 	private int daiNum;
@@ -45,27 +43,7 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 	public void setDaiNum(int id) {
 		this.daiNum = id;
 	}
-		
-	public void serialEvent(SerialPortEvent event) {
-		String eventBuffer = "";
-		String logBuffer ;
-		
-		if (event.isRXCHAR()) {
-			if (event.getEventValue() == 3) {
-				try {
-					eventBuffer = serialPort.readString(3);
-				} catch (Exception ex) {
-					logger.warn("Failed to read serial event", ex);
-				}
-				if (!eventBuffer.isEmpty() && eventBuffer.equals("***")) {
-					logBuffer = this.sendRequest();
-					if (!logBuffer.isEmpty() && logBuffer.endsWith(EOT)) {
-						this.writeLogFile(logBuffer);
-					}
-				}
-			}
-    	}
-	}	
+	
 	
 	public boolean openPort() {
 		SerialPort port = this.serialPort;
@@ -74,7 +52,7 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 		try {
 			result = port.openPort();
 			port.setParams(4800, 7, 1, 2, false, false);											
-			port.addEventListener(this);
+			port.addEventListener(new SerialReader(this));
 			
 	    	logger.info("Started listening on port " + port.getPortName());
 		} catch (Exception ex) {
@@ -181,10 +159,6 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 			Thread.sleep(5000);
 			buffer = this.serialPort.readString();
 			this.writeLogFile(buffer);
-			
-			// for some reason before the refactor, there was another readString() in the SerialListener where the command
-			// was being processed.  Either this was extra, or the serialPort sent back two strings.
-			// TODO: figure out which is right.
 			buffer = this.serialPort.readString();
 
 		} catch (Exception e) {
@@ -216,10 +190,7 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 		boolean result = false;
 		try {
 			port.removeEventListener();
-			port.closePort();
-			result = true;
-//			portList.remove(portAddress);
-//			logger.info("Removed port "+portAddress);
+			result = port.closePort();
 		}
 		catch (SerialPortException ex) {
 			logger.warn("Failed to close port "+portAddress);
@@ -228,16 +199,7 @@ public class DaiPort implements DaiPortInterface, SerialPortEventListener {
 		return result;
 	}
 
-//	import java.nio.file.Paths;
-
-//	import com.elyxor.xeros.ldcs.AppConfiguration;
-//	Path dir = Paths.get(AppConfiguration.getLocalPath());
-	//daiPrefix+daiNum+"log.txt";
-
 	public void writeLogFile(String buffer) {
-
-		//		Path dir = Paths.get(AppConfiguration.getLocalPath());
-		//daiPrefix+daiNum+"log.txt";
 		try {
 			this._logWriter.write(this.daiPrefix + buffer);		
 		} catch (IOException e) {

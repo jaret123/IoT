@@ -52,12 +52,8 @@ public class CommandListener implements Runnable {
 	}
 
 	public void listPorts(PrintStream out) {
-//			int i = 1;
 		for (String port : getPortManager().getPortList()) {
 			out.println(port);
-//				activeDaiPorts.put(i, port);
-//				out.println(i + " - " + daiPrefix + port.getDaiNum());
-//				i++;
 		}    		
 	}
 	
@@ -93,6 +89,7 @@ public class CommandListener implements Runnable {
 		if (null != daiPort) {
 			String result = daiPort.sendStdRequest();
 			out.println(result);
+			daiPort.writeLogFile(result);
 		}
 	}
 
@@ -103,6 +100,7 @@ public class CommandListener implements Runnable {
 		if (null != daiPort) {
 			String result = daiPort.sendXerosRequest();
 			out.println(result);
+			daiPort.writeLogFile(result);
 		}
 	}
 	

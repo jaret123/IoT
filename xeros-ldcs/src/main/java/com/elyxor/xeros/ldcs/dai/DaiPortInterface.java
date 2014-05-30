@@ -23,5 +23,8 @@ public interface DaiPortInterface {
 	public String setRemoteDaiId(int id);
 	public String sendStdRequest();
 	public String sendXerosRequest();
+	public String sendRequest();
+	
+	public void writeLogFile(String s);
 
 }

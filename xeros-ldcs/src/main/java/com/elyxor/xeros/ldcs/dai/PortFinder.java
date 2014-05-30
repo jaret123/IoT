@@ -23,7 +23,9 @@ public class PortFinder implements Runnable, PortFinderInterface {
 		List<String> activeLocalPorts = new LinkedList<String>();
 
 		while (portFinderRunning) {
-			List<String> newPorts = Arrays.asList(SerialPortList.getPortNames());
+			
+			List<String> newPorts = Arrays.asList("/dev/pts/7");
+//			List<String> newPorts = Arrays.asList(SerialPortList.getPortNames());
 			
 			for (String portName : newPorts) {
 				if (!activeLocalPorts.contains(portName))
