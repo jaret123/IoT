@@ -115,7 +115,7 @@ public class DaiCollectionMatcher {
 		if ( m.getDoorLockMeterType() !=null ) {
 			for ( DaiMeterCollectionDetail cd : c.getCollectionDetails() ) {
 				if ( cd.getMeterType().equals(m.getColdWaterMeterType()) ) {
-					return new Float(cd.getDuration());
+					return m.getWaterOnly()==1?new Float(cd.getMeterValue()):new Float(cd.getDuration());
 				}
 			}
 		}
@@ -128,7 +128,7 @@ public class DaiCollectionMatcher {
 		if ( m.getDoorLockMeterType() !=null ) {
 			for ( DaiMeterCollectionDetail cd : c.getCollectionDetails() ) {
 				if ( cd.getMeterType().equals(m.getHotWaterMeterType()) ) {
-					return new Float(cd.getDuration());
+					return m.getWaterOnly()==1?new Float(cd.getMeterValue()):new Float(cd.getDuration());
 				}
 			}
 		}

@@ -37,6 +37,7 @@ public class Machine {
 	private Integer sensorStartTimeVariance;
 	private Integer durationMatchVariance;
 	private Integer useStartTime;
+	private Integer waterOnly;
 	
     @Id
     @Column(name = "machine_id", columnDefinition = "INT unsigned")
@@ -238,5 +239,12 @@ public class Machine {
 	public void setUseStartTime(Integer useStartTime) {
 		this.useStartTime = useStartTime;
 	}
-
+	
+	@Column (name = "water_only", scale=10)
+	public Integer getWaterOnly() {
+		return waterOnly;
+	}
+	public void setWaterOnly(Integer waterOnly) {
+		this.waterOnly = waterOnly;
+	}
 }
