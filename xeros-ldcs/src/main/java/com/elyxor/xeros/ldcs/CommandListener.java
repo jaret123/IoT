@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 
+import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +24,11 @@ public class CommandListener implements Runnable {
 		CommandListener commandListener = new CommandListener();
 		(new Thread(commandListener)).start();
 		PortManagerInterface manager = commandListener.getPortManager();
+		try {
+			manager.startScheduler();
+		} catch (SchedulerException e) {
+			logger.warn("failed to start scheduler", e);
+		}
 		manager.getPortFinder(new PortFinder());
 	}
 	

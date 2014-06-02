@@ -140,8 +140,9 @@ public class DaiPort implements DaiPortInterface {
 		} catch (Exception e) {
 			logger.warn("Couldn't complete send request", e);
 		}
+		if (!buffer.equals("")) logger.info("Captured log file");
 		return buffer;
-	}
+	}	
 	
 	public String setClock() {
 		String buffer = "";
@@ -205,5 +206,6 @@ public class DaiPort implements DaiPortInterface {
 		} catch (IOException e) {
 			logger.warn("Failed to write '" + buffer + "' to log file", e);
 		}
+		logger.info("Wrote log to file");
     }
 }

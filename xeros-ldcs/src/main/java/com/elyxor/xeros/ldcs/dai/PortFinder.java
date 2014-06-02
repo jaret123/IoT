@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.quartz.SchedulerException;
+
 import jssc.SerialPortList;
 
 public class PortFinder implements Runnable, PortFinderInterface {
@@ -24,12 +26,15 @@ public class PortFinder implements Runnable, PortFinderInterface {
 
 		while (portFinderRunning) {
 			
-			List<String> newPorts = Arrays.asList("/dev/pts/7");
-//			List<String> newPorts = Arrays.asList(SerialPortList.getPortNames());
+			List<String> newPorts = Arrays.asList(SerialPortList.getPortNames());
 			
 			for (String portName : newPorts) {
 				if (!activeLocalPorts.contains(portName))
-					_portListener.portAdded(portName);
+					try {
+						_portListener.portAdded(portName);
+					} catch (SchedulerException e) {
+						e.printStackTrace();
+					}
 			}
 			for (String portName : activeLocalPorts) {
 				if (!newPorts.contains(portName)) {

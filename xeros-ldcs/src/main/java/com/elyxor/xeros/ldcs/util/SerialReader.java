@@ -3,12 +3,12 @@ package com.elyxor.xeros.ldcs.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.elyxor.xeros.ldcs.dai.DaiPort;
 import com.elyxor.xeros.ldcs.dai.DaiPortInterface;
 
 import jssc.SerialPort;
 import jssc.SerialPortEvent;
 import jssc.SerialPortEventListener;
+import jssc.SerialPortException;
 
 public class SerialReader implements SerialPortEventListener, SerialReaderInterface {
 	
@@ -18,30 +18,29 @@ public class SerialReader implements SerialPortEventListener, SerialReaderInterf
 	SerialPort serialPort;
 	DaiPortInterface daiPort;
 	
-	public SerialReader(DaiPortInterface port) {
+	public SerialReader(DaiPortInterface port)  {
     	daiPort = port;
 		serialPort = port.getSerialPort();
 	} 
-
+	
 	public void serialEvent(SerialPortEvent event) {
 		String eventBuffer = "";
 		String logBuffer;
 		
-//		if (event.isRXCHAR()) {
-			if (event.getEventValue() > 2) {
-				try {
-					eventBuffer = serialPort.readString();
-					if (!eventBuffer.isEmpty() && eventBuffer.equals("***\r\n")) {
-						logBuffer = daiPort.sendRequest();
-						if (!logBuffer.isEmpty() && logBuffer.endsWith("\r\n\r\n\r\n")) {
-							daiPort.writeLogFile(logBuffer);
-						}
-					}
-				} catch (Exception ex) {
-					logger.warn("Failed to read serial event", ex);
-				}
-
+		if (event.getEventValue() > 2 && event.getEventValue() < 5) {
+			try {
+				eventBuffer = serialPort.readString();
+			} catch (SerialPortException e) {
+				logger.warn("Unable to read port event", e);
 			}
-//    	}
+			if (!eventBuffer.isEmpty() && eventBuffer.equals("***")) {
+				logger.info("Log file incoming");
+				logBuffer = daiPort.sendRequest();
+				if (!logBuffer.isEmpty() && logBuffer.endsWith(EOT)) {
+					logger.info("Proper log file found, writing...");
+					daiPort.writeLogFile(logBuffer);
+				}
+			}
+		}
 	}	
 }
