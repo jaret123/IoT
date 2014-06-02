@@ -9,8 +9,6 @@ import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.elyxor.xeros.ldcs.dai.PortManager;
-
 public class FileLogWriter implements LogWriterInterface {
 	final static Logger logger = LoggerFactory.getLogger(FileLogWriter.class);
 

@@ -3,7 +3,6 @@ package com.elyxor.xeros.ldcs.dai;
 import static org.quartz.TriggerBuilder.*;
 import static org.quartz.CronScheduleBuilder.*;
 import static org.quartz.JobBuilder.*;
-import static org.quartz.JobKey.*;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -14,7 +13,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.quartz.CronTrigger;
+import org.quartz.Job;
 import org.quartz.JobDetail;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerFactory;
 import org.quartz.Trigger;
@@ -39,6 +41,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	//quartz setup for scheduled task for water only
 	SchedulerFactory schedFact = new org.quartz.impl.StdSchedulerFactory();
 	Scheduler sched;
+	
 	Trigger waterOnlyTrigger = newTrigger()
 			.withIdentity("waterOnlyTrigger")
 			.withSchedule(dailyAtHourAndMinute(00,00))
@@ -48,7 +51,9 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			.withSchedule(cronSchedule("0 0 1 ? * SUN"))
 			.build();
 	
-	private Map<String,DaiPortInterface> portList = new LinkedHashMap<String,DaiPortInterface>();
+	
+	
+	private static Map<String,DaiPortInterface> portList = new LinkedHashMap<String,DaiPortInterface>();
 
 	PortFinderInterface _pf;
 	private int nextDaiNum = 1;
@@ -72,9 +77,6 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		    	logger.info("Assigned DAI ID "+daiPrefix+nextDaiNum+" to port "+portName);	
 			}
 			
-//			if (waterOnly) {startWaterOnly(daiPort);}
-			startClockSchedule(daiPort);
-			
 			portList.put(portName, daiPort);
 			nextDaiNum++;
 			return true;
@@ -88,9 +90,6 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			if (daiPort.closePort()) {
 				portList.remove(daiPort);
 				nextDaiNum = daiPort.getDaiNum(); 
-//				stopWaterOnly(daiPort);
-//				stopClockSchedule(daiPort);
-				//need stopWaterOnly & stop clock once implemented
 			}
 			// port close failed ?
 			return false;
@@ -141,38 +140,39 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	public void startScheduler() {
 		try {
 			Scheduler sched = schedFact.getScheduler();
+			JobDetail clockSetJob = newJob(ClockSetJob.class)
+					.withIdentity("clockSetJob")
+					.build();
+			sched.scheduleJob(clockSetJob, clockSetTrigger);
+			logger.info("scheduled clock set job, next fire time: "+clockSetTrigger.getNextFireTime().toString());
+			if (waterOnly) {
+				JobDetail waterOnlyJob = newJob(WaterOnlyJob.class)
+						.withIdentity("waterOnlyJob")
+						.build();
+				sched.scheduleJob(waterOnlyJob, waterOnlyTrigger);
+				logger.info("scheduled water only job, next fire time: "+waterOnlyTrigger.getNextFireTime().toString());
+
+			}
 			sched.start();
 		} catch (Exception ex) {logger.warn("could not start scheduler",ex);}
 	}
-
-    
-    private void startWaterOnly (DaiPortInterface daiPort) {
-		try {
-	    	JobDetail job = newJob(WaterOnlyJob.class)
-    				.withIdentity(daiPrefix+daiPort.getDaiNum(), "waterOnly")
-					.build();
-			job.getJobDataMap().put("daiPort", daiPort);
-			sched.scheduleJob(job, waterOnlyTrigger);
-		} catch (Exception ex) {logger.warn("could not start schedule for water only", ex);}
-    }
-    private void stopWaterOnly(DaiPortInterface daiPort) {
-    	try {    		
-    		sched.deleteJob(jobKey(daiPrefix+daiPort.getDaiNum(), "waterOnly"));
-		} catch (Exception ex) {logger.warn("could not stop schedule for water only",ex);}
+	
+	public static class WaterOnlyJob implements Job {
+		public WaterOnlyJob() {}
+		public void execute(JobExecutionContext context) throws JobExecutionException {
+			logger.info("Executing water only data collection");
+			for (DaiPortInterface daiPort : portList.values()) {
+				daiPort.sendStdRequest();
+			}
+		}
 	}
-
-    private void startClockSchedule (DaiPortInterface daiPort) {
-    	try {
-    		JobDetail job = newJob(ClockSetJob.class)
-    				.withIdentity(daiPrefix+daiPort.getDaiNum(), "clock")
-    				.build();
-    		job.getJobDataMap().put("daiPort", daiPort);
-    		sched.scheduleJob(job, clockSetTrigger);
-    	} catch (Exception ex) {logger.warn("could not start schedule for clock set",ex);}
-    }
-    private void stopClockSchedule(DaiPortInterface daiPort) {
-    	try {    		
-    		sched.deleteJob(jobKey(daiPrefix+daiPort.getDaiNum(), "clock"));
-		} catch (Exception ex) {logger.warn("could not stop schedule for water only",ex);}
-	}
+	public static class ClockSetJob implements Job {
+		public ClockSetJob() {}
+		public void execute(JobExecutionContext context) throws JobExecutionException {
+			logger.info("Executing clock set data collection");
+			for (DaiPortInterface daiPort : portList.values()) {
+				daiPort.setClock();
+			}
+		}
+	} 
 }
