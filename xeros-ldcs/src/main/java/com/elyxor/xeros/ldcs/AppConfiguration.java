@@ -70,7 +70,7 @@ public class AppConfiguration {
 		return getConfig().getString("dainame");
 	}
 	
-	public static boolean getWaterOnly() {
-		return getConfig().getBoolean("water_only");
+	public static Integer getWaterOnly() {
+		return getConfig().getInteger("water_only", 0);
 	}
 }

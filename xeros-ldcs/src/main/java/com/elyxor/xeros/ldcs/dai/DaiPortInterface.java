@@ -24,6 +24,8 @@ public interface DaiPortInterface {
 	public String sendStdRequest();
 	public String sendXerosRequest();
 	public String sendRequest();
+	public String waterOnlyManualRequest();
+
 	
 	public void writeLogFile(String s);
 

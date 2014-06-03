@@ -31,27 +31,9 @@ import jssc.SerialPort;
 public class PortManager implements PortManagerInterface, PortChangedListenerInterface {
 
 	final static Logger logger = LoggerFactory.getLogger(PortManager.class);
-	
 	private String daiPrefix = AppConfiguration.getDaiName();
-	
-	private Path path = Paths.get("/home/will/ldcs/input"); //TODO set back to AppConfiguration.getLocalPath()
-	
-	boolean waterOnly = AppConfiguration.getWaterOnly();
-	
-	//quartz setup for scheduled task for water only
-	SchedulerFactory schedFact = new org.quartz.impl.StdSchedulerFactory();
-	Scheduler sched;
-	
-	Trigger waterOnlyTrigger = newTrigger()
-			.withIdentity("waterOnlyTrigger")
-			.withSchedule(dailyAtHourAndMinute(00,00))
-		    .build();
-	CronTrigger clockSetTrigger = newTrigger()
-			.withIdentity("clockSetTrigger")
-			.withSchedule(cronSchedule("0 0 1 ? * SUN"))
-			.build();
-	
-	
+	Integer waterOnly = AppConfiguration.getWaterOnly();
+	private Path path = Paths.get(AppConfiguration.getLocalPath());
 	
 	private static Map<String,DaiPortInterface> portList = new LinkedHashMap<String,DaiPortInterface>();
 
@@ -137,6 +119,19 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		}
 	}
     
+	//quartz setup for scheduled tasks for water only and clock set
+	SchedulerFactory schedFact = new org.quartz.impl.StdSchedulerFactory();
+	Scheduler sched;
+	
+	Trigger waterOnlyTrigger = newTrigger()
+			.withIdentity("waterOnlyTrigger")
+			.withSchedule(dailyAtHourAndMinute(00,00))
+		    .build();
+	CronTrigger clockSetTrigger = newTrigger()
+			.withIdentity("clockSetTrigger")
+			.withSchedule(cronSchedule("0 0 1 ? * SUN"))
+			.build();
+	
 	public void startScheduler() {
 		try {
 			Scheduler sched = schedFact.getScheduler();
@@ -145,13 +140,18 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 					.build();
 			sched.scheduleJob(clockSetJob, clockSetTrigger);
 			logger.info("scheduled clock set job, next fire time: "+clockSetTrigger.getNextFireTime().toString());
-			if (waterOnly) {
+			if (waterOnly==1) {
 				JobDetail waterOnlyJob = newJob(WaterOnlyJob.class)
 						.withIdentity("waterOnlyJob")
 						.build();
 				sched.scheduleJob(waterOnlyJob, waterOnlyTrigger);
 				logger.info("scheduled water only job, next fire time: "+waterOnlyTrigger.getNextFireTime().toString());
-
+			}
+			if (waterOnly==2) {
+				JobDetail waterOnlyManualJob = newJob(WaterOnlyManualJob.class)
+						.withIdentity("waterOnlyManualJob")
+						.build();
+				sched.scheduleJob(waterOnlyManualJob, waterOnlyTrigger);
 			}
 			sched.start();
 		} catch (Exception ex) {logger.warn("could not start scheduler",ex);}
@@ -161,8 +161,25 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		public WaterOnlyJob() {}
 		public void execute(JobExecutionContext context) throws JobExecutionException {
 			logger.info("Executing water only data collection");
+			String buffer = "";
 			for (DaiPortInterface daiPort : portList.values()) {
-				daiPort.sendStdRequest();
+				buffer = daiPort.sendStdRequest();
+				if (!buffer.equals("")) {
+					daiPort.writeLogFile(buffer);
+				}
+			}
+		}
+	}
+	public static class WaterOnlyManualJob implements Job {
+		public WaterOnlyManualJob() {}
+		public void execute(JobExecutionContext context) throws JobExecutionException {
+			logger.info("Executing water only data collection");
+			String buffer = "";
+			for (DaiPortInterface daiPort : portList.values()) {
+				buffer = daiPort.waterOnlyManualRequest();
+				if (!buffer.equals("")) {
+					daiPort.writeLogFile(buffer);
+				}
 			}
 		}
 	}

@@ -79,6 +79,7 @@ public class DaiPort implements DaiPortInterface {
 		String daiId = "";
 		try {
 			this.serialPort.writeString("19\n");
+			Thread.sleep(10000);
 			daiId = this.serialPort.readString();
 		}
 		catch (Exception e) {
@@ -90,12 +91,12 @@ public class DaiPort implements DaiPortInterface {
 	public String setRemoteDaiId(int id) {
 		String daiId = "";
 		try {
-			this.serialPort.writeString("0 19 \n");
-			Thread.sleep(2000);
-			daiId = this.serialPort.readString();
+			this.serialPort.writeString("0 19\n");
+			Thread.sleep(1000);
+			this.serialPort.readString(); //clear buffer
 			this.serialPort.writeString(id+"\n");
-			Thread.sleep(5000);
-			daiId += this.serialPort.readString();
+			Thread.sleep(1000);
+			daiId = this.serialPort.readString();
 		}
 		catch (Exception e) {
 			logger.warn("Couldn't set port id", e);
@@ -108,14 +109,13 @@ public class DaiPort implements DaiPortInterface {
 		String buffer = "";	    		
 		try {
 			this.serialPort.writeString("0 12\n");
-			Thread.sleep(10000);
+			Thread.sleep(5000);
 			buffer = this.serialPort.readString();
 		} catch (Exception e) {
 			String msg = "Couldn't complete send std request. ";
 			logger.warn(msg, e);
 			buffer = msg + e.getMessage(); 
 		}
-		this.writeLogFile(buffer);
 		return buffer;
 	}
 	
@@ -123,10 +123,12 @@ public class DaiPort implements DaiPortInterface {
 		String buffer = "";	    		
 		try {
 			this.serialPort.writeString("0 11\n");
-			Thread.sleep(10000);
+			Thread.sleep(5000);
 			buffer = this.serialPort.readString();
 		} catch (Exception e) {
-			logger.warn("Couldn't complete send xeros request", e);
+			String msg = ("Couldn't complete send xeros request");
+			logger.warn(msg, e);
+			buffer = msg + e.getMessage(); 
 		}
 		return buffer;
 	}
@@ -135,7 +137,7 @@ public class DaiPort implements DaiPortInterface {
 		String buffer = "";	    		
 		try {
 			this.serialPort.writeString("0 999\n");
-			Thread.sleep(10000);
+			Thread.sleep(5000);
 			buffer = this.serialPort.readString();
 		} catch (Exception e) {
 			logger.warn("Couldn't complete send request", e);
@@ -184,14 +186,12 @@ public class DaiPort implements DaiPortInterface {
 		return buffer;
 	}
 	
-	
 	public boolean closePort() {
-		SerialPort port = this.serialPort;
-		String portAddress = port.getPortName();
+		String portAddress = this.serialPort.getPortName();
 		boolean result = false;
 		try {
-			port.removeEventListener();
-			result = port.closePort();
+			this.serialPort.removeEventListener();
+			result = this.serialPort.closePort();
 		}
 		catch (SerialPortException ex) {
 			logger.warn("Failed to close port "+portAddress);
@@ -199,7 +199,24 @@ public class DaiPort implements DaiPortInterface {
 		}
 		return result;
 	}
-
+	
+	public String waterOnlyManualRequest() {
+		String buffer = "";
+		String requestString = "2f 3f 30 30 30 30 30 30 30 31 32 33 34 35 21 0d 0a";
+		try {
+			this.serialPort.writeString(requestString);
+			Thread.sleep(10000);
+			buffer = this.serialPort.readString();
+		} catch (Exception e) {
+			logger.warn("Couldn't complete send request", e);
+		}
+		if (!buffer.equals("")) logger.info("Captured log file");
+		
+		//TODO: parse buffer into appropriate data from water meters
+		
+		return buffer;
+	}
+	
 	public void writeLogFile(String buffer) {
 		try {
 			this._logWriter.write(this.daiPrefix + buffer);		
