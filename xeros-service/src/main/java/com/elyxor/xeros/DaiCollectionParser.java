@@ -174,7 +174,7 @@ public class DaiCollectionParser {
 					logger.info("not an event: {}", lineData);
 				}
 			} else {
-				List eCounts = new ArrayList<Integer>();				 
+				List<Integer> eCounts = new ArrayList<Integer>();				 
 				for( String eCount : lineData) {
 					try {
 						eCounts.add(Integer.parseInt(StringUtils.trim(eCount)));
@@ -236,8 +236,8 @@ public class DaiCollectionParser {
 		for(String[] wmEntry : cd.wmData) {
 			DaiMeterCollectionDetail dmcd = new DaiMeterCollectionDetail();
 			dmcd.setMeterType(wmEntry[0].trim().replaceAll(" ", "").replaceAll(":", ""));
-			dmcd.setMeterValue(Float.parseFloat(wmEntry[1]));
-			dmcd.setDuration(Float.parseFloat(wmEntry[2]));
+			dmcd.setMeterValue(Float.parseFloat(wmEntry.length>3?wmEntry[3]:wmEntry[1]));
+			dmcd.setDuration(Float.parseFloat(wmEntry.length>3?wmEntry[1]:wmEntry[2]));
 			dmcd.setTimestamp(dmc.getDaiCollectionTime());
 			collectionData.add(dmcd);
 		}
