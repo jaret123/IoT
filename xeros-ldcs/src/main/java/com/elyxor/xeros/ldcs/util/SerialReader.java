@@ -24,8 +24,8 @@ public class SerialReader implements SerialPortEventListener, SerialReaderInterf
 	} 
 	
 	public void serialEvent(SerialPortEvent event) {
-		String eventBuffer = "";
-		String logBuffer;
+		String eventBuffer = null;
+		String logBuffer = null;
 		
 		if (event.getEventValue() > 2 && event.getEventValue() < 5) {
 			try {
@@ -36,7 +36,7 @@ public class SerialReader implements SerialPortEventListener, SerialReaderInterf
 			if (!eventBuffer.isEmpty() && eventBuffer.equals("***")) {
 				logger.info("Log file incoming");
 				logBuffer = daiPort.sendRequest();
-				if (!logBuffer.isEmpty() && logBuffer.endsWith(EOT)) {
+				if (logBuffer!=null && logBuffer.endsWith(EOT)) {
 					logger.info("Proper log file found, writing...");
 					daiPort.writeLogFile(logBuffer);
 				}

@@ -48,10 +48,22 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		}
 	}
 		
-	public boolean portAdded(String portName) {
+	public boolean portAdded(String portName) {				
+		if (waterOnly == 2) {
+			WaterMeterPort waterMeterPort = 
+					new WaterMeterPort(new SerialPort(portName), 
+					nextDaiNum, 
+					new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), 
+					daiPrefix);
+			if (waterMeterPort.openWaterMeterPort()) {
+				portList.put(portName, waterMeterPort);
+				nextDaiNum++;
+				return true;
+			}
+		}
 		DaiPortInterface daiPort = new DaiPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix);
 		String daiId = "";
-		
+
 		if (daiPort.openPort()) {
 			daiId = daiPort.getRemoteDaiId();
 			if (daiId == "0") {
@@ -174,10 +186,10 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		public WaterOnlyManualJob() {}
 		public void execute(JobExecutionContext context) throws JobExecutionException {
 			logger.info("Executing water only data collection");
-			String buffer = "";
+			String buffer = null;
 			for (DaiPortInterface daiPort : portList.values()) {
 				buffer = daiPort.waterOnlyManualRequest();
-				if (!buffer.equals("")) {
+				if (buffer!=null) {
 					daiPort.writeLogFile(buffer);
 				}
 			}

@@ -137,7 +137,15 @@ public class CommandListener implements Runnable {
 			out.println(result);
 		}
 	}
-	    	
+	public void readWaterMeter(BufferedReader in, PrintStream out) {
+		int port = this.readIntFromBufferedReader(in, out);
+		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
+		if (daiPort != null) {
+			String result = daiPort.waterOnlyManualRequest();
+			out.println(result);
+			daiPort.writeLogFile(result);
+		}
+	}
 	private int readIntFromBufferedReader(BufferedReader in, PrintStream out) {
 		int intVal = -1;
 		out.println("enter port number: ");
@@ -198,6 +206,10 @@ public class CommandListener implements Runnable {
     		}
     		case "readClock": {
     			this.readClock(in, out);
+    			break;
+    		}
+    		case "water": {
+    			this.readWaterMeter(in, out);
     			break;
     		}
 		}

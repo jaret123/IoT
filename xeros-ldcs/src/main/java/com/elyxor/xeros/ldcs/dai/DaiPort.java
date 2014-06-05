@@ -20,14 +20,14 @@ public class DaiPort implements DaiPortInterface {
 	private int daiNum;
 	private String daiPrefix;
 	private LogWriterInterface _logWriter;
-	
-	public DaiPort (SerialPort port, int num, LogWriterInterface logWriter, String Prefix) { 
+		
+	public DaiPort (SerialPort port, int num, LogWriterInterface logWriter, String prefix) { 
 		this.serialPort = port;
 		this.daiNum = num;
 		this._logWriter = logWriter;
-		this.daiPrefix = Prefix;
+		this.daiPrefix = prefix;
 	}
-		
+	
 	public SerialPort getSerialPort() {
 		return serialPort;
 	}
@@ -46,15 +46,13 @@ public class DaiPort implements DaiPortInterface {
 	
 	
 	public boolean openPort() {
-		SerialPort port = this.serialPort;
-
 		boolean result = false;
 		try {
-			result = port.openPort();
-			port.setParams(4800, 7, 1, 2, false, false);											
-			port.addEventListener(new SerialReader(this));
+			result = this.serialPort.openPort();
+			this.serialPort.setParams(4800, 7, 1, 2, false, false);											
+			this.serialPort.addEventListener(new SerialReader(this));
 			
-	    	logger.info("Started listening on port " + port.getPortName());
+	    	logger.info("Started listening on port " + this.serialPort.getPortName());
 		} catch (Exception ex) {
 			logger.warn("Could not open port", ex);
 			result = false;
@@ -78,8 +76,8 @@ public class DaiPort implements DaiPortInterface {
 	public String getRemoteDaiId() {
 		String daiId = "";
 		try {
-			this.serialPort.writeString("19\n");
-			Thread.sleep(10000);
+			this.serialPort.writeString("0 19\n");
+			Thread.sleep(1000);
 			daiId = this.serialPort.readString();
 		}
 		catch (Exception e) {
@@ -149,19 +147,18 @@ public class DaiPort implements DaiPortInterface {
 	public String setClock() {
 		String buffer = "";
 		try {
-			this.serialPort.writeString("55\n");
-			Thread.sleep(5000);
-			
+			this.serialPort.writeString("16\n");
+			this.serialPort.readString(); // clear buffer
 			SimpleDateFormat timingFormat = new SimpleDateFormat("hh:mm:ss");
 			buffer = timingFormat.format(System.currentTimeMillis());
 			String[] timeSplit = buffer.split(":");
 			
 			this.serialPort.writeString(timeSplit[0]+"\n");
+			this.serialPort.readString(); // clear buffer
 			this.serialPort.writeString(timeSplit[1]+"\n");
+			this.serialPort.readString(); // clear buffer
 			this.serialPort.writeString(timeSplit[2]+"\n");
 			Thread.sleep(5000);
-			buffer = this.serialPort.readString();
-			this.writeLogFile(buffer);
 			buffer = this.serialPort.readString();
 
 		} catch (Exception e) {
@@ -199,24 +196,7 @@ public class DaiPort implements DaiPortInterface {
 		}
 		return result;
 	}
-	
-	public String waterOnlyManualRequest() {
-		String buffer = "";
-		String requestString = "2f 3f 30 30 30 30 30 30 30 31 32 33 34 35 21 0d 0a";
-		try {
-			this.serialPort.writeString(requestString);
-			Thread.sleep(10000);
-			buffer = this.serialPort.readString();
-		} catch (Exception e) {
-			logger.warn("Couldn't complete send request", e);
-		}
-		if (!buffer.equals("")) logger.info("Captured log file");
-		
-		//TODO: parse buffer into appropriate data from water meters
-		
-		return buffer;
-	}
-	
+			
 	public void writeLogFile(String buffer) {
 		try {
 			this._logWriter.write(this.daiPrefix + buffer);		
