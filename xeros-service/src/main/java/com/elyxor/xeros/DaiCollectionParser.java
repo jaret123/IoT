@@ -204,6 +204,7 @@ public class DaiCollectionParser {
 						start = start>0?start/1000:start;
 					} catch (Exception ex) {
 						start = Float.parseFloat(startStr);
+						startTime = new DateTime().withTimeAtStartOfDay().plus((long)start*1000); 
 					}
 				} catch (Exception ex) {
 					logger.debug("Failed to parse {}", startStr);
