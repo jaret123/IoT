@@ -1,6 +1,7 @@
 package com.elyxor.xeros.ldcs.dai;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 
 import org.slf4j.Logger;
@@ -9,8 +10,10 @@ import org.slf4j.LoggerFactory;
 import jssc.SerialPort;
 import jssc.SerialPortException;
 
+import com.elyxor.xeros.ldcs.util.FileLogWriter;
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 import com.elyxor.xeros.ldcs.util.SerialReader;
+import com.elyxor.xeros.ldcs.util.SerialReaderInput;
 
 public class DaiPort implements DaiPortInterface {
 
@@ -20,7 +23,18 @@ public class DaiPort implements DaiPortInterface {
 	private int daiNum;
 	private String daiPrefix;
 	private LogWriterInterface _logWriter;
-		
+	
+//	static String test = "Str1 ,  Std ,\nFile Write Time: , 10 : 22 : 49\n"
+//			+ "0 ,, 00 : 00 : 00  ,  0 : 0 : 0.0  ,,  00 : 00 : 00  ,  0 : 0 : 0.0  ,,"
+//			+ "  00 : 00 : 00  ,  0 : 0 : 0.0  ,,  00 : 00 : 00  ,  0 : 0 : 0.0  ,, "
+//			+ " 00 : 00 : 00  ,  0 : 0 : 0.0  ,,  00 : 00 : 00  ,  0 : 0 : 0.0  ,,  "
+//			+ "00 : 00 : 00  ,  0 : 0 : 0.0  ,,  00 : 00 : 00  ,  0 : 0 : 0.0  ,,\n"
+//			+ "WM 0:  , 355 , 1291 , 355\nWM 1:  , 0 , 600 , 0 \0x04\0x04\0x04";		
+//
+//	public static void main(String[] args) {
+//		DaiPortInterface daiPort = new DaiPort(new SerialPort("test"), 1, new FileLogWriter(Paths.get("/home/will/ldcs/input"), "Str1"+"Log.txt"), "Str");
+//		daiPort.writeLogFile(test);
+//	}
 	public DaiPort (SerialPort port, int num, LogWriterInterface logWriter, String prefix) { 
 		this.serialPort = port;
 		this.daiNum = num;
@@ -49,7 +63,9 @@ public class DaiPort implements DaiPortInterface {
 		boolean result = false;
 		try {
 			result = this.serialPort.openPort();
-			this.serialPort.setParams(4800, 7, 1, 2, false, false);											
+			this.serialPort.setParams(4800, 7, 1, 2, false, false);
+			this.serialPort.setEventsMask(SerialPort.MASK_RXCHAR + SerialPort.MASK_CTS + SerialPort.MASK_DSR);
+//			this.serialPort.setFlowControlMode(4 | 8);
 			this.serialPort.addEventListener(new SerialReader(this));
 			
 	    	logger.info("Started listening on port " + this.serialPort.getPortName());
@@ -79,6 +95,7 @@ public class DaiPort implements DaiPortInterface {
 			this.serialPort.writeString("0 19\n");
 			Thread.sleep(1000);
 			daiId = this.serialPort.readString();
+			Thread.sleep(4000);
 		}
 		catch (Exception e) {
 			logger.warn("Couldn't read dai id", e);
@@ -104,11 +121,14 @@ public class DaiPort implements DaiPortInterface {
 	}
 	
 	public String sendStdRequest() {
-		String buffer = "";	    		
+		String buffer = "";
+		
 		try {
-			this.serialPort.writeString("0 12\n");
-			Thread.sleep(5000);
-			buffer = this.serialPort.readString();
+			this.serialPort.writeByte((byte)0x13);
+			this.serialPort.writeString("0 12\r\n");
+			this.serialPort.writeByte((byte)0x11);
+			Thread.sleep(10000);
+			buffer += this.serialPort.readString();
 		} catch (Exception e) {
 			String msg = "Couldn't complete send std request. ";
 			logger.warn(msg, e);
@@ -118,11 +138,20 @@ public class DaiPort implements DaiPortInterface {
 	}
 	
 	public String sendXerosRequest() {
-		String buffer = "";	    		
+		String buffer = "";
 		try {
-			this.serialPort.writeString("0 11\n");
-			Thread.sleep(5000);
-			buffer = this.serialPort.readString();
+			this.serialPort.writeByte((byte)0x11);
+			this.serialPort.writeString("0 11\n\r");
+			this.serialPort.writeByte((byte)0x13);
+			int bufferSize = 1;
+			Thread.sleep(500);
+			while (bufferSize > 0) {
+				bufferSize = this.serialPort.getInputBufferBytesCount();
+				logger.info("buffer size: "+bufferSize);
+				buffer += this.serialPort.readString(bufferSize);
+				Thread.sleep(500);
+			}
+			logger.info(buffer);
 		} catch (Exception e) {
 			String msg = ("Couldn't complete send xeros request");
 			logger.warn(msg, e);
@@ -135,8 +164,11 @@ public class DaiPort implements DaiPortInterface {
 		String buffer = "";	    		
 		try {
 			this.serialPort.writeString("0 999\n");
-			Thread.sleep(5000);
-			buffer = this.serialPort.readString();
+			Thread.sleep(1000);
+			while (this.serialPort.getInputBufferBytesCount() > 0) {
+				buffer += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
+				Thread.sleep(500);
+			}
 		} catch (Exception e) {
 			logger.warn("Couldn't complete send request", e);
 		}
@@ -147,7 +179,7 @@ public class DaiPort implements DaiPortInterface {
 	public String setClock() {
 		String buffer = "";
 		try {
-			this.serialPort.writeString("16\n");
+			this.serialPort.writeString("0 16\n");
 			this.serialPort.readString(); // clear buffer
 			SimpleDateFormat timingFormat = new SimpleDateFormat("hh:mm:ss");
 			buffer = timingFormat.format(System.currentTimeMillis());
@@ -172,7 +204,7 @@ public class DaiPort implements DaiPortInterface {
 	public String readClock() {
 		String buffer = "";
 		try {
-			this.serialPort.writeString("44\n");
+			this.serialPort.writeString("0 15\n");
 			Thread.sleep(5000);
 			buffer = this.serialPort.readString();
 		} catch (Exception e) {
@@ -198,11 +230,18 @@ public class DaiPort implements DaiPortInterface {
 	}
 			
 	public void writeLogFile(String buffer) {
-		try {
-			this._logWriter.write(this.daiPrefix + buffer);		
-		} catch (IOException e) {
-			logger.warn("Failed to write '" + buffer + "' to log file", e);
+		if (buffer != null) {
+			String[] bufferSplit = buffer.split(",");
+			String logPrefix = "";
+			if (1 < bufferSplit.length) logPrefix = bufferSplit[1].trim();
+			
+			LogWriterInterface writer = new FileLogWriter(Paths.get(this._logWriter.getPath()), logPrefix+"-"+this._logWriter.getFilename());
+			try {
+				writer.write(this.daiPrefix + buffer);		
+			} catch (IOException e) {
+				logger.warn("Failed to write '" + buffer + "' to log file", e);
+			}
+			logger.info("Wrote log to file");
 		}
-		logger.info("Wrote log to file");
     }
 }

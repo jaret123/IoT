@@ -27,13 +27,13 @@ public class SerialReader implements SerialPortEventListener, SerialReaderInterf
 		String eventBuffer = null;
 		String logBuffer = null;
 		
-		if (event.getEventValue() > 2 && event.getEventValue() < 5) {
+		if (event.getEventValue() == 3) {
 			try {
-				eventBuffer = serialPort.readString();
+				eventBuffer = serialPort.readString(3);
 			} catch (SerialPortException e) {
 				logger.warn("Unable to read port event", e);
 			}
-			if (!eventBuffer.isEmpty() && eventBuffer.equals("***")) {
+			if (eventBuffer != null && !eventBuffer.isEmpty() && eventBuffer.equals("***")) {
 				logger.info("Log file incoming");
 				logBuffer = daiPort.sendRequest();
 				if (logBuffer!=null && logBuffer.endsWith(EOT)) {

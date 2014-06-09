@@ -15,15 +15,16 @@ public class FileLogWriter implements LogWriterInterface {
 	private File _logFile = null;
 
 	public FileLogWriter(Path path, String filename) {
-		
 		_logFile = new File(path.toString(), filename);
-		
 	}
-
-	
+	public String getFilename() {
+		return _logFile.getName();
+	}
+	public String getPath() {
+		return _logFile.getParent();
+	}
 	@Override
 	public void write(String txt) throws IOException {
-
 		FileWriter fileWriter = null;
 		BufferedWriter out = null;
 		try {

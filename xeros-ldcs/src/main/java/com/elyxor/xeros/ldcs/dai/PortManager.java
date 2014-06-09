@@ -50,12 +50,8 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		
 	public boolean portAdded(String portName) {				
 		if (waterOnly == 2) {
-			WaterMeterPort waterMeterPort = 
-					new WaterMeterPort(new SerialPort(portName), 
-					nextDaiNum, 
-					new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), 
-					daiPrefix);
-			if (waterMeterPort.openWaterMeterPort()) {
+			DaiPortInterface waterMeterPort = new WaterMeterPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix);
+			if (waterMeterPort.openPort()) {
 				portList.put(portName, waterMeterPort);
 				nextDaiNum++;
 				return true;
@@ -188,7 +184,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			logger.info("Executing water only data collection");
 			String buffer = null;
 			for (DaiPortInterface daiPort : portList.values()) {
-				buffer = daiPort.waterOnlyManualRequest();
+				buffer = daiPort.sendRequest();
 				if (buffer!=null) {
 					daiPort.writeLogFile(buffer);
 				}

@@ -3,6 +3,7 @@ package com.elyxor.xeros.ldcs.dai;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -16,15 +17,15 @@ import jssc.SerialPortException;
 public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface {
 	final static Logger logger = LoggerFactory.getLogger(WaterMeterPort.class);
 	
-	private float prevMeter1;
-	private float prevMeter2;
+	private long prevMeter1;
+	private long prevMeter2;
 	private SerialPort serialPort;
 	private int daiNum;
 	private LogWriterInterface logWriter;
 	private String daiPrefix;
-	private int waterMeterId;
+	private long waterMeterId;
 	
-	final static int defaultId = 999999999;
+	final static long defaultId = 999999999;
 	final static int frontPadding = 2;
 	final static int backPadding = 5;
 	final static int idSize = 12;
@@ -50,13 +51,8 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		} catch (Exception ex) {
 			logger.warn("Could not open port", ex);
 			result = false;
-		}
-		if (result) {
-			
-		}
-		
+		}		
     	logger.info("Opened water meter port " + this.serialPort.getPortName());
-    	
 		return result;
 	}
 	public boolean closePort() {
@@ -74,7 +70,6 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	}
 	
 	public String initRequest() {
-		String result = "";
 		byte[] buffer = null;
 		
 		byte[] request = createRequestString(this.parseIntToByteArray(defaultId));
@@ -85,16 +80,16 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 			String msg = "failed to send init request";
 			logger.warn(msg, e);
 		}
+		this.waterMeterId = parseIdFromResponse(buffer);
 		return buffer.toString();
 	}
 
 	public String sendRequest() {
 		String result = "";
 		byte[] buffer = null;
-		byte[] requestBytes = {(byte)0x04, (byte)0x03, (byte)0x00, (byte)0x00, (byte)0x00,
-				(byte)0x08, (byte)0x44, (byte)0x59};
-		int meter1 = 0;
-		int meter2 = 0;
+		byte[] requestBytes = this.createRequestString(parseIntToByteArray(waterMeterId));
+		long meter1 = 0;
+		long meter2 = 0;
 		
 		try {
 			this.serialPort.writeBytes(requestBytes);
@@ -137,15 +132,15 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		logger.info("Wrote log to file");
     }
 
-	public void setPrevMeters (float meter1, float meter2) {
+	public void setPrevMeters (long meter1, long meter2) {
 		this.prevMeter1 = meter1;
 		this.prevMeter2 = meter2;
 	}
-	public float[] getPrevMeters () {
-		return new float[] {prevMeter1, prevMeter2};
+	public long[] getPrevMeters () {
+		return new long[] {prevMeter1, prevMeter2};
 	}
 	
-	public int getWaterMeterId () {
+	public long getWaterMeterId () {
 		if (waterMeterId != 0) {
 			return waterMeterId;
 		}
@@ -175,15 +170,36 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		this.daiNum = num;
 	}
 	
-	private float[] parseMetersFromResponse(byte[] response) {
+	private long[] parseMetersFromResponse(byte[] response) {
+		long[] result = new long[2];
+		int[] meter1 = new int[8];
+		int[] meter2 = new int[8];
 		
+		for (int i = 0; i < 16; i++) {
+			if (i < 8) meter1[i] = Integer.parseInt((""+response[88+i]).substring(3));
+			meter2[i] = Integer.parseInt((""+response[88+i]).substring(3));
+		}
+		result[0] = Long.parseLong(Arrays.toString(meter1));
+		result[1] = Long.parseLong(Arrays.toString(meter2));
+		return result;
 	}
 	
-	private byte[] parseIntToByteArray (int in) {
+	private long parseIdFromResponse(byte[] response) {
+		long result = 0;
+		int[] id = new int[idSize];
+		
+		for (int i = 0; i < id.length; i++) {
+			id[i] = Integer.parseInt((""+response[4+i]).substring(3));
+		}
+		result = Long.parseLong(Arrays.toString(id));
+		return result;
+	}
+	
+	private byte[] parseIntToByteArray (long in) {
 		int i = idSize;
 		byte[] idBytes = new byte[i];
 		while (in > 0) {
-			int digit = in % 10;
+			long digit = in % 10;
 			in /= 10;
 			idBytes[i] += ((byte) (0x00 + digit));
 			i--;

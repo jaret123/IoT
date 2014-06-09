@@ -141,7 +141,7 @@ public class CommandListener implements Runnable {
 		int port = this.readIntFromBufferedReader(in, out);
 		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (daiPort != null) {
-			String result = daiPort.waterOnlyManualRequest();
+			String result = daiPort.sendRequest();
 			out.println(result);
 			daiPort.writeLogFile(result);
 		}
