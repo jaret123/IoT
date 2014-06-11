@@ -173,7 +173,7 @@ public class DaiCollectionParser {
 				} catch(NumberFormatException nfe) {
 					logger.info("not an event: {}", lineData);
 				}
-			} else {
+			} else if (!line.equals("###")){
 				List<Integer> eCounts = new ArrayList<Integer>();				 
 				for( String eCount : lineData) {
 					try {

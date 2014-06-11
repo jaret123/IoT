@@ -244,7 +244,6 @@ public class DaiCollectionMatcher {
 			}
 			earliestValue = ( collectionDetail.getMeterValue()<earliestValue )?collectionDetail.getMeterValue():earliestValue;
 		}
-		collection.setEarliestValue(earliestValue);
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {
 			if (collectionDetail.getMeterType().startsWith("WM") ||
 					collectionDetail.getDuration()==0 ||
@@ -261,6 +260,8 @@ public class DaiCollectionMatcher {
 			normalizedDetails.add(ccd);
 			
 		}
+		collection.setEarliestValue(earliestValue);
+
 		return normalizedDetails;		
 	}
 
