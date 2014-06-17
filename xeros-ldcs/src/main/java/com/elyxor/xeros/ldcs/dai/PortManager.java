@@ -7,6 +7,7 @@ import static org.quartz.JobBuilder.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		if (waterOnly == 2) {
 			DaiPortInterface waterMeterPort = new WaterMeterPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix);
 			if (waterMeterPort.openPort()) {
+				((WaterMeterPort) waterMeterPort).initRequest();
 				portList.put(portName, waterMeterPort);
 				nextDaiNum++;
 				return true;
@@ -59,16 +61,31 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		}
 		DaiPortInterface daiPort = new DaiPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix);
 		String daiId = "";
-
+		String newId = "";
+		int retryCounter = 0;
+		
 		if (daiPort.openPort()) {
 			daiId = daiPort.getRemoteDaiId();
-			if (daiId == "0") {
-				daiPort.setRemoteDaiId(nextDaiNum);
-		    	logger.info("Assigned DAI ID "+daiPrefix+nextDaiNum+" to port "+portName);	
+			if (daiId == null && retryCounter < 3) {
+				daiId = daiPort.getRemoteDaiId();
+				retryCounter++;
 			}
-			
+			if (daiId.equals("0")) {
+				retryCounter = 0;
+				newId = daiPort.setRemoteDaiId(nextDaiNum);
+				if (newId == null && retryCounter < 3) {
+					newId = daiPort.setRemoteDaiId(nextDaiNum);
+					retryCounter++;
+				}
+		    	logger.info("Assigned DAI ID "+daiPrefix+nextDaiNum+" to port "+portName);
+				nextDaiNum++;
+			}
+			else {
+				if (!daiId.equals(" ")) daiPort.setDaiNum(Integer.parseInt(daiId));
+				logger.info("Found existing DAI with ID "+daiPrefix+daiId+" on port"+portName);
+				nextDaiNum = Integer.parseInt(daiId) + 1;
+			}
 			portList.put(portName, daiPort);
-			nextDaiNum++;
 			return true;
 		}
 		return false;
@@ -78,7 +95,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		DaiPortInterface daiPort = findDaiPort(portName);
 		if (daiPort != null) {
 			if (daiPort.closePort()) {
-				portList.remove(daiPort);
+				portList.remove(daiPort.getSerialPort().getPortName());
 				nextDaiNum = daiPort.getDaiNum(); 
 			}
 			// port close failed ?
@@ -142,6 +159,13 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	
 	public void startScheduler() {
 		try {
+			if (waterOnly==2) {
+				JobDetail waterOnlyManualJob = newJob(WaterOnlyManualJob.class)
+						.withIdentity("waterOnlyManualJob")
+						.build();
+				sched.scheduleJob(waterOnlyManualJob, waterOnlyTrigger);
+				return;
+			}
 			Scheduler sched = schedFact.getScheduler();
 			JobDetail clockSetJob = newJob(ClockSetJob.class)
 					.withIdentity("clockSetJob")
@@ -154,12 +178,6 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 						.build();
 				sched.scheduleJob(waterOnlyJob, waterOnlyTrigger);
 				logger.info("scheduled water only job, next fire time: "+waterOnlyTrigger.getNextFireTime().toString());
-			}
-			if (waterOnly==2) {
-				JobDetail waterOnlyManualJob = newJob(WaterOnlyManualJob.class)
-						.withIdentity("waterOnlyManualJob")
-						.build();
-				sched.scheduleJob(waterOnlyManualJob, waterOnlyTrigger);
 			}
 			sched.start();
 		} catch (Exception ex) {logger.warn("could not start scheduler",ex);}

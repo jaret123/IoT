@@ -75,7 +75,33 @@ public class DaiCollectionMatcher {
 		//if no matches found, map to 9999 and create dai actual record
 		try {
 			if (matchedMap==null && collectionData.getDaiMeterActual()==null) {
-				Integer uc = collectionData.getMachine().getUnknownClass();
+				Machine mac = collectionData.getMachine();
+				int collectionId = collectionData.getId();
+				Integer uc = mac.getUnknownClass();
+				Integer classBase = mac.getClassificationBase();
+				
+				if (classBase != null) {
+					Collection<DaiMeterCollectionDetail> collDetails = collectionData.getCollectionDetails();
+					boolean autoMap = false;
+					DaiMeterCollectionDetail formulaMeter = null;
+
+					for (DaiMeterCollectionDetail cd : collDetails) {
+						String type = cd.getMeterType();
+						float duration = cd.getDuration();
+						if (type.equals("SENSOR_3") && duration > 2) {
+							autoMap = true;
+							formulaMeter = cd;
+							break;
+						}
+					}
+					if (autoMap) {
+						Integer classMapId = (int) formulaMeter.getDuration() / 2;						
+						collectionData.setCollectionClassificationMap(createCollectionClassificationMap(collectionId, classMapId + classBase));
+						collectionData.setDaiMeterActual(createDaiMeterActual(collectionData));
+						daiMeterCollectionRepo.save(collectionData);
+						uc = null;
+					}
+				}				
 				if ( uc!=null ) {
 					CollectionClassificationMap ccm = collectionClassificationMapRepo.findOne(uc);
 					if (ccm!=null) {

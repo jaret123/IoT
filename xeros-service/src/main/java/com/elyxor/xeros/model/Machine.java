@@ -38,6 +38,7 @@ public class Machine {
 	private Integer durationMatchVariance;
 	private Integer useStartTime;
 	private Integer waterOnly;
+	private Integer classificationBase;
 	
     @Id
     @Column(name = "machine_id", columnDefinition = "INT unsigned")
@@ -246,5 +247,13 @@ public class Machine {
 	}
 	public void setWaterOnly(Integer waterOnly) {
 		this.waterOnly = waterOnly;
+	}
+	
+	@Column (name = "classification_base")
+	public Integer getClassificationBase() {
+		return this.classificationBase;
+	}
+	public void setClassificationBase(Integer classificationBase) {
+		this.classificationBase = classificationBase;
 	}
 }

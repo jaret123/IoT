@@ -13,7 +13,6 @@ import jssc.SerialPortException;
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 import com.elyxor.xeros.ldcs.util.SerialReader;
-import com.elyxor.xeros.ldcs.util.SerialReaderInput;
 
 public class DaiPort implements DaiPortInterface {
 
@@ -24,17 +23,6 @@ public class DaiPort implements DaiPortInterface {
 	private String daiPrefix;
 	private LogWriterInterface _logWriter;
 	
-//	static String test = "Str1 ,  Std ,\nFile Write Time: , 10 : 22 : 49\n"
-//			+ "0 ,, 00 : 00 : 00  ,  0 : 0 : 0.0  ,,  00 : 00 : 00  ,  0 : 0 : 0.0  ,,"
-//			+ "  00 : 00 : 00  ,  0 : 0 : 0.0  ,,  00 : 00 : 00  ,  0 : 0 : 0.0  ,, "
-//			+ " 00 : 00 : 00  ,  0 : 0 : 0.0  ,,  00 : 00 : 00  ,  0 : 0 : 0.0  ,,  "
-//			+ "00 : 00 : 00  ,  0 : 0 : 0.0  ,,  00 : 00 : 00  ,  0 : 0 : 0.0  ,,\n"
-//			+ "WM 0:  , 355 , 1291 , 355\nWM 1:  , 0 , 600 , 0 \0x04\0x04\0x04";		
-//
-//	public static void main(String[] args) {
-//		DaiPortInterface daiPort = new DaiPort(new SerialPort("test"), 1, new FileLogWriter(Paths.get("/home/will/ldcs/input"), "Str1"+"Log.txt"), "Str");
-//		daiPort.writeLogFile(test);
-//	}
 	public DaiPort (SerialPort port, int num, LogWriterInterface logWriter, String prefix) { 
 		this.serialPort = port;
 		this.daiNum = num;
@@ -64,10 +52,8 @@ public class DaiPort implements DaiPortInterface {
 		try {
 			result = this.serialPort.openPort();
 			this.serialPort.setParams(4800, 7, 1, 2, false, false);
-			this.serialPort.setEventsMask(SerialPort.MASK_RXCHAR + SerialPort.MASK_CTS + SerialPort.MASK_DSR);
-//			this.serialPort.setFlowControlMode(4 | 8);
 			this.serialPort.addEventListener(new SerialReader(this));
-			
+			Thread.sleep(5000); //init time
 	    	logger.info("Started listening on port " + this.serialPort.getPortName());
 		} catch (Exception ex) {
 			logger.warn("Could not open port", ex);
@@ -124,11 +110,12 @@ public class DaiPort implements DaiPortInterface {
 		String buffer = "";
 		
 		try {
-			this.serialPort.writeByte((byte)0x13);
-			this.serialPort.writeString("0 12\r\n");
-			this.serialPort.writeByte((byte)0x11);
-			Thread.sleep(10000);
-			buffer += this.serialPort.readString();
+			this.serialPort.writeString("0 12\n");
+			Thread.sleep(1000);
+			while (this.serialPort.getInputBufferBytesCount() > 0) {
+				buffer += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
+				Thread.sleep(500);
+			}
 		} catch (Exception e) {
 			String msg = "Couldn't complete send std request. ";
 			logger.warn(msg, e);
@@ -140,18 +127,12 @@ public class DaiPort implements DaiPortInterface {
 	public String sendXerosRequest() {
 		String buffer = "";
 		try {
-			this.serialPort.writeByte((byte)0x11);
-			this.serialPort.writeString("0 11\n\r");
-			this.serialPort.writeByte((byte)0x13);
-			int bufferSize = 1;
-			Thread.sleep(500);
-			while (bufferSize > 0) {
-				bufferSize = this.serialPort.getInputBufferBytesCount();
-				logger.info("buffer size: "+bufferSize);
-				buffer += this.serialPort.readString(bufferSize);
+			this.serialPort.writeString("0 11\n");
+			Thread.sleep(1000);
+			while (this.serialPort.getInputBufferBytesCount() > 0) {
+				buffer += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
 				Thread.sleep(500);
 			}
-			logger.info(buffer);
 		} catch (Exception e) {
 			String msg = ("Couldn't complete send xeros request");
 			logger.warn(msg, e);
@@ -178,21 +159,30 @@ public class DaiPort implements DaiPortInterface {
 	
 	public String setClock() {
 		String buffer = "";
+		int retryCounter = 0;
 		try {
 			this.serialPort.writeString("0 16\n");
-			this.serialPort.readString(); // clear buffer
-			SimpleDateFormat timingFormat = new SimpleDateFormat("hh:mm:ss");
+			Thread.sleep(1000);
+			buffer = this.serialPort.readString();
+			while ((buffer == null || buffer.equals(" ") || buffer.equals("")) && retryCounter < 3) {
+//				this.serialPort.writeString("0 16\n");
+				Thread.sleep(500);
+				buffer = this.serialPort.readString();
+				retryCounter++;
+			}
+			SimpleDateFormat timingFormat = new SimpleDateFormat("kk:mm:ss");
 			buffer = timingFormat.format(System.currentTimeMillis());
 			String[] timeSplit = buffer.split(":");
 			
 			this.serialPort.writeString(timeSplit[0]+"\n");
-			this.serialPort.readString(); // clear buffer
+			Thread.sleep(500);
+			buffer = this.serialPort.readString(); // clear buffer
 			this.serialPort.writeString(timeSplit[1]+"\n");
-			this.serialPort.readString(); // clear buffer
+			Thread.sleep(500);
+			buffer = this.serialPort.readString(); // clear buffer
 			this.serialPort.writeString(timeSplit[2]+"\n");
 			Thread.sleep(5000);
 			buffer = this.serialPort.readString();
-
 		} catch (Exception e) {
 			buffer = "Couldn't complete set clock. ";
 			logger.warn(buffer, e);
