@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.elyxor.xeros.model.ActiveDai;
 import com.elyxor.xeros.model.CollectionClassificationMap;
 import com.elyxor.xeros.model.DaiMeterCollection;
 

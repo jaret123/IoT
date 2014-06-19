@@ -1,7 +1,5 @@
 package com.elyxor.xeros.ldcs.dai;
 
-import com.elyxor.xeros.ldcs.util.SerialReaderInterface;
-
 import jssc.SerialPort;
 import jssc.SerialPortEventListener;
 

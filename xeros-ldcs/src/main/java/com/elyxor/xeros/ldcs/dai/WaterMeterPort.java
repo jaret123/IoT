@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
-import com.elyxor.xeros.ldcs.util.SerialReaderInterface;
 
 import jssc.SerialPort;
 import jssc.SerialPortEventListener;

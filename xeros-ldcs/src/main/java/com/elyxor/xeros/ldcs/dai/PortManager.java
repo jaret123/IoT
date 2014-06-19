@@ -7,7 +7,6 @@ import static org.quartz.JobBuilder.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +69,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 				daiId = daiPort.getRemoteDaiId();
 				retryCounter++;
 			}
-			if (daiId.equals("0")) {
+			if (daiId!=null&&daiId.equals("0")) {
 				retryCounter = 0;
 				newId = daiPort.setRemoteDaiId(nextDaiNum);
 				if (newId == null && retryCounter < 3) {
@@ -80,7 +79,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		    	logger.info("Assigned DAI ID "+daiPrefix+nextDaiNum+" to port "+portName);
 				nextDaiNum++;
 			}
-			else {
+			else if (daiId!=null && true){
 				if (!daiId.equals(" ")) daiPort.setDaiNum(Integer.parseInt(daiId));
 				logger.info("Found existing DAI with ID "+daiPrefix+daiId+" on port"+portName);
 				nextDaiNum = Integer.parseInt(daiId) + 1;
@@ -179,9 +178,9 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			sched.scheduleJob(pingJob, pingTrigger);
 			logger.info("scheduled ping job, next fire time: "+pingTrigger.getNextFireTime().toString());
 			
-			JobDetail clockSetJob = newJob(ClockSetJob.class)
-					.withIdentity("clockSetJob")
-					.build();
+//			JobDetail clockSetJob = newJob(ClockSetJob.class)
+//					.withIdentity("clockSetJob")
+//					.build();
 //			sched.scheduleJob(clockSetJob, clockSetTrigger); //TODO: re-enable when fixed
 //			logger.info("scheduled clock set job, next fire time: "+clockSetTrigger.getNextFireTime().toString());
 			if (waterOnly==1) {

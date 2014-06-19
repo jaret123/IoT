@@ -15,7 +15,6 @@ import com.elyxor.xeros.ldcs.HttpFileUploader;
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 import com.elyxor.xeros.ldcs.util.SerialReader;
-import com.elyxor.xeros.ldcs.util.SerialReaderInterface;
 
 public class DaiPort implements DaiPortInterface {
 
@@ -57,9 +56,9 @@ public class DaiPort implements DaiPortInterface {
 			result = this.serialPort.openPort();
 			this.serialPort.setParams(4800, 7, 1, 2, false, false);
 			
-			SerialPortEventListener sri = new SerialReader(this);
-			this.setSerialPortEventListener(sri);
-			this.serialPort.addEventListener(sri);
+//			SerialPortEventListener sri = new SerialReader(this);
+//			this.setSerialPortEventListener(sri);
+			this.serialPort.addEventListener(new SerialReader(this));
 			
 			Thread.sleep(5000); //init time
 	    	logger.info("Started listening on port " + this.serialPort.getPortName());
@@ -86,10 +85,12 @@ public class DaiPort implements DaiPortInterface {
 	public String getRemoteDaiId() {
 		String daiId = "";
 		try {
+			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 19\n");
 			Thread.sleep(1000);
 			daiId = this.serialPort.readString();
 			Thread.sleep(4000);
+			this.serialPort.addEventListener(new SerialReader(this));
 		}
 		catch (Exception e) {
 			logger.warn("Couldn't read dai id", e);
@@ -100,12 +101,14 @@ public class DaiPort implements DaiPortInterface {
 	public String setRemoteDaiId(int id) {
 		String daiId = "";
 		try {
+			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 19\n");
 			Thread.sleep(1000);
 			this.serialPort.readString(); //clear buffer
 			this.serialPort.writeString(id+"\n");
 			Thread.sleep(1000);
 			daiId = this.serialPort.readString();
+			this.serialPort.addEventListener(new SerialReader(this));
 		}
 		catch (Exception e) {
 			logger.warn("Couldn't set port id", e);
@@ -192,28 +195,19 @@ public class DaiPort implements DaiPortInterface {
 	
 	public String setClock() {
 		String buffer = "";
-		int retryCounter = 0;
 		try {
-			this.serialPort.writeString("0 16\n");
+			this.serialPort.removeEventListener();
+			this.serialPort.writeString("0 116\n");
 			Thread.sleep(1000);
-			buffer = this.serialPort.readString();
-			while ((buffer == null || buffer.equals(" ") || buffer.equals("")) && retryCounter < 3) {
-//				this.serialPort.writeString("0 16\n");
-				Thread.sleep(500);
-				buffer = this.serialPort.readString();
-				retryCounter++;
-			}
-			String[] timeSplit = getSystemTime().split(":");
 			
-			this.serialPort.writeString(timeSplit[0]+"\n");
-			Thread.sleep(500);
-			buffer = this.serialPort.readString(); // clear buffer
-			this.serialPort.writeString(timeSplit[1]+"\n");
-			Thread.sleep(500);
-			buffer = this.serialPort.readString(); // clear buffer
-			this.serialPort.writeString(timeSplit[2]+"\n");
+			buffer = this.serialPort.readString();
+			if (buffer.equals("::")) {
+				this.serialPort.writeString(getSystemTime());
+			}
 			Thread.sleep(5000);
 			buffer = this.serialPort.readString();
+			
+			this.serialPort.addEventListener(new SerialReader(this));
 		} catch (Exception e) {
 			buffer = "Couldn't complete set clock. ";
 			logger.warn(buffer, e);
@@ -225,9 +219,12 @@ public class DaiPort implements DaiPortInterface {
 	public String readClock() {
 		String buffer = "";
 		try {
+			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 15\n");
 			Thread.sleep(5000);
 			buffer = this.serialPort.readString();
+			
+			this.serialPort.addEventListener(new SerialReader(this));
 		} catch (Exception e) {
 			buffer = "Couldn't complete read clock. ";
 			logger.warn(buffer, e);
@@ -291,5 +288,4 @@ public class DaiPort implements DaiPortInterface {
 	public void setSerialPortEventListener(SerialPortEventListener spel) {
 		this.spel = spel;
 	}
-
 }
