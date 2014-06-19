@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.elyxor.xeros.model.ActiveDai;
 import com.elyxor.xeros.model.CollectionClassificationMap;
 import com.elyxor.xeros.model.DaiMeterCollection;
 
@@ -21,6 +22,7 @@ public class RSServiceImpl implements RSService {
 	private static Logger logger = LoggerFactory.getLogger(RSService.class);
 	@Autowired DaiCollectionParser daiCollectionParser;
 	@Autowired DaiCollectionMatcher daiCollectionMatcher;
+	@Autowired DaiStatus daiStatus;
 
 	@Override
 	public Response healthcheck() {
@@ -88,9 +90,15 @@ public class RSServiceImpl implements RSService {
 	}
 
 	@Override
-	public Response ping(DaiStatus daiStatus) {
-		// TODO Auto-generated method stub
-		return null;
+	public Response ping(String daiIdentifier) {
+		ResponseBuilder r = Response.ok();
+		try {
+			boolean success = daiStatus.receivePing(daiIdentifier);
+			r.entity(success);
+		} catch (Exception e) {
+			r = Response.serverError().entity(e.toString());
+		}
+		return r.build();
 	}
 
 }

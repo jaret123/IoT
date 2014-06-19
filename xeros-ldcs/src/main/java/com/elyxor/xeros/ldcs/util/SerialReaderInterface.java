@@ -4,4 +4,5 @@ import jssc.SerialPortEvent;
 
 public interface SerialReaderInterface {
 	public void serialEvent(SerialPortEvent event);
+//	public String sendStdRequest();
 }

@@ -39,7 +39,7 @@ public interface RSService {
     Response normalizeCollection(@PathParam("collectionId") int collectionId);
     
     @POST
-    @Path("/daiping/{daiId}")
-    Response ping(DaiStatus daiStatus);
+    @Path("/daiping/{daiIdentifier}")
+    Response ping(@PathParam("daiIdentifier") String daiIdentifier);
     
 }

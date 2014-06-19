@@ -109,7 +109,7 @@ public class CommandListener implements Runnable {
 			daiPort.writeLogFile(result);
 		}
 	}
-	
+		
 	public void clearPortBuffer(BufferedReader in, PrintStream out) {		
 		
 		int port = this.readIntFromBufferedReader(in, out);
@@ -141,9 +141,9 @@ public class CommandListener implements Runnable {
 		int port = this.readIntFromBufferedReader(in, out);
 		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (daiPort != null) {
-			String result = daiPort.sendRequest();
+			String result = daiPort.sendWaterRequest();
+//			String result = daiPort.getSerialPortEventListener().sendStdRequest();
 			out.println(result);
-			daiPort.writeLogFile(result);
 		}
 	}
 	private int readIntFromBufferedReader(BufferedReader in, PrintStream out) {

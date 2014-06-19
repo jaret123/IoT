@@ -8,11 +8,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jssc.SerialPort;
+import jssc.SerialPortEventListener;
 import jssc.SerialPortException;
 
+import com.elyxor.xeros.ldcs.HttpFileUploader;
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 import com.elyxor.xeros.ldcs.util.SerialReader;
+import com.elyxor.xeros.ldcs.util.SerialReaderInterface;
 
 public class DaiPort implements DaiPortInterface {
 
@@ -22,6 +25,7 @@ public class DaiPort implements DaiPortInterface {
 	private int daiNum;
 	private String daiPrefix;
 	private LogWriterInterface _logWriter;
+	private SerialPortEventListener spel;
 	
 	public DaiPort (SerialPort port, int num, LogWriterInterface logWriter, String prefix) { 
 		this.serialPort = port;
@@ -52,7 +56,11 @@ public class DaiPort implements DaiPortInterface {
 		try {
 			result = this.serialPort.openPort();
 			this.serialPort.setParams(4800, 7, 1, 2, false, false);
-			this.serialPort.addEventListener(new SerialReader(this));
+			
+			SerialPortEventListener sri = new SerialReader(this);
+			this.setSerialPortEventListener(sri);
+			this.serialPort.addEventListener(sri);
+			
 			Thread.sleep(5000); //init time
 	    	logger.info("Started listening on port " + this.serialPort.getPortName());
 		} catch (Exception ex) {
@@ -110,12 +118,15 @@ public class DaiPort implements DaiPortInterface {
 		String buffer = "";
 		
 		try {
+			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 12\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
 				buffer += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
 				Thread.sleep(500);
 			}
+			this.serialPort.addEventListener(new SerialReader(this));
+
 		} catch (Exception e) {
 			String msg = "Couldn't complete send std request. ";
 			logger.warn(msg, e);
@@ -127,20 +138,42 @@ public class DaiPort implements DaiPortInterface {
 	public String sendXerosRequest() {
 		String buffer = "";
 		try {
+			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 11\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
 				buffer += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
 				Thread.sleep(500);
 			}
+			this.serialPort.addEventListener(new SerialReader(this));
 		} catch (Exception e) {
-			String msg = ("Couldn't complete send xeros request");
+			String msg = ("Couldn't complete send xeros request. ");
 			logger.warn(msg, e);
 			buffer = msg + e.getMessage(); 
 		}
 		return buffer;
 	}
 	
+	public String sendWaterRequest() {
+		String buffer = "";
+		try {
+			this.serialPort.removeEventListener();
+			this.serialPort.writeString("0 13\n");
+			Thread.sleep(1000);
+			while (this.serialPort.getInputBufferBytesCount() > 0) {
+				buffer += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
+				Thread.sleep(500);
+			}
+			this.serialPort.addEventListener(new SerialReader(this));
+		} catch (Exception e) {
+			String msg = ("Couldn't complete send water request. ");
+			logger.warn(msg, e);
+			buffer = msg + e.getMessage(); 
+		}
+		buffer = this.getDaiNum() + ", Std,\nFile Write Time: " + getSystemTime() + "\n" + buffer;
+		return buffer;
+	}
+
 	public String sendRequest() {
 		String buffer = "";	    		
 		try {
@@ -170,9 +203,7 @@ public class DaiPort implements DaiPortInterface {
 				buffer = this.serialPort.readString();
 				retryCounter++;
 			}
-			SimpleDateFormat timingFormat = new SimpleDateFormat("kk:mm:ss");
-			buffer = timingFormat.format(System.currentTimeMillis());
-			String[] timeSplit = buffer.split(":");
+			String[] timeSplit = getSystemTime().split(":");
 			
 			this.serialPort.writeString(timeSplit[0]+"\n");
 			Thread.sleep(500);
@@ -234,4 +265,31 @@ public class DaiPort implements DaiPortInterface {
 			logger.info("Wrote log to file");
 		}
     }
+	
+	public boolean ping() {
+		int responseStatus = new HttpFileUploader().postPing(daiPrefix+this.getDaiNum());
+		if (responseStatus == 200) {
+			logger.info("successfully pinged server");
+			return true;
+		}
+		else {
+			logger.info("failed to ping server due to http response");
+			return false;
+		}
+	}
+	
+	private String getSystemTime() {
+		String result = "";
+		SimpleDateFormat timingFormat = new SimpleDateFormat("kk:mm:ss");
+		result = timingFormat.format(System.currentTimeMillis());
+		return result;
+	}
+
+	public SerialPortEventListener getSerialPortEventListener() {
+		return spel;
+	}
+	public void setSerialPortEventListener(SerialPortEventListener spel) {
+		this.spel = spel;
+	}
+
 }

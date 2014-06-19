@@ -14,7 +14,7 @@ public class SerialReader implements SerialPortEventListener, SerialReaderInterf
 	
 	final static Logger logger = LoggerFactory.getLogger(SerialReader.class);
 	private static final String EOT = new String(new char[] {'','',''}); 
-	
+
 	SerialPort serialPort;
 	DaiPortInterface daiPort;
 	
@@ -22,6 +22,24 @@ public class SerialReader implements SerialPortEventListener, SerialReaderInterf
     	daiPort = port;
 		serialPort = port.getSerialPort();
 	} 
+	
+//	public String sendStdRequest() {
+//		String buffer = "";
+//		
+//		try {
+//			serialPort.writeString("0 12\n");
+//			Thread.sleep(1000);
+//			while (serialPort.getInputBufferBytesCount() > 0) {
+//				buffer += serialPort.readString(serialPort.getInputBufferBytesCount());
+//				Thread.sleep(500);
+//			}
+//		} catch (Exception e) {
+//			String msg = "Couldn't complete send std request. ";
+//			logger.warn(msg, e);
+//			buffer = msg + e.getMessage(); 
+//		}
+//		return buffer;
+//	}
 	
 	public void serialEvent(SerialPortEvent event) {
 		String eventBuffer = null;
@@ -42,5 +60,17 @@ public class SerialReader implements SerialPortEventListener, SerialReaderInterf
 				}
 			}
 		}
+//		if (event.isRXCHAR()) {
+//			if (event.getEventValue() > 1) {
+//				try {
+//					logBuffer += serialPort.readString(event.getEventValue());
+//				} catch (SerialPortException e) {
+//					logger.warn("unable to read port event", e);
+//				}
+//				if (logBuffer != null && !logBuffer.isEmpty() && logBuffer.startsWith("\n") && logBuffer.endsWith("\r\n")) {
+//					daiPort.writeLogFile(logBuffer);
+//				}
+//			}
+//		}
 	}	
 }

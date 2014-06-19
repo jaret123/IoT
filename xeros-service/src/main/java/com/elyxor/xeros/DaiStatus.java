@@ -1,5 +1,24 @@
 package com.elyxor.xeros;
 
-public class DaiStatus {
+import java.sql.Timestamp;
+import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.elyxor.xeros.model.ActiveDai;
+import com.elyxor.xeros.model.repository.ActiveDaiRepository;
+
+public class DaiStatus {
+	@Autowired ActiveDaiRepository activeDaiRepository;
+
+	public boolean receivePing(String daiIdentifier) {
+		List<ActiveDai> daiList = activeDaiRepository.findByDaiIdentifier(daiIdentifier);
+		if (daiList != null && daiList.size() > 0) {
+			ActiveDai dai = daiList.iterator().next();
+			dai.setLastPing(new Timestamp(System.currentTimeMillis()));
+			return true;
+	 	}
+		return false;
+	}
+	
 }

@@ -31,14 +31,14 @@ public class FileWatcher {
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
 	
 	WatchService watcher = null;
-	Path watchDir = Paths.get(AppConfiguration.getLocalPath());
+	Path watchDir = Paths.get(".", AppConfiguration.getLocalPath());
 	FilenameFilter fileFilter = (FilenameFilter)new WildcardFileFilter(AppConfiguration.getFilePattern(), IOCase.INSENSITIVE);
 	private Boolean fileLockToken = false;
 	
 	
 	public void watch() throws Exception {
 		logger.info("Starting LDCS");
-		Path dir = Paths.get(AppConfiguration.getLocalPath());
+		Path dir = Paths.get("", AppConfiguration.getLocalPath());
 		
 		logger.info("watching files in " + dir.toString());
 		new Thread(new FileScanner()).start();

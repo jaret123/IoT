@@ -32,6 +32,19 @@ import org.slf4j.LoggerFactory;
 public class HttpFileUploader {
 	
 	private static Logger logger = LoggerFactory.getLogger(HttpFileUploader.class);
+	
+	public int postPing(String daiIdentifier) {
+		int httpStatus = 0;
+		try {
+			String serviceUrl = AppConfiguration.getServiceUrl();
+			String url = serviceUrl.substring(0, serviceUrl.length() - 6) + "rs/daiping/" + daiIdentifier;
+			HttpPost post = new HttpPost(url);
+			HttpClient client = getHttpClient(url);
+			HttpResponse response = client.execute(post);
+			httpStatus = response.getStatusLine().getStatusCode();
+		} catch (Exception ex) {logger.error("Failed to post ping", ex);}
+		return httpStatus;
+	}
 		
 	public int postFile(Path filePath, long createTime) {
 		int httpStatus = 0;

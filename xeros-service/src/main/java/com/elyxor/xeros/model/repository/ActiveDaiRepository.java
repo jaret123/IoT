@@ -14,4 +14,5 @@ import com.elyxor.xeros.model.Machine;
 
 @Repository
 public interface ActiveDaiRepository extends CrudRepository<ActiveDai, Integer> {
+	@Query List<ActiveDai> findByDaiIdentifier(String daiIdentifier);
 }

@@ -1,6 +1,9 @@
 package com.elyxor.xeros.ldcs.dai;
 
+import com.elyxor.xeros.ldcs.util.SerialReaderInterface;
+
 import jssc.SerialPort;
+import jssc.SerialPortEventListener;
 
 public interface DaiPortInterface {
 
@@ -10,6 +13,9 @@ public interface DaiPortInterface {
 	
 	public int getDaiNum();
 	public void setDaiNum(int num);
+	
+	public SerialPortEventListener getSerialPortEventListener();
+	public void setSerialPortEventListener(SerialPortEventListener spel);
 	
 	// initialization and cleanup
 	public boolean openPort();
@@ -23,7 +29,10 @@ public interface DaiPortInterface {
 	public String setRemoteDaiId(int id);
 	public String sendStdRequest();
 	public String sendXerosRequest();
+	public String sendWaterRequest();
 	public String sendRequest();
 	
+	//utilities
 	public void writeLogFile(String s);
+	public boolean ping();
 }

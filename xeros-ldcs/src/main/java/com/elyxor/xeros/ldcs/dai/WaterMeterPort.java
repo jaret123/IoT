@@ -3,12 +3,15 @@ package com.elyxor.xeros.ldcs.dai;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
+import com.elyxor.xeros.ldcs.util.SerialReaderInterface;
 
 import jssc.SerialPort;
+import jssc.SerialPortEventListener;
 import jssc.SerialPortException;
 
 public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface {
@@ -245,5 +248,16 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	}
 	public String sendXerosRequest() {
 		return null;
+	}
+	public String sendWaterRequest() {
+		return null;
+	}
+	public SerialPortEventListener getSerialPortEventListener() {
+		return null;
+	}
+	public void setSerialPortEventListener(SerialPortEventListener spel) {
+	}
+	public boolean ping() {
+		return false;
 	}
 }

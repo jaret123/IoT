@@ -146,8 +146,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
     
 	//quartz setup for scheduled tasks for water only and clock set
 	SchedulerFactory schedFact = new org.quartz.impl.StdSchedulerFactory();
-	Scheduler sched;
-	
+	Scheduler sched;	
 	Trigger waterOnlyTrigger = newTrigger()
 			.withIdentity("waterOnlyTrigger")
 			.withSchedule(dailyAtHourAndMinute(00,00))
@@ -156,22 +155,35 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			.withIdentity("clockSetTrigger")
 			.withSchedule(cronSchedule("0 0 1 ? * SUN"))
 			.build();
+	CronTrigger pingTrigger = newTrigger()
+			.withIdentity("pingTrigger")
+			.withSchedule(cronSchedule("0 0 */1 * * ?"))
+			.build();
 	
 	public void startScheduler() {
 		try {
+			sched = schedFact.getScheduler();
+
 			if (waterOnly==2) {
 				JobDetail waterOnlyManualJob = newJob(WaterOnlyManualJob.class)
 						.withIdentity("waterOnlyManualJob")
 						.build();
 				sched.scheduleJob(waterOnlyManualJob, waterOnlyTrigger);
+				sched.start();
 				return;
 			}
-			Scheduler sched = schedFact.getScheduler();
+			
+			JobDetail pingJob = newJob(PingJob.class)
+					.withIdentity("pingJob")
+					.build();
+			sched.scheduleJob(pingJob, pingTrigger);
+			logger.info("scheduled ping job, next fire time: "+pingTrigger.getNextFireTime().toString());
+			
 			JobDetail clockSetJob = newJob(ClockSetJob.class)
 					.withIdentity("clockSetJob")
 					.build();
-			sched.scheduleJob(clockSetJob, clockSetTrigger);
-			logger.info("scheduled clock set job, next fire time: "+clockSetTrigger.getNextFireTime().toString());
+//			sched.scheduleJob(clockSetJob, clockSetTrigger); //TODO: re-enable when fixed
+//			logger.info("scheduled clock set job, next fire time: "+clockSetTrigger.getNextFireTime().toString());
 			if (waterOnly==1) {
 				JobDetail waterOnlyJob = newJob(WaterOnlyJob.class)
 						.withIdentity("waterOnlyJob")
@@ -189,8 +201,8 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			logger.info("Executing water only data collection");
 			String buffer = "";
 			for (DaiPortInterface daiPort : portList.values()) {
-				buffer = daiPort.sendStdRequest();
-				if (!buffer.equals("")) {
+				buffer = daiPort.sendWaterRequest();
+				if (buffer!=null) {
 					daiPort.writeLogFile(buffer);
 				}
 			}
@@ -217,5 +229,15 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 				daiPort.setClock();
 			}
 		}
+	}
+	public static class PingJob implements Job {
+		public PingJob() {}
+		public void execute(JobExecutionContext context) throws JobExecutionException {
+			logger.info("Executing ping");
+			for (DaiPortInterface daiPort : portList.values()) {
+				daiPort.ping();
+			}
+		}
 	} 
+
 }
