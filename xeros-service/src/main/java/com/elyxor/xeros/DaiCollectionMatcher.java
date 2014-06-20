@@ -5,6 +5,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.joda.time.DateTime;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,7 @@ public class DaiCollectionMatcher {
 	@Autowired CollectionClassificationMapDetailRepository collectionClassificationMapDetailRepo;
 	@Autowired MachineRepository machineRepository;
 	
+
 	
 	public CollectionClassificationMap match(int collectionId) throws Exception {
 		return this.match(daiMeterCollectionRepo.findOne(collectionId));
@@ -119,19 +122,34 @@ public class DaiCollectionMatcher {
 	
 	
 	private Float calculateRunTime(DaiMeterCollection c) {
+		float startTime = c.getEarliestValue();
+		DateTime endDt = new DateTime(c.getDaiCollectionTime());
+		Duration duration = new Duration(endDt.withTimeAtStartOfDay(), endDt);
+		
+		float endTime = duration.toStandardSeconds().getSeconds();
+
+		float runTime = endTime - startTime;		
+		runTime = runTime>0?runTime:runTime + 86400;
+
 		Machine m = c.getMachine();
-		Float runTime = new Float(0);
-		if ( m.getDoorLockMeterType() !=null ) {
-			for ( DaiMeterCollectionDetail cd : c.getCollectionDetails() ) {
-				if ( cd.getMeterType().equals(m.getDoorLockMeterType()) ) {
-					int startOffset = m.getStartTimeOffset()!=null?m.getStartTimeOffset():0;
-					int endOffset = m.getStopTimeOffset()!=null?m.getStopTimeOffset():0;
-					runTime += new Float(cd.getDuration() + startOffset + endOffset);
-				}
-			}
-			return runTime;
-		}
-		return new Float(0);
+		int startOffset = m.getStartTimeOffset()!=null?m.getStartTimeOffset():0;
+		int endOffset = m.getStopTimeOffset()!=null?m.getStopTimeOffset():0;
+		
+		return runTime + startOffset + endOffset;
+
+		
+//		Machine m = c.getMachine();
+//		Float runTime = new Float(0);
+//		if ( m.getDoorLockMeterType() !=null ) {
+//			for ( DaiMeterCollectionDetail cd : c.getCollectionDetails() ) {
+//				if ( cd.getMeterType().equals(m.getDoorLockMeterType()) ) {
+//					int startOffset = m.getStartTimeOffset()!=null?m.getStartTimeOffset():0;
+//					int endOffset = m.getStopTimeOffset()!=null?m.getStopTimeOffset():0;
+//					runTime += new Float(cd.getDuration() + startOffset + endOffset);
+//				}
+//			}
+//			return runTime;
+//		}
 	}
 	
 	
@@ -192,7 +210,7 @@ public class DaiCollectionMatcher {
 		try {
 			if ( existingCollections!=null && existingCollections.iterator().hasNext() ) {
 				Machine collectionMachine = collectionData.getMachine();
-				List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData.getCollectionDetails(), collectionMachine);
+				List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData, collectionMachine);
 				// for each collection...
 				for ( CollectionClassificationMap collMap : existingCollections ) {
 					//if size of collection and map do not match, stop
@@ -229,7 +247,8 @@ public class DaiCollectionMatcher {
 		return matchedMap;
 	}
 	
-	private List<CollectionClassificationMapDetail> normalizeCollectionDetails(Collection<DaiMeterCollectionDetail> collDetails, Machine machine) {
+	private List<CollectionClassificationMapDetail> normalizeCollectionDetails(DaiMeterCollection collection, Machine machine) {
+		Collection<DaiMeterCollectionDetail> collDetails = collection.getCollectionDetails();
 		List<CollectionClassificationMapDetail> normalizedDetails = new ArrayList<CollectionClassificationMapDetail>();		
 		float earliestValue = Float.MAX_VALUE;
 		
@@ -267,6 +286,8 @@ public class DaiCollectionMatcher {
 			normalizedDetails.add(ccd);
 			
 		}
+		collection.setEarliestValue(earliestValue);
+
 		return normalizedDetails;		
 	}
 
@@ -279,7 +300,7 @@ public class DaiCollectionMatcher {
 		CollectionClassificationMap ccm = new CollectionClassificationMap();
 		ccm.setMachine(dmc.getMachine());
 		ccm.setClassification(classificationRepository.findOne(classificationId));
-		ccm.setCollectionDetails(normalizeCollectionDetails(dmc.getCollectionDetails(), ccm.getMachine()));
+		ccm.setCollectionDetails(normalizeCollectionDetails(dmc, ccm.getMachine()));
 		for ( CollectionClassificationMapDetail ccmd : ccm.getCollectionDetails() ) {
 			ccmd.setCollectionClassificationMap(ccm);
 		}
@@ -298,7 +319,7 @@ public class DaiCollectionMatcher {
 
 	public List<CollectionClassificationMapDetail> normalize(int collectionId) {
 		DaiMeterCollection dmc = this.daiMeterCollectionRepo.findOne(collectionId);
-		return this.normalizeCollectionDetails(dmc.getCollectionDetails(), dmc.getMachine());
+		return this.normalizeCollectionDetails(dmc, dmc.getMachine());
 	}
 
 }

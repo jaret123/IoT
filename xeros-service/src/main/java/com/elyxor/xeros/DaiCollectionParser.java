@@ -173,7 +173,7 @@ public class DaiCollectionParser {
 				} catch(NumberFormatException nfe) {
 					logger.info("not an event: {}", lineData);
 				}
-			} else {
+			} else if (!line.equals("###")){
 				List<Integer> eCounts = new ArrayList<Integer>();				 
 				for( String eCount : lineData) {
 					try {
@@ -204,6 +204,7 @@ public class DaiCollectionParser {
 						start = start>0?start/1000:start;
 					} catch (Exception ex) {
 						start = Float.parseFloat(startStr);
+						startTime = new DateTime().withTimeAtStartOfDay().plus((long)start*1000); 
 					}
 				} catch (Exception ex) {
 					logger.debug("Failed to parse {}", startStr);
@@ -237,7 +238,7 @@ public class DaiCollectionParser {
 			DaiMeterCollectionDetail dmcd = new DaiMeterCollectionDetail();
 			dmcd.setMeterType(wmEntry[0].trim().replaceAll(" ", "").replaceAll(":", ""));
 			dmcd.setMeterValue(Float.parseFloat(wmEntry.length>3?wmEntry[3]:wmEntry[1]));
-			dmcd.setDuration(Float.parseFloat(wmEntry.length>3?wmEntry[1]:wmEntry[2]));
+			dmcd.setDuration(Float.parseFloat(wmEntry[2]));
 			dmcd.setTimestamp(dmc.getDaiCollectionTime());
 			collectionData.add(dmcd);
 		}

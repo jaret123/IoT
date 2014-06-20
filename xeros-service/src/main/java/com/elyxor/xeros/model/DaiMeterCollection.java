@@ -36,6 +36,8 @@ public class DaiMeterCollection {
     private CollectionClassificationMap collectionClassificationMap;
     private Collection<DaiMeterCollectionDetail> collectionDetails;
     private DaiMeterActual daiMeterActual;
+    
+    private float earliestValue;
 
     @Id
     @Column(columnDefinition = "INT unsigned")
@@ -149,6 +151,12 @@ public class DaiMeterCollection {
 
 	public void setCollectionDetails(Collection<DaiMeterCollectionDetail> collectionDetails) {
 		this.collectionDetails = collectionDetails;
+	}
+	public float getEarliestValue() {
+		return earliestValue;
+	}
+	public void setEarliestValue(float value) {
+		this.earliestValue = value;
 	}
 
 	@Override
