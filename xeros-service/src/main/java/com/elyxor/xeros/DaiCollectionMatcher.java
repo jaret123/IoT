@@ -54,11 +54,12 @@ public class DaiCollectionMatcher {
 			List<Machine> machines = machineRepository.findByDaiDaiIdentifierAndMachineIdentifier(collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier());			
 			if ( machines != null && machines.size()>0 ) {
 				Machine m = machines.iterator().next(); 
-				if (collectionData.getLocationIdentifier().equals( String.valueOf(m.getLocation().getId()))) {
+//				if (collectionData.getLocationIdentifier().equals( String.valueOf(m.getLocation().getId()))) {
 					collectionData.setMachine(m);
-				} else {
-					logger.warn("Mismatched locationID:{} for dai:{} machine:{}", collectionData.getLocationIdentifier(), collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier());
-				}
+					collectionData.setLocationIdentifier(m.getLocation().getId()+"");
+//				} else {
+//					logger.warn("Mismatched locationID:{} for dai:{} machine:{}", collectionData.getLocationIdentifier(), collectionData.getDaiIdentifier(), collectionData.getMachineIdentifier());
+//				}
 			}
 			daiMeterCollectionRepo.save(collectionData);
 		}
@@ -123,33 +124,16 @@ public class DaiCollectionMatcher {
 	
 	private Float calculateRunTime(DaiMeterCollection c) {
 		float startTime = c.getEarliestValue();
-		DateTime endDt = new DateTime(c.getDaiCollectionTime());
-		Duration duration = new Duration(endDt.withTimeAtStartOfDay(), endDt);
+		float endTime = calculateEndTime(c);
 		
-		float endTime = duration.toStandardSeconds().getSeconds();
-
 		float runTime = endTime - startTime;		
-		runTime = runTime>0?runTime:runTime + 86400;
+		runTime = runTime >= 0?runTime:runTime + 86400;
 
 		Machine m = c.getMachine();
 		int startOffset = m.getStartTimeOffset()!=null?m.getStartTimeOffset():0;
 		int endOffset = m.getStopTimeOffset()!=null?m.getStopTimeOffset():0;
 		
 		return runTime + startOffset + endOffset;
-
-		
-//		Machine m = c.getMachine();
-//		Float runTime = new Float(0);
-//		if ( m.getDoorLockMeterType() !=null ) {
-//			for ( DaiMeterCollectionDetail cd : c.getCollectionDetails() ) {
-//				if ( cd.getMeterType().equals(m.getDoorLockMeterType()) ) {
-//					int startOffset = m.getStartTimeOffset()!=null?m.getStartTimeOffset():0;
-//					int endOffset = m.getStopTimeOffset()!=null?m.getStopTimeOffset():0;
-//					runTime += new Float(cd.getDuration() + startOffset + endOffset);
-//				}
-//			}
-//			return runTime;
-//		}
 	}
 	
 	
@@ -286,7 +270,11 @@ public class DaiCollectionMatcher {
 			normalizedDetails.add(ccd);
 			
 		}
-		collection.setEarliestValue(earliestValue);
+		if (earliestValue > 86400) {
+			collection.setEarliestValue(calculateEndTime(collection));
+		}
+		else 
+			collection.setEarliestValue(earliestValue);
 
 		return normalizedDetails;		
 	}
@@ -320,6 +308,12 @@ public class DaiCollectionMatcher {
 	public List<CollectionClassificationMapDetail> normalize(int collectionId) {
 		DaiMeterCollection dmc = this.daiMeterCollectionRepo.findOne(collectionId);
 		return this.normalizeCollectionDetails(dmc, dmc.getMachine());
+	}
+	
+	private float calculateEndTime(DaiMeterCollection c) {
+		DateTime endDt = new DateTime(c.getDaiCollectionTime());
+		Duration duration = new Duration(endDt.withTimeAtStartOfDay(), endDt);
+		return duration.toStandardSeconds().getSeconds();
 	}
 
 }

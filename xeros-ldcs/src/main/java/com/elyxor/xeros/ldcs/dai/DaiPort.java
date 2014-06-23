@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jssc.SerialPort;
-import jssc.SerialPortEventListener;
 import jssc.SerialPortException;
 
 import com.elyxor.xeros.ldcs.HttpFileUploader;
@@ -24,7 +23,6 @@ public class DaiPort implements DaiPortInterface {
 	private int daiNum;
 	private String daiPrefix;
 	private LogWriterInterface _logWriter;
-	private SerialPortEventListener spel;
 	
 	public DaiPort (SerialPort port, int num, LogWriterInterface logWriter, String prefix) { 
 		this.serialPort = port;
@@ -32,34 +30,13 @@ public class DaiPort implements DaiPortInterface {
 		this._logWriter = logWriter;
 		this.daiPrefix = prefix;
 	}
-	
-	public SerialPort getSerialPort() {
-		return serialPort;
-	}
-
-	public void setSerialPort(SerialPort port) {
-		this.serialPort = port;
-	}
-
-	public int getDaiNum() {
-		return daiNum;
-	}
-
-	public void setDaiNum(int id) {
-		this.daiNum = id;
-	}
-	
-	
+		
 	public boolean openPort() {
 		boolean result = false;
 		try {
 			result = this.serialPort.openPort();
-			this.serialPort.setParams(4800, 7, 1, 2, false, false);
-			
-//			SerialPortEventListener sri = new SerialReader(this);
-//			this.setSerialPortEventListener(sri);
+			this.serialPort.setParams(4800, 7, 1, 2, false, false); //specific serial port parameters for Xeros DAQ
 			this.serialPort.addEventListener(new SerialReader(this));
-			
 			Thread.sleep(5000); //init time
 	    	logger.info("Started listening on port " + this.serialPort.getPortName());
 		} catch (Exception ex) {
@@ -83,49 +60,49 @@ public class DaiPort implements DaiPortInterface {
 	}
 	
 	public String getRemoteDaiId() {
-		String daiId = "";
+		String result = "";
 		try {
 			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 19\n");
 			Thread.sleep(1000);
-			daiId = this.serialPort.readString();
-			Thread.sleep(4000);
+			result = this.serialPort.readString();
+			Thread.sleep(4000); //let the DAQ timeout to avoid setting a new id accidentally
 			this.serialPort.addEventListener(new SerialReader(this));
 		}
 		catch (Exception e) {
 			logger.warn("Couldn't read dai id", e);
 		}
-		return daiId;
+		return result;
 	}
 	
 	public String setRemoteDaiId(int id) {
-		String daiId = "";
+		String result = "";
 		try {
 			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 19\n");
 			Thread.sleep(1000);
-			this.serialPort.readString(); //clear buffer
+			this.serialPort.readString(); //clear buffer, DAQ writes old daiId
 			this.serialPort.writeString(id+"\n");
 			Thread.sleep(1000);
-			daiId = this.serialPort.readString();
+			result = this.serialPort.readString();
 			this.serialPort.addEventListener(new SerialReader(this));
 		}
 		catch (Exception e) {
 			logger.warn("Couldn't set port id", e);
 		}
 		this.setDaiNum(id);
-		return daiId;
+		return result;
 	}
 	
 	public String sendStdRequest() {
-		String buffer = "";
+		String result = "";
 		
 		try {
 			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 12\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
-				buffer += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
+				result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
 				Thread.sleep(500);
 			}
 			this.serialPort.addEventListener(new SerialReader(this));
@@ -133,104 +110,102 @@ public class DaiPort implements DaiPortInterface {
 		} catch (Exception e) {
 			String msg = "Couldn't complete send std request. ";
 			logger.warn(msg, e);
-			buffer = msg + e.getMessage(); 
+			result = msg + e.getMessage(); 
 		}
-		return buffer;
+		return result;
 	}
 	
 	public String sendXerosRequest() {
-		String buffer = "";
+		String result = "";
 		try {
 			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 11\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
-				buffer += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
+				result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
 				Thread.sleep(500);
 			}
 			this.serialPort.addEventListener(new SerialReader(this));
 		} catch (Exception e) {
 			String msg = ("Couldn't complete send xeros request. ");
 			logger.warn(msg, e);
-			buffer = msg + e.getMessage(); 
+			result = msg + e.getMessage(); 
 		}
-		return buffer;
+		return result;
 	}
 	
 	public String sendWaterRequest() {
-		String buffer = "";
+		String result = "";
 		try {
 			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 13\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
-				buffer += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
+				result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
 				Thread.sleep(500);
 			}
 			this.serialPort.addEventListener(new SerialReader(this));
 		} catch (Exception e) {
 			String msg = ("Couldn't complete send water request. ");
 			logger.warn(msg, e);
-			buffer = msg + e.getMessage(); 
+			result = msg + e.getMessage(); 
 		}
-		buffer = this.getDaiNum() + ", Std,\nFile Write Time: " + getSystemTime() + "\n" + buffer;
-		return buffer;
+		result = this.getDaiNum() + ", Std,\nFile Write Time: " + getSystemTime() + "\n" + result;
+		return result;
 	}
 
 	public String sendRequest() {
-		String buffer = "";	    		
+		String result = "";	    		
 		try {
 			this.serialPort.writeString("0 999\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
-				buffer += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
+				result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
 				Thread.sleep(500);
 			}
 		} catch (Exception e) {
 			logger.warn("Couldn't complete send request", e);
 		}
-		if (!buffer.equals("")) logger.info("Captured log file");
-		return buffer;
+		if (!result.equals("")) logger.info("Captured log file");
+		return result;
 	}	
-	
+		
 	public String setClock() {
-		String buffer = "";
+		String result = "";
 		try {
 			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 116\n");
-			Thread.sleep(1000);
-			
-			buffer = this.serialPort.readString();
-			if (buffer.equals("::")) {
+			Thread.sleep(500);
+			result = this.serialPort.readString();
+			if (result.equals("::")) {
 				this.serialPort.writeString(getSystemTime());
 			}
-			Thread.sleep(5000);
-			buffer = this.serialPort.readString();
-			
+			Thread.sleep(500);
+			result = this.serialPort.readString();
 			this.serialPort.addEventListener(new SerialReader(this));
 		} catch (Exception e) {
-			buffer = "Couldn't complete set clock. ";
-			logger.warn(buffer, e);
-			buffer = buffer + e.getMessage();
+			result = "Couldn't complete set clock. ";
+			logger.warn(result, e);
+			result = result + e.getMessage();
 		}
-		return buffer;
+		return result;
 	}
 	
 	public String readClock() {
-		String buffer = "";
+		String result = "";
 		try {
 			this.serialPort.removeEventListener();
 			this.serialPort.writeString("0 15\n");
 			Thread.sleep(5000);
-			buffer = this.serialPort.readString();
+			result = this.serialPort.readString();
 			
 			this.serialPort.addEventListener(new SerialReader(this));
 		} catch (Exception e) {
-			buffer = "Couldn't complete read clock. ";
-			logger.warn(buffer, e);
-			buffer = buffer + e.getMessage();
+			result = "Couldn't complete read clock. ";
+			logger.warn(result, e);
+			result = result + e.getMessage();
 		}
-		return buffer;
+		return result;
 	}
 	
 	public boolean closePort() {
@@ -259,7 +234,7 @@ public class DaiPort implements DaiPortInterface {
 			} catch (IOException e) {
 				logger.warn("Failed to write '" + buffer + "' to log file", e);
 			}
-			logger.info("Wrote log to file");
+			logger.info("successfully sent log to filewriter");
 		}
     }
 	
@@ -275,17 +250,22 @@ public class DaiPort implements DaiPortInterface {
 		}
 	}
 	
+	public SerialPort getSerialPort() {
+		return serialPort;
+	}
+	public void setSerialPort(SerialPort port) {
+		this.serialPort = port;
+	}
+	public int getDaiNum() {
+		return daiNum;
+	}
+	public void setDaiNum(int id) {
+		this.daiNum = id;
+	}
 	private String getSystemTime() {
 		String result = "";
 		SimpleDateFormat timingFormat = new SimpleDateFormat("kk:mm:ss");
 		result = timingFormat.format(System.currentTimeMillis());
 		return result;
-	}
-
-	public SerialPortEventListener getSerialPortEventListener() {
-		return spel;
-	}
-	public void setSerialPortEventListener(SerialPortEventListener spel) {
-		this.spel = spel;
 	}
 }

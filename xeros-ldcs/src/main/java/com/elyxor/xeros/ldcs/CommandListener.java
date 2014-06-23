@@ -69,27 +69,31 @@ public class CommandListener implements Runnable {
 	}
 
 	public void getIdForPort(BufferedReader in, PrintStream out) {
-
+		out.println("enter port number: ");
 		int port = this.readIntFromBufferedReader(in, out);
 		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (null != daiPort) {
-			String buffer = daiPort.getRemoteDaiId();		
-			out.println(buffer);
+			String result = daiPort.getRemoteDaiId();		
+			out.println("port id is: "+result);
 		}
+		else out.println("port not found.");
 	}
 
 	public void setIdForPort(BufferedReader in, PrintStream out) {
-		
+		out.println("enter port number: ");
 		int port = this.readIntFromBufferedReader(in, out);
+		out.println("enter new port id: ");
+		int newPortId = this.readIntFromBufferedReader(in, out);
 		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (null != daiPort) {
-			String result = daiPort.setRemoteDaiId(port);
-			out.println(result);
+			String result = daiPort.setRemoteDaiId(newPortId);
+			out.println("new port id is: "+result);
 		}
+		else out.println("port not found.");
 	}
 	
 	public void sendStdRequest(BufferedReader in, PrintStream out) {
-		
+		out.println("enter port number: ");
 		int port = this.readIntFromBufferedReader(in, out);
 		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (null != daiPort) {
@@ -97,10 +101,11 @@ public class CommandListener implements Runnable {
 			out.println(result);
 			daiPort.writeLogFile(result);
 		}
+		else out.println("port not found.");
 	}
 
 	public void sendX(BufferedReader in, PrintStream out) {
-		
+		out.println("enter port number: ");
 		int port = this.readIntFromBufferedReader(in, out);
 		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (null != daiPort) {
@@ -108,47 +113,53 @@ public class CommandListener implements Runnable {
 			out.println(result);
 			daiPort.writeLogFile(result);
 		}
+		else out.println("port not found.");
 	}
 		
 	public void clearPortBuffer(BufferedReader in, PrintStream out) {		
-		
+		out.println("enter port number: ");
 		int port = this.readIntFromBufferedReader(in, out);
 		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (null != daiPort) {
 			String result = daiPort.clearPortBuffer();
 			out.println(result);
 		}
+		else out.println("port not found.");
 	}
 
 	public void setClock(BufferedReader in, PrintStream out) {
+		out.println("enter port number: ");
 		int port = this.readIntFromBufferedReader(in, out);
 		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (null != daiPort) {
 			String result = daiPort.setClock();
 			out.println(result);
 		}
+		else out.println("port not found.");
 	}
 	
 	public void readClock(BufferedReader in, PrintStream out) {
+		out.println("enter port number: ");
 		int port = this.readIntFromBufferedReader(in, out);
 		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (null != daiPort) {
 			String result = daiPort.readClock();
 			out.println(result);
 		}
+		else out.println("port not found.");
 	}
 	public void readWaterMeter(BufferedReader in, PrintStream out) {
+		out.println("enter port number: ");
 		int port = this.readIntFromBufferedReader(in, out);
 		DaiPortInterface daiPort = getPortManager().findDaiPort(port);
 		if (daiPort != null) {
 			String result = daiPort.sendWaterRequest();
-//			String result = daiPort.getSerialPortEventListener().sendStdRequest();
 			out.println(result);
 		}
+		else out.println("port not found.");
 	}
 	private int readIntFromBufferedReader(BufferedReader in, PrintStream out) {
 		int intVal = -1;
-		out.println("enter port number: ");
 		String inputStr = "";
 		try {
 			inputStr = in.readLine();

@@ -33,7 +33,9 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	final static Logger logger = LoggerFactory.getLogger(PortManager.class);
 	private String daiPrefix = AppConfiguration.getDaiName();
 	Integer waterOnly = AppConfiguration.getWaterOnly();
-	private Path path = Paths.get(AppConfiguration.getLocalPath());
+	
+	private String currentDir = Paths.get("").toAbsolutePath().toString();
+	private Path path = Paths.get(currentDir, "/input");
 	
 	private static Map<String,DaiPortInterface> portList = new LinkedHashMap<String,DaiPortInterface>();
 
@@ -69,7 +71,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 				daiId = daiPort.getRemoteDaiId();
 				retryCounter++;
 			}
-			if (daiId!=null&&daiId.equals("0")) {
+			if (daiId!=null && daiId.equals("0")) {
 				retryCounter = 0;
 				newId = daiPort.setRemoteDaiId(nextDaiNum);
 				if (newId == null && retryCounter < 3) {
@@ -79,10 +81,13 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		    	logger.info("Assigned DAI ID "+daiPrefix+nextDaiNum+" to port "+portName);
 				nextDaiNum++;
 			}
-			else if (daiId!=null && true){
-				if (!daiId.equals(" ")) daiPort.setDaiNum(Integer.parseInt(daiId));
-				logger.info("Found existing DAI with ID "+daiPrefix+daiId+" on port"+portName);
-				nextDaiNum = Integer.parseInt(daiId) + 1;
+			else if (daiId!=null) {
+				int daiIdInt = Integer.parseInt(daiId);
+				if (daiIdInt > 0) {
+					daiPort.setDaiNum(daiIdInt);
+					logger.info("Found existing DAI with ID "+daiPrefix+daiId+" on port"+portName);
+					nextDaiNum = daiIdInt + 1;
+				}
 			}
 			portList.put(portName, daiPort);
 			return true;
@@ -97,7 +102,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 				portList.remove(daiPort.getSerialPort().getPortName());
 				nextDaiNum = daiPort.getDaiNum(); 
 			}
-			// port close failed ?
+			// port close failed
 			return false;
 		}
 		// port already removed
@@ -105,13 +110,13 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	}
 	
 	public List<String> getPortList()  {
-		List<String> portListOut = new ArrayList<String>();
+		List<String> result = new ArrayList<String>();
 		if (!portList.isEmpty()) {
 			for (Entry<String,DaiPortInterface> entry : portList.entrySet()) {
-				portListOut.add(entry.getKey() + ", " + daiPrefix + entry.getValue().getDaiNum());
+				result.add(entry.getKey() + ", " + daiPrefix + entry.getValue().getDaiNum());
 			}
 		}
-		return portListOut;
+		return result;
 	}
 	
 	public DaiPortInterface findDaiPort(String portName) {
@@ -162,8 +167,12 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	public void startScheduler() {
 		try {
 			sched = schedFact.getScheduler();
-
-			if (waterOnly==2) {
+			JobDetail pingJob = newJob(PingJob.class) //always set up ping
+					.withIdentity("pingJob")
+					.build();
+			sched.scheduleJob(pingJob, pingTrigger);
+			logger.info("scheduled ping job, next fire time: "+pingTrigger.getNextFireTime().toString());
+			if (waterOnly==2) { //DAQ-less water only, no clock set necessary
 				JobDetail waterOnlyManualJob = newJob(WaterOnlyManualJob.class)
 						.withIdentity("waterOnlyManualJob")
 						.build();
@@ -171,19 +180,14 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 				sched.start();
 				return;
 			}
-			
-			JobDetail pingJob = newJob(PingJob.class)
-					.withIdentity("pingJob")
+			//setup clock set if using a DAQ
+			JobDetail clockSetJob = newJob(ClockSetJob.class)
+					.withIdentity("clockSetJob")
 					.build();
-			sched.scheduleJob(pingJob, pingTrigger);
-			logger.info("scheduled ping job, next fire time: "+pingTrigger.getNextFireTime().toString());
+			sched.scheduleJob(clockSetJob, clockSetTrigger);
+			logger.info("scheduled clock set job, next fire time: "+clockSetTrigger.getNextFireTime().toString());
 			
-//			JobDetail clockSetJob = newJob(ClockSetJob.class)
-//					.withIdentity("clockSetJob")
-//					.build();
-//			sched.scheduleJob(clockSetJob, clockSetTrigger); //TODO: re-enable when fixed
-//			logger.info("scheduled clock set job, next fire time: "+clockSetTrigger.getNextFireTime().toString());
-			if (waterOnly==1) {
+			if (waterOnly==1) { //water only request if using DAQ and water only
 				JobDetail waterOnlyJob = newJob(WaterOnlyJob.class)
 						.withIdentity("waterOnlyJob")
 						.build();
@@ -238,5 +242,4 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			}
 		}
 	} 
-
 }

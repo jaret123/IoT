@@ -59,7 +59,6 @@ public class HttpFileUploader {
 			    .addTextBody("current_system_time", Long.toString(System.currentTimeMillis()))
 			    .addTextBody("file_create_time", Long.toString(createTime))
 			    .addTextBody("olson_timezone_id", TimeZone.getDefault().getID())
-			    .addTextBody("location_id", AppConfiguration.getLocationId())
 			    .build();
 			logger.info(String.format("Uploading %1s to %2s", file, url));
 			post.setEntity(httpEntity);

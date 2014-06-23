@@ -42,28 +42,8 @@ public class AppConfiguration {
 		return config;
 	}
 	
-	public static String getLocalPath(){
-		return getConfig().getString("localpath");
-	}
-	
-	public static Long getFileLockWait(){
-		return getConfig().getLong("file_lock_wait_ms", 10000);
-	}
-	
-	public static String getArchivePath() {
-		return getConfig().getString("archivepath");
-	}
-	
 	public static String getServiceUrl() {
 		return getConfig().getString("serviceurl");
-	}
-	
-	public static String getLocationId() {
-		return getConfig().getString("location_id", "none");
-	}
-	
-	public static String getFilePattern() {
-		return getConfig().getString("filepattern");
 	}
 	
 	public static String getDaiName() {

@@ -1,7 +1,6 @@
 package com.elyxor.xeros.ldcs.dai;
 
 import jssc.SerialPort;
-import jssc.SerialPortEventListener;
 
 public interface DaiPortInterface {
 
@@ -11,10 +10,7 @@ public interface DaiPortInterface {
 	
 	public int getDaiNum();
 	public void setDaiNum(int num);
-	
-	public SerialPortEventListener getSerialPortEventListener();
-	public void setSerialPortEventListener(SerialPortEventListener spel);
-	
+		
 	// initialization and cleanup
 	public boolean openPort();
 	public boolean closePort();

@@ -30,24 +30,28 @@ public class FileWatcher {
 	private static Logger logger = LoggerFactory.getLogger(FileWatcher.class);
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
 	
+	String currentDir = Paths.get("").toAbsolutePath().toString();
+	
 	WatchService watcher = null;
-	Path watchDir = Paths.get(".", AppConfiguration.getLocalPath());
-	FilenameFilter fileFilter = (FilenameFilter)new WildcardFileFilter(AppConfiguration.getFilePattern(), IOCase.INSENSITIVE);
+	Path watchDir = Paths.get(currentDir, "/input");
+	Path archiveDir = Paths.get(currentDir, "/archive");
+	FilenameFilter fileFilter = (FilenameFilter)new WildcardFileFilter("*Log.txt", IOCase.INSENSITIVE);
 	private Boolean fileLockToken = false;
 	
 	
 	public void watch() throws Exception {
 		logger.info("Starting LDCS");
-		Path dir = Paths.get("", AppConfiguration.getLocalPath());
-		
-		logger.info("watching files in " + dir.toString());
+		if (!watchDir.toFile().isDirectory()) {
+			new File(watchDir.toString()).mkdirs();
+		}
+		logger.info("watching files in " + watchDir.toString());
 		new Thread(new FileScanner()).start();
 		
 		watcher = FileSystems.getDefault().newWatchService();
 		for (;;) {
 
 		    //wait for key to be signaled
-			WatchKey key = dir.register(watcher, ENTRY_CREATE);
+			WatchKey key = watchDir.register(watcher, ENTRY_CREATE);
 		    try {		    	
 		        key = watcher.take();
 		    } catch (InterruptedException x) {
@@ -64,8 +68,8 @@ public class FileWatcher {
 				WatchEvent<Path> ev = (WatchEvent<Path>)event;
 		        Path filename = ev.context();
 		        
-		        if ( fileFilter.accept(dir.toFile(), filename.toFile().getName() )) {
-		            Path child = dir.resolve(filename);
+		        if ( fileFilter.accept(watchDir.toFile(), filename.toFile().getName() )) {
+		            Path child = watchDir.resolve(filename);
 		            FileAcquirer fa = new FileAcquirer(child);
 		            fa.run();		            
 		        }
@@ -118,17 +122,20 @@ public class FileWatcher {
 		
 		public FileAcquirer(Path path) {
 			fileToUpload = path;
-			destFilePath = Paths.get(AppConfiguration.getArchivePath()).toAbsolutePath().toFile().getAbsolutePath();
+			destFilePath = archiveDir.toString();
 			createTime = path.toFile().lastModified();
 		}
 
         @Override
         public void run() {
         	String srcFileName = fileToUpload.toFile().getName();
+    		if (!archiveDir.toFile().isDirectory()) {
+    			new File(archiveDir.toString()).mkdirs();
+    		}
         	synchronized(fileLockToken) {
 	        	logger.info("waiting to lock " + srcFileName);        	
 	        	try {        		
-	        		Thread.sleep(AppConfiguration.getFileLockWait());
+	        		Thread.sleep(10000);
 	        		if ( getLock(fileToUpload.toFile())) {
 		        		int responseStatus = new HttpFileUploader().postFile(fileToUpload, createTime);
 		        		if (responseStatus == 200 ) {
@@ -161,7 +168,7 @@ public class FileWatcher {
     			    catch (OverlappingFileLockException e) {
     			    	logger.debug("waiting for release of " + file.getName());
     			    	channel.close();
-						Thread.sleep(AppConfiguration.getFileLockWait());
+						Thread.sleep(10000);
     			    }
     			    catch (Exception e) {
     			    	logger.debug("waiting... " + file.getName());

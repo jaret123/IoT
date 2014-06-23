@@ -87,7 +87,6 @@ public class DaiCollectionParser {
 			if ( dmc==null ) {
 				dmc = new DaiMeterCollection();
 				parsedCollections.add(dmc);
-				dmc.setLocationIdentifier(fileMeta.get("location_id"));
 				dmc.setOlsonTimezoneId(fileMeta.get("olson_timezone_id"));
 				dmc.setFileUploadTime(new Timestamp( Long.parseLong(fileMeta.get("current_system_time")) ));
 				dmc.setFileCreateTime(new Timestamp( Long.parseLong(fileMeta.get("file_create_time")) ));
@@ -109,7 +108,6 @@ public class DaiCollectionParser {
 		}
 		return parsedCollections;
 	}
-	
 	
 	private DaiMeterCollection createCollectionModels(DaiMeterCollection dmc, List<String> lines) {
 		CollectionData cd = new CollectionData();		 
@@ -274,6 +272,4 @@ public class DaiCollectionParser {
 		DateTime collectionTime = fileWriteTime.toDateTimeToday(); 
 		return collectionTime;
 	}
-	
-
 }
