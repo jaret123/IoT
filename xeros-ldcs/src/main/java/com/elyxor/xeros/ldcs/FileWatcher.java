@@ -30,7 +30,7 @@ public class FileWatcher {
 	private static Logger logger = LoggerFactory.getLogger(FileWatcher.class);
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
 	
-	String currentDir = Paths.get("").toAbsolutePath().toString();
+	String currentDir = Paths.get("").toAbsolutePath().getParent().toString();
 	
 	WatchService watcher = null;
 	Path watchDir = Paths.get(currentDir, "/input");

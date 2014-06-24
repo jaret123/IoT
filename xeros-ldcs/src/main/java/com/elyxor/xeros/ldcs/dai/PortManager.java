@@ -34,7 +34,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	private String daiPrefix = AppConfiguration.getDaiName();
 	Integer waterOnly = AppConfiguration.getWaterOnly();
 	
-	private String currentDir = Paths.get("").toAbsolutePath().toString();
+	private String currentDir = Paths.get("").toAbsolutePath().getParent().toString();
 	private Path path = Paths.get(currentDir, "/input");
 	
 	private static Map<String,DaiPortInterface> portList = new LinkedHashMap<String,DaiPortInterface>();
