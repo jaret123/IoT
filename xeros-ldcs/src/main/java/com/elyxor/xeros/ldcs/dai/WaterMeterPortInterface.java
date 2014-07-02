@@ -7,7 +7,7 @@ public interface WaterMeterPortInterface {
 	public long[] getPrevMeters();
 
 	public long getWaterMeterId();
-	public void setWaterMeterId(int id);
+	public void setWaterMeterId(long id);
 
 	//commands
 	public String initRequest();
