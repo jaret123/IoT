@@ -211,7 +211,9 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		int[] id = new int[idSize];
 		
 		for (int i = 0; i < id.length; i++) {
-			id[i] = response[idStartLocation+i] - 48;
+            int value = response[idStartLocation+i];
+            value = value > 0 ? value : value + 128;
+			id[i] = value - 48;
 		}
 		result = Long.parseLong(Arrays.toString(id));
 		return result;

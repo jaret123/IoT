@@ -31,7 +31,7 @@ import jssc.SerialPort;
 public class PortManager implements PortManagerInterface, PortChangedListenerInterface {
 
 	final static Logger logger = LoggerFactory.getLogger(PortManager.class);
-	private String daiPrefix = AppConfiguration.getDaiName();
+	String daiPrefix = AppConfiguration.getDaiName();
 	Integer waterOnly = AppConfiguration.getWaterOnly();
 	
 	private String currentDir = Paths.get("").toAbsolutePath().getParent().toString();
@@ -203,11 +203,17 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		public void execute(JobExecutionContext context) throws JobExecutionException {
 			logger.info("Executing water only data collection");
 			String buffer = "";
+            int retry = 0;
 			for (DaiPortInterface daiPort : portList.values()) {
-				buffer = daiPort.sendWaterRequest();
-				if (buffer!=null) {
-					daiPort.writeLogFile(buffer);
-				}
+				while (retry < 3) {
+                    buffer = daiPort.sendWaterRequest();
+                    logger.info(buffer);
+                    if (buffer.length() > 47) {
+                        daiPort.writeLogFile(buffer);
+                        break;
+                    }
+                    retry++;
+                }
 			}
 		}
 	}

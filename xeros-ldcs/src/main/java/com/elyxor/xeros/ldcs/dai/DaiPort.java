@@ -150,7 +150,7 @@ public class DaiPort implements DaiPortInterface {
 			logger.warn(msg, e);
 			result = msg + e.getMessage(); 
 		}
-		result = this.getDaiNum() + ", Std,\nFile Write Time: " + getSystemTime() + "\n" + result;
+		result = this.getDaiNum() + ", Std,\nFile Write Time: , " + getSystemTime() + "\n" + result;
 		return result;
 	}
 
