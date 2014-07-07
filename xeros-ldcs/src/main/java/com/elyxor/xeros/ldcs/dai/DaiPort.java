@@ -171,26 +171,26 @@ public class DaiPort implements DaiPortInterface {
 	}	
 		
 	public String setClock() {
-		String result = "";
-		try {
-			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0 116\n");
-			Thread.sleep(500);
-			result = this.serialPort.readString();
-			if (result.equals("::")) {
-				this.serialPort.writeString(getSystemTime());
-			}
-			Thread.sleep(500);
-			result = this.serialPort.readString();
-			this.serialPort.addEventListener(new SerialReader(this));
-		} catch (Exception e) {
-			result = "Couldn't complete set clock. ";
-			logger.warn(result, e);
-			result = result + e.getMessage();
-		}
-		return result;
-	}
-	
+        String result = "";
+        try {
+            this.serialPort.removeEventListener();
+            this.serialPort.writeString("0 116\n");
+            Thread.sleep(500);
+            result = this.serialPort.readString();
+            if (result.equals("::")) {
+                this.serialPort.writeString(getSystemTime().replaceAll(" ", ""));
+            }
+            Thread.sleep(500);
+            result = this.serialPort.readString();
+            this.serialPort.addEventListener(new SerialReader(this));
+        } catch (Exception e) {
+            result = "Couldn't complete set clock. ";
+            logger.warn(result, e);
+            result = result + e.getMessage();
+        }
+        return result;
+    }
+
 	public String readClock() {
 		String result = "";
 		try {
@@ -249,8 +249,14 @@ public class DaiPort implements DaiPortInterface {
 			return false;
 		}
 	}
-	
-	public SerialPort getSerialPort() {
+    private String getSystemTime() {
+        String result = "";
+        SimpleDateFormat timingFormat = new SimpleDateFormat("kk : mm : ss");
+        result = timingFormat.format(System.currentTimeMillis());
+        return result;
+    }
+
+    public SerialPort getSerialPort() {
 		return serialPort;
 	}
 	public void setSerialPort(SerialPort port) {
@@ -261,11 +267,5 @@ public class DaiPort implements DaiPortInterface {
 	}
 	public void setDaiNum(int id) {
 		this.daiNum = id;
-	}
-	private String getSystemTime() {
-		String result = "";
-		SimpleDateFormat timingFormat = new SimpleDateFormat("kk:mm:ss");
-		result = timingFormat.format(System.currentTimeMillis());
-		return result;
 	}
 }
