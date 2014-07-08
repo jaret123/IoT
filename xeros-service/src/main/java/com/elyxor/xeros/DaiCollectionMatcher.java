@@ -193,7 +193,6 @@ public class DaiCollectionMatcher {
 		CollectionClassificationMap matchedMap = null;
 		Machine collectionMachine = collectionData.getMachine();
 		List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData, collectionMachine);
-
 		try {
 			if ( existingCollections!=null && existingCollections.iterator().hasNext() ) {
 				// for each collection...
