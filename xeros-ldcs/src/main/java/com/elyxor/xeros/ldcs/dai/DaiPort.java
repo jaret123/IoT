@@ -174,12 +174,14 @@ public class DaiPort implements DaiPortInterface {
         String result = "";
         try {
             this.serialPort.removeEventListener();
-            this.serialPort.writeString("0 116\n");
-            Thread.sleep(500);
-            result = this.serialPort.readString();
-            if (result.equals("::")) {
-                this.serialPort.writeString(getSystemTime().replaceAll(" ", ""));
-            }
+            this.serialPort.writeString("0 16\n");
+            String[] timeSplit = this.getSystemTime().replaceAll(" ","").split(":");
+            Thread.sleep(100);
+            this.serialPort.writeString(timeSplit[0] + "\n");
+            Thread.sleep(100);
+            this.serialPort.writeString(timeSplit[1] + "\n");
+            Thread.sleep(100);
+            this.serialPort.writeString(timeSplit[2] + "\n");
             Thread.sleep(500);
             result = this.serialPort.readString();
             this.serialPort.addEventListener(new SerialReader(this));
@@ -228,7 +230,7 @@ public class DaiPort implements DaiPortInterface {
 			String logPrefix = "";
 			if (1 < bufferSplit.length) logPrefix = bufferSplit[1].trim();
 			
-			LogWriterInterface writer = new FileLogWriter(Paths.get(this._logWriter.getPath()), logPrefix+"-"+this._logWriter.getFilename());
+			LogWriterInterface writer = new FileLogWriter(this._logWriter.getPath(), logPrefix+"-"+this._logWriter.getFilename());
 			try {
 				writer.write(this.daiPrefix + buffer);		
 			} catch (IOException e) {
