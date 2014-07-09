@@ -1,17 +1,22 @@
 package com.elyxor.xeros.ldcs.dai;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 
 import jssc.SerialPort;
-import jssc.SerialPortEventListener;
 import jssc.SerialPortException;
 
 public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface {
@@ -19,11 +24,14 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	
 	private long prevMeter1;
 	private long prevMeter2;
+    private long[] prevMeters;
 	private SerialPort serialPort;
 	private int daiNum;
 	private LogWriterInterface logWriter;
 	private String daiPrefix;
 	private String waterMeterId;
+    private Path logFilePath;
+    private LogWriterInterface waterMeterLogWriter;
 	
 	final static String defaultId = "999999999999";
 	final static int frontPadding = 2;
@@ -86,23 +94,12 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		}
 		this.setWaterMeterId(parseIdFromResponse(buffer));
 		long[] meters = parseMetersFromResponse(buffer);
+
+        this.logFilePath = Paths.get(this.logWriter.getPath().getParent().toString(), "/waterMeters");
         this.storePrevMeters(meters);
 		this.setPrevMeters(meters[0],meters[1]);
 
         return buffer == null || buffer.length == 0 ? "" : buffer.toString();
-    }
-
-    private void storePrevMeters(long[] meters) {
-        FileLogWriter writer = new FileLogWriter(this.logWriter.getPath().resolve("/waterMeters"),  daiPrefix + "meterBuffer.txt");
-        for (int i = 0; i < meters.length; i++) {
-            try {
-                writer.write("meter"+i+","+meters[i] +","+ getSystemTime());
-                logger.info("successfully stored previous meters in log file");
-            } catch (IOException e) {
-                e.printStackTrace();
-                logger.warn("failed to store previous meters",e);
-            }
-        }
     }
 
     public String sendRequest() {
@@ -112,7 +109,7 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		SerialPort port = this.getSerialPort();
 		long meter1;
 		long meter2;
-		long[] prevMeters = this.getPrevMeters();
+		long[] prevMeters = this.parsePrevMetersFromFile();
 
 		try {
 			port.writeBytes(request);
@@ -136,12 +133,55 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
                 + (meter1 - prevMeters[0]) + "\n"
                 + "WM3: , 0 , 0 , "
                 + (meter2 - prevMeters[1]);
+        try {
+            Files.delete(this.getWaterMeterLogWriter().getFile().toPath());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         this.setPrevMeters(meter1, meter2);
         this.storePrevMeters(meters);
         return result;
 	}
-	
-	public void writeLogFile(String buffer) {
+
+    private void storePrevMeters(long[] meters) {
+        this.setWaterMeterLogWriter(new FileLogWriter(this.logFilePath, daiPrefix + "meterLogging.txt"));
+        for (int i = 0; i < meters.length; i++) {
+            try {
+                this.getWaterMeterLogWriter().write("meter"+i+","+meters[i] +","+ getSystemTime()+"\n");
+                logger.info("successfully stored previous meters in log file");
+            } catch (IOException e) {
+                e.printStackTrace();
+                logger.warn("failed to store previous meters",e);
+            }
+        }
+    }
+
+    private long[] parsePrevMetersFromFile() {
+        byte[] inputData = null;
+        try {
+            inputData = IOUtils.toByteArray(new FileReader(this.getWaterMeterLogWriter().getFile()));
+        } catch (Exception ex) {logger.warn("could not open meter log file",ex);}
+
+        StringBuffer fString = new StringBuffer();
+        for ( byte b : inputData ){
+            if( (int)b<10 ) {
+                continue;
+            }
+            fString.append((char)b);
+        }
+        String[] lines = fString.toString().split("\n");
+        long[] prev = new long[lines.length];
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i]!=null) {
+                String[] lineData = lines[i].split(",");
+                prev[i] = Long.parseLong(lineData[1]);
+            }
+        }
+        this.setPrevMetersArray(prev);
+        return prev;
+    }
+
+    public void writeLogFile(String buffer) {
 		try {
 			this.logWriter.write(this.daiPrefix + buffer);		
 		} catch (IOException e) {
@@ -184,8 +224,26 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	public void setDaiNum(int num) {
 		this.daiNum = num;
 	}
-	
-	private long[] parseMetersFromResponse(byte[] response) {
+    public Path getLogFilePath() {
+        return logFilePath;
+    }
+    public void setLogFilePath(Path logFilePath) {
+        this.logFilePath = logFilePath;
+    }
+    public LogWriterInterface getWaterMeterLogWriter() {
+        return waterMeterLogWriter;
+    }
+    public void setWaterMeterLogWriter(LogWriterInterface waterMeterLogWriter) {
+        this.waterMeterLogWriter = waterMeterLogWriter;
+    }
+    public void setPrevMetersArray (long[] prevMetersArray) {
+        this.prevMeters = prevMetersArray;
+    }
+    public long[] getPrevMetersArray() {
+        return prevMeters;
+    }
+
+    private long[] parseMetersFromResponse(byte[] response) {
 		long[] result = new long[2];
 		String meter1 = "";
 		String meter2 = "";
@@ -236,7 +294,7 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		return request;
 	}
 	private String getSystemTime() {
-		SimpleDateFormat timingFormat = new SimpleDateFormat("hh : mm : ss dd-MM-yyyy");
+		SimpleDateFormat timingFormat = new SimpleDateFormat("kk : mm : ss");
         return timingFormat.format(System.currentTimeMillis());
 	}
 

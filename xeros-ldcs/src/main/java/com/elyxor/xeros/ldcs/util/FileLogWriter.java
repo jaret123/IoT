@@ -23,13 +23,14 @@ public class FileLogWriter implements LogWriterInterface {
 	public Path getPath() {
 		return _logFile.toPath();
 	}
+    public File getFile() {return _logFile;}
 	@Override
 	public void write(String txt) throws IOException {
 		FileWriter fileWriter = null;
 		BufferedWriter out = null;
 
-        if (!_logFile.isDirectory()) {
-            _logFile.mkdirs();
+        if (!_logFile.isFile()) {
+            _logFile.createNewFile();
         }
         try {
 			fileWriter = new FileWriter(_logFile, true);
