@@ -42,7 +42,7 @@ public class DaiCollectionParser {
 	
 	DateTimeFormatter startDtf = DateTimeFormat.forPattern("HH : mm : ss");
 	DateTimeFormatter durationDtf = DateTimeFormat.forPattern("HH : mm : ss.SSS");
-
+    DateTimeFormatter collectionDtf = DateTimeFormat.forPattern("HH : mm : ss dd-MM-yyyy");
 	
 	private static Logger logger = LoggerFactory.getLogger(DaiCollectionParser.class);
 	@Autowired DaiMeterCollectionRepository daiMeterCollectionRepo;
@@ -261,15 +261,21 @@ public class DaiCollectionParser {
 		}
 		return dmc;
 	}
-	
-	private DateTime parseTime(String ts) {
-		LocalTime fileWriteTime = null;
-		try {
-			fileWriteTime = LocalTime.parse(ts, durationDtf);
-		} catch (IllegalArgumentException px) {
-			fileWriteTime = LocalTime.parse(ts, startDtf);
-		}
-		DateTime collectionTime = fileWriteTime.toDateTimeToday(); 
-		return collectionTime;
-	}
+
+    private DateTime parseTime(String ts) {
+        LocalTime fileWriteTime = null;
+        DateTime collectionTime = null;
+
+        if (ts.length() > 13) {
+            collectionTime = DateTime.parse(ts, collectionDtf);
+            return collectionTime;
+        }
+        try {
+            fileWriteTime = LocalTime.parse(ts, durationDtf);
+        } catch (IllegalArgumentException px) {
+            fileWriteTime = LocalTime.parse(ts, startDtf);
+        }
+        collectionTime = fileWriteTime.toDateTimeToday();
+        return collectionTime;
+    }
 }
