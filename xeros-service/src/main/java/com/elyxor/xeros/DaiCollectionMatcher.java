@@ -191,10 +191,11 @@ public class DaiCollectionMatcher {
 	
 	private CollectionClassificationMap findMatches(DaiMeterCollection collectionData, Iterable<CollectionClassificationMap> existingCollections) {
 		CollectionClassificationMap matchedMap = null;
+		Machine collectionMachine = collectionData.getMachine();
+		List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData, collectionMachine);
+
 		try {
 			if ( existingCollections!=null && existingCollections.iterator().hasNext() ) {
-				Machine collectionMachine = collectionData.getMachine();
-				List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData, collectionMachine);
 				// for each collection...
 				for ( CollectionClassificationMap collMap : existingCollections ) {
 					//if size of collection and map do not match, stop

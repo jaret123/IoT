@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 
+import com.elyxor.xeros.ldcs.util.FileLogWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,9 +23,9 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	private int daiNum;
 	private LogWriterInterface logWriter;
 	private String daiPrefix;
-	private long waterMeterId;
+	private String waterMeterId;
 	
-	final static long defaultId = 999999999;
+	final static String defaultId = "999999999999";
 	final static int frontPadding = 2;
 	final static int backPadding = 5;
 	final static int idSize = 12;
@@ -45,10 +46,10 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	}
 	
 	public boolean openPort() {
-		boolean result = false;
+		boolean result;
 		try {
 			result = this.serialPort.openPort();
-			this.serialPort.setParams(9600, 8, 1, 0, false, false);														
+			this.serialPort.setParams(9600, 8, 1, 0);
 		} catch (Exception ex) {
 			logger.warn("Could not open port", ex);
 			result = false;
@@ -56,9 +57,10 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
     	logger.info("Opened water meter port " + this.serialPort.getPortName());
 		return result;
 	}
+
 	public boolean closePort() {
 		String portAddress = this.serialPort.getPortName();
-		boolean result = false;
+		boolean result;
 		try {
 			this.serialPort.removeEventListener();
 			result = this.serialPort.closePort();
@@ -72,56 +74,71 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	
 	public String initRequest() {
 		byte[] buffer = null;
-		byte[] request = createRequestString(this.parseIntToByteArray(defaultId));
+		byte[] request = createRequestString(this.parseStringToByteArray(defaultId));
 		SerialPort port = this.getSerialPort();
 		try {
-			port.writeBytes(request);
-			Thread.sleep(5000);
-			buffer = port.readBytes(responseLength);
+            port.writeBytes(request);
+			Thread.sleep(500);
+			buffer = port.readBytes();
 		} catch (Exception e) {
 			String msg = "failed to send init request";
 			logger.warn(msg, e);
 		}
-		this.waterMeterId = parseIdFromResponse(buffer);
+		this.setWaterMeterId(parseIdFromResponse(buffer));
 		long[] meters = parseMetersFromResponse(buffer);
-		this.prevMeter1 = meters[0];
-		this.prevMeter2 = meters[1];		
-		
-		return buffer.toString();
-	}
+        this.storePrevMeters(meters);
+		this.setPrevMeters(meters[0],meters[1]);
 
-	public String sendRequest() {
+        return buffer == null || buffer.length == 0 ? "" : buffer.toString();
+    }
+
+    private void storePrevMeters(long[] meters) {
+        FileLogWriter writer = new FileLogWriter(this.logWriter.getPath().resolve("/waterMeters"),  daiPrefix + "meterBuffer.txt");
+        for (int i = 0; i < meters.length; i++) {
+            try {
+                writer.write("meter"+i+","+meters[i] +","+ getSystemTime());
+                logger.info("successfully stored previous meters in log file");
+            } catch (IOException e) {
+                e.printStackTrace();
+                logger.warn("failed to store previous meters",e);
+            }
+        }
+    }
+
+    public String sendRequest() {
 		String result = "";
 		byte[] buffer = null;
-		byte[] requestBytes = this.createRequestString(parseIntToByteArray(waterMeterId));
+		byte[] request = this.createRequestString(this.parseStringToByteArray(this.getWaterMeterId()));
 		SerialPort port = this.getSerialPort();
-		long meter1 = 0;
-		long meter2 = 0;
-		
+		long meter1;
+		long meter2;
+		long[] prevMeters = this.getPrevMeters();
+
 		try {
-			port.writeBytes(requestBytes);
-			Thread.sleep(10000);
+			port.writeBytes(request);
+			Thread.sleep(500);
 			buffer = port.readBytes(responseLength);
 		} catch (Exception e) {
-			logger.warn("Couldn't complete send request", e);
-			return buffer.toString();
+            String msg = "couldn't complete send request";
+			logger.warn(msg, e);
+			return msg + e;
 		}
-		if (buffer!=null) {
-			logger.info("Captured log file");
-			long[] meters = this.parseMetersFromResponse(buffer);
-			meter1 = meters[0];
-			meter2 = meters[1];
-			
-			result = "1,Std,\nFile Write Time: "
-					+ getSystemTime() + "\n"
-					+ "WM2: ,"
-					+ (meter1 - this.prevMeter1) + "\n"
-					+ "WM3: ,"
-					+ (meter2 - this.prevMeter2);
-			this.prevMeter1 = meter1;
-			this.prevMeter2 = meter2;
-		}		
-		return result;
+        if (buffer == null || buffer.length == 0) return result;
+
+        logger.info("Captured log file");
+        long[] meters = this.parseMetersFromResponse(buffer);
+        meter1 = meters[0];
+        meter2 = meters[1];
+
+        result = this.getDaiNum() + " , Std , \nFile Write Time: , "
+                + getSystemTime() + "\n"
+                + "WM2: , 0 , 0 , "
+                + (meter1 - prevMeters[0]) + "\n"
+                + "WM3: , 0 , 0 , "
+                + (meter2 - prevMeters[1]);
+        this.setPrevMeters(meter1, meter2);
+        this.storePrevMeters(meters);
+        return result;
 	}
 	
 	public void writeLogFile(String buffer) {
@@ -140,17 +157,15 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	public long[] getPrevMeters () {
 		return new long[] {prevMeter1, prevMeter2};
 	}
-	
-	public long getWaterMeterId () {
-		if (waterMeterId != 0) {
+	public String getWaterMeterId () {
+		if (!(waterMeterId == null)) {
 			return waterMeterId;
 		}
-		return -1;
+		return "";
 	}
-	public void setWaterMeterId (int id) {
+	public void setWaterMeterId (String id) {
 		this.waterMeterId = id;
 	}
-	
 	public SerialPort getSerialPort() {
 		if (serialPort != null) {
 			return this.serialPort;
@@ -160,7 +175,6 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	public void setSerialPort(SerialPort port) {
 		this.serialPort = port;
 	}
-	
 	public int getDaiNum() {
 		if (daiNum!=0) {
 			return this.daiNum;
@@ -173,40 +187,41 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	
 	private long[] parseMetersFromResponse(byte[] response) {
 		long[] result = new long[2];
-		int[] meter1 = new int[8];
-		int[] meter2 = new int[8];
+		String meter1 = "";
+		String meter2 = "";
 		
 		for (int i = 0; i < 16; i++) {
-			if (i < 8) meter1[i] = Integer.parseInt((""+response[meterDataStartLocation+i]).substring(3));
-			meter2[i] = Integer.parseInt((""+response[meterDataStartLocation+i]).substring(3));
+            int value = response[meterDataStartLocation+i];
+            value = value > 0 ? value : value + 128;
+			if (i < 8) meter1 += value - 48;
+			else meter2 += value - 48;
 		}
-		result[0] = Long.parseLong(Arrays.toString(meter1));
-		result[1] = Long.parseLong(Arrays.toString(meter2));
+		result[0] = Long.parseLong(meter1);
+		result[1] = Long.parseLong(meter2);
 		return result;
 	}
-	private long parseIdFromResponse(byte[] response) {
-		long result = 0;
+	private String parseIdFromResponse(byte[] response) {
+		String result = "";
 		int[] id = new int[idSize];
 		
 		for (int i = 0; i < id.length; i++) {
-			id[i] = Integer.parseInt((""+response[idStartLocation+i]).substring(3));
+            int value = response[idStartLocation+i];
+            value = value > 0 ? value : value + 128;
+			result += value - 48;
 		}
-		result = Long.parseLong(Arrays.toString(id));
 		return result;
 	}
-	private byte[] parseIntToByteArray (long in) {
-		int i = idSize;
-		byte[] idBytes = new byte[i];
-		while (in > 0) {
-			long digit = in % 10;
-			in /= 10;
-			idBytes[i] += ((byte) (0x00 + digit));
-			i--;
-		}
-		return idBytes;
-	}
+    private byte[] parseStringToByteArray(String in) {
+        int i = idSize;
+        byte[] idBytes = new byte[i];
+        while (i > 0) {
+            idBytes[i-1] = (byte) (0x00 + in.charAt(i-1));
+            i--;
+        }
+        return idBytes;
+    }
 	private byte[] createRequestString (byte[] id) {
-		byte[] request = requestBytes;
+		byte[] request = Arrays.copyOf(requestBytes, requestBytes.length);
 		int idLength = id.length;
 		int requestLength = request.length;
 		if (idLength + frontPadding + backPadding != requestLength) {
@@ -214,16 +229,15 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 			logger.warn(msg);
 			return request;
 		}
-		for (int i = requestLength - backPadding; i >= frontPadding; i--) {
-			request[i] += id[idLength];
+		for (int i = requestLength - backPadding; i > frontPadding; i--) {
+			request[i-1] += id[idLength-1];
 			idLength--;
 		}
 		return request;
 	}
 	private String getSystemTime() {
-		SimpleDateFormat timingFormat = new SimpleDateFormat("hh:mm:ss");
-		String currentTime = timingFormat.format(System.currentTimeMillis());
-		return currentTime;
+		SimpleDateFormat timingFormat = new SimpleDateFormat("hh : mm : ss dd-MM-yyyy");
+        return timingFormat.format(System.currentTimeMillis());
 	}
 
 	//unused stubs
@@ -250,11 +264,6 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	}
 	public String sendWaterRequest() {
 		return null;
-	}
-	public SerialPortEventListener getSerialPortEventListener() {
-		return null;
-	}
-	public void setSerialPortEventListener(SerialPortEventListener spel) {
 	}
 	public boolean ping() {
 		return false;

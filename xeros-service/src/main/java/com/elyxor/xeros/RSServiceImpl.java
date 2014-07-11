@@ -100,4 +100,15 @@ public class RSServiceImpl implements RSService {
 		return r.build();
 	}
 
+	@Override
+	public Response pingStatus() {
+		ResponseBuilder r = Response.ok();
+		try {
+			r.entity(daiStatus.pingStatus());
+		} catch (Exception e) {
+			r = Response.serverError().entity(e.toString());
+		}
+		return r.build();
+	}
+
 }

@@ -42,4 +42,7 @@ public interface RSService {
     @Path("/daiping/{daiIdentifier}")
     Response ping(@PathParam("daiIdentifier") String daiIdentifier);
     
+    @GET
+    @Path("/pingstatus")
+    Response pingStatus();
 }

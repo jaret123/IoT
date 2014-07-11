@@ -52,9 +52,9 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		
 	public boolean portAdded(String portName) {				
 		if (waterOnly == 2) {
-			DaiPortInterface waterMeterPort = new WaterMeterPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix);
+			WaterMeterPortInterface waterMeterPort = new WaterMeterPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix);
 			if (waterMeterPort.openPort()) {
-				((WaterMeterPort) waterMeterPort).initRequest();
+				waterMeterPort.initRequest();
 				portList.put(portName, waterMeterPort);
 				nextDaiNum++;
 				return true;
@@ -113,6 +113,8 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		List<String> result = new ArrayList<String>();
 		if (!portList.isEmpty()) {
 			for (Entry<String,DaiPortInterface> entry : portList.entrySet()) {
+                if (waterOnly == 2)
+                    result.add(entry.getKey() + ", " + ((WaterMeterPortInterface)entry.getValue()).getWaterMeterId());
 				result.add(entry.getKey() + ", " + daiPrefix + entry.getValue().getDaiNum());
 			}
 		}
@@ -176,7 +178,8 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 				JobDetail waterOnlyManualJob = newJob(WaterOnlyManualJob.class)
 						.withIdentity("waterOnlyManualJob")
 						.build();
-				sched.scheduleJob(waterOnlyManualJob, waterOnlyTrigger);
+				sched.scheduleJob(waterOnlyManualJob, pingTrigger);
+                logger.info("scheduled DAQless water only, next fire time: "+pingTrigger.getNextFireTime().toString());
 				sched.start();
 				return;
 			}
@@ -203,11 +206,17 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		public void execute(JobExecutionContext context) throws JobExecutionException {
 			logger.info("Executing water only data collection");
 			String buffer = "";
+            int retry = 0;
 			for (DaiPortInterface daiPort : portList.values()) {
-				buffer = daiPort.sendWaterRequest();
-				if (buffer!=null) {
-					daiPort.writeLogFile(buffer);
-				}
+				while (retry < 3) {
+                    buffer = daiPort.sendWaterRequest();
+                    logger.info(buffer);
+                    if (buffer.length() > 47) {
+                        daiPort.writeLogFile(buffer);
+                        break;
+                    }
+                    retry++;
+                }
 			}
 		}
 	}

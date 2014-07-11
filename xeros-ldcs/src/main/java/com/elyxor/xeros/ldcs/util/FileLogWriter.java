@@ -20,14 +20,18 @@ public class FileLogWriter implements LogWriterInterface {
 	public String getFilename() {
 		return _logFile.getName();
 	}
-	public String getPath() {
-		return _logFile.getParent();
+	public Path getPath() {
+		return _logFile.toPath();
 	}
 	@Override
 	public void write(String txt) throws IOException {
 		FileWriter fileWriter = null;
 		BufferedWriter out = null;
-		try {
+
+        if (!_logFile.isDirectory()) {
+            _logFile.mkdirs();
+        }
+        try {
 			fileWriter = new FileWriter(_logFile, true);
 			out = new BufferedWriter(fileWriter);	
 			out.write(txt);
