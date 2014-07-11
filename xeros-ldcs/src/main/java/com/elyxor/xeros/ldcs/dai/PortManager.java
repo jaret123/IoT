@@ -165,8 +165,13 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			.withIdentity("pingTrigger")
 			.withSchedule(cronSchedule("0 0 */1 * * ?"))
 			.build();
-	
-	public void startScheduler() {
+    CronTrigger waterOnlyManualTrigger = newTrigger()
+            .withIdentity("waterOnlyManualTrigger")
+            .withSchedule(cronSchedule("0 0 */1 * * ?"))
+            .build();
+
+
+    public void startScheduler() {
 		try {
 			sched = schedFact.getScheduler();
 			JobDetail pingJob = newJob(PingJob.class) //always set up ping
@@ -178,7 +183,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 				JobDetail waterOnlyManualJob = newJob(WaterOnlyManualJob.class)
 						.withIdentity("waterOnlyManualJob")
 						.build();
-				sched.scheduleJob(waterOnlyManualJob, pingTrigger);
+				sched.scheduleJob(waterOnlyManualJob, waterOnlyManualTrigger);
                 logger.info("scheduled DAQless water only, next fire time: "+pingTrigger.getNextFireTime().toString());
 				sched.start();
 				return;

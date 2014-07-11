@@ -261,9 +261,9 @@ public class DaiCollectionParser {
 		}
 		return dmc;
 	}
-
-    private DateTime parseTime(String ts) {
-        LocalTime fileWriteTime = null;
+	
+	private DateTime parseTime(String ts) {
+		LocalTime fileWriteTime = null;
         DateTime collectionTime = null;
 
         if (ts.length() > 13) {
@@ -271,11 +271,11 @@ public class DaiCollectionParser {
             return collectionTime;
         }
         try {
-            fileWriteTime = LocalTime.parse(ts, durationDtf);
-        } catch (IllegalArgumentException px) {
-            fileWriteTime = LocalTime.parse(ts, startDtf);
-        }
-        collectionTime = fileWriteTime.toDateTimeToday();
-        return collectionTime;
-    }
+			fileWriteTime = LocalTime.parse(ts, durationDtf);
+		} catch (IllegalArgumentException px) {
+			fileWriteTime = LocalTime.parse(ts, startDtf);
+		}
+		collectionTime = fileWriteTime.toDateTimeToday();
+		return collectionTime;
+	}
 }
