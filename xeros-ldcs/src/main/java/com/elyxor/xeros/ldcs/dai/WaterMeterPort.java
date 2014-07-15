@@ -1,6 +1,5 @@
 package com.elyxor.xeros.ldcs.dai;
 
-import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -93,12 +92,15 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 			logger.warn(msg, e);
 		}
 		this.setWaterMeterId(parseIdFromResponse(buffer));
-		long[] meters = parseMetersFromResponse(buffer);
+        this.setLogFilePath(Paths.get(this.logWriter.getPath().getParent().toString(), "/waterMeters"));
+        this.setWaterMeterLogWriter(new FileLogWriter(this.logFilePath, daiPrefix + "meterLogging.txt"));
+        long[] meters = parsePrevMetersFromFile();
 
-        this.logFilePath = Paths.get(this.logWriter.getPath().getParent().toString(), "/waterMeters");
-        this.storePrevMeters(meters);
-		this.setPrevMeters(meters[0],meters[1]);
-
+        if (meters == null) {
+            meters = parseMetersFromResponse(buffer);
+            this.storePrevMeters(meters);
+        }
+        this.setPrevMeters(meters[0],meters[1]);
         return buffer == null || buffer.length == 0 ? "" : buffer.toString();
     }
 
@@ -144,7 +146,6 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	}
 
     private void storePrevMeters(long[] meters) {
-        this.setWaterMeterLogWriter(new FileLogWriter(this.logFilePath, daiPrefix + "meterLogging.txt"));
         for (int i = 0; i < meters.length; i++) {
             try {
                 this.getWaterMeterLogWriter().write("meter"+i+","+meters[i] +","+ getSystemTime()+"\n");
@@ -160,7 +161,10 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
         byte[] inputData = null;
         try {
             inputData = IOUtils.toByteArray(new FileReader(this.getWaterMeterLogWriter().getFile()));
-        } catch (Exception ex) {logger.warn("could not open meter log file",ex);}
+        } catch (Exception ex) {
+            logger.warn("could not open meter log file",ex);
+            return null;
+        }
 
         StringBuffer fString = new StringBuffer();
         for ( byte b : inputData ){
@@ -294,7 +298,7 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		return request;
 	}
 	private String getSystemTime() {
-		SimpleDateFormat timingFormat = new SimpleDateFormat("hh : mm : ss dd-MM-yyyy");
+		SimpleDateFormat timingFormat = new SimpleDateFormat("kk : mm : ss dd-MM-yyyy");
         return timingFormat.format(System.currentTimeMillis());
 	}
 

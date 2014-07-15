@@ -1,6 +1,7 @@
 package com.elyxor.xeros.ldcs.dai;
 
 import jssc.SerialPort;
+import jssc.SerialPortException;
 
 public interface DaiPortInterface {
 
@@ -23,7 +24,7 @@ public interface DaiPortInterface {
 	public String setRemoteDaiId(int id);
 	public String sendStdRequest();
 	public String sendXerosRequest();
-	public String sendWaterRequest();
+	public String sendWaterRequest() throws Exception;
 	public String sendRequest();
 	
 	//utilities

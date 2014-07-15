@@ -3,15 +3,11 @@ package com.elyxor.xeros;
 import java.io.File;
 import java.io.FileReader;
 import java.sql.Timestamp;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -39,7 +35,7 @@ public class DaiCollectionParser {
 	
 	SimpleDateFormat daiSdf = new SimpleDateFormat("HH : mm : ss");
 	SimpleDateFormat daiDurationSdf = new SimpleDateFormat("HH : mm : ss.SSS");
-	
+
 	DateTimeFormatter startDtf = DateTimeFormat.forPattern("HH : mm : ss");
 	DateTimeFormatter durationDtf = DateTimeFormat.forPattern("HH : mm : ss.SSS");
     DateTimeFormatter collectionDtf = DateTimeFormat.forPattern("HH : mm : ss dd-MM-yyyy");
@@ -169,7 +165,7 @@ public class DaiCollectionParser {
 					logger.info("parsing event {} : {}", eventData.get(0), eventData);
 					cd.sensorEventData.add(eventData);					
 				} catch(NumberFormatException nfe) {
-					logger.info("not an event: {}", lineData);
+					logger.info("not an event: {}", Arrays.toString(lineData));
 				}
 			} else if (!line.equals("###")){
 				List<Integer> eCounts = new ArrayList<Integer>();				 

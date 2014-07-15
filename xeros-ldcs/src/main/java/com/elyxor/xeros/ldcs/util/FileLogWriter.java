@@ -29,9 +29,6 @@ public class FileLogWriter implements LogWriterInterface {
 		FileWriter fileWriter = null;
 		BufferedWriter out = null;
 
-        if (!_logFile.isFile()) {
-            _logFile.createNewFile();
-        }
         try {
 			fileWriter = new FileWriter(_logFile, true);
 			out = new BufferedWriter(fileWriter);	

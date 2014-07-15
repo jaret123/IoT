@@ -134,23 +134,26 @@ public class DaiPort implements DaiPortInterface {
 		return result;
 	}
 	
-	public String sendWaterRequest() {
+	public String sendWaterRequest() throws Exception {
 		String result = "";
-		try {
-			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0 13\n");
-			Thread.sleep(1000);
-			while (this.serialPort.getInputBufferBytesCount() > 0) {
-				result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
-				Thread.sleep(500);
-			}
-			this.serialPort.addEventListener(new SerialReader(this));
-		} catch (Exception e) {
-			String msg = ("Couldn't complete send water request. ");
-			logger.warn(msg, e);
-			result = msg + e.getMessage(); 
-		}
-		result = this.getDaiNum() + ", Std,\nFile Write Time: , " + getSystemTime() + "\n" + result;
+        this.serialPort.removeEventListener();
+        this.serialPort.writeString("0 13\n");
+        Thread.sleep(1000);
+        while (this.serialPort.getInputBufferBytesCount() > 0) {
+            result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
+            Thread.sleep(500);
+        }
+        String time = this.getSystemTime();
+        if (time.startsWith("00")) {
+            this.serialPort.writeString("0 116\n");
+            Thread.sleep(500);
+            this.serialPort.writeString("0 116\n");
+            Thread.sleep(500);
+            this.serialPort.writeString("0 116\n");
+        }
+        this.serialPort.addEventListener(new SerialReader(this));
+
+		result = this.getDaiNum() + ", Std,\nFile Write Time: , " + time + "\n" + result;
 		return result;
 	}
 
@@ -230,7 +233,7 @@ public class DaiPort implements DaiPortInterface {
 			String logPrefix = "";
 			if (1 < bufferSplit.length) logPrefix = bufferSplit[1].trim();
 			
-			LogWriterInterface writer = new FileLogWriter(this._logWriter.getPath(), logPrefix+"-"+this._logWriter.getFilename());
+			LogWriterInterface writer = new FileLogWriter(this._logWriter.getPath().getParent(), logPrefix+"-"+this._logWriter.getFilename());
 			try {
 				writer.write(this.daiPrefix + buffer);		
 			} catch (IOException e) {

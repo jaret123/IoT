@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import jssc.SerialPortException;
 import org.quartz.CronTrigger;
 import org.quartz.Job;
 import org.quartz.JobDetail;
@@ -152,11 +153,11 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
     
 	//quartz setup for scheduled tasks for water only and clock set
 	SchedulerFactory schedFact = new org.quartz.impl.StdSchedulerFactory();
-	Scheduler sched;	
-	Trigger waterOnlyTrigger = newTrigger()
-			.withIdentity("waterOnlyTrigger")
-			.withSchedule(dailyAtHourAndMinute(00,00))
-		    .build();
+	Scheduler sched;
+    CronTrigger waterOnlyTrigger = newTrigger()
+            .withIdentity("waterOnlyTrigger")
+            .withSchedule(cronSchedule("0 0 */1 * * ?"))
+            .build();
 	CronTrigger clockSetTrigger = newTrigger()
 			.withIdentity("clockSetTrigger")
 			.withSchedule(cronSchedule("0 0 1 ? * SUN"))
@@ -214,9 +215,12 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
             int retry = 0;
 			for (DaiPortInterface daiPort : portList.values()) {
 				while (retry < 3) {
-                    buffer = daiPort.sendWaterRequest();
+                    try {
+                        buffer = daiPort.sendWaterRequest();
+                    } catch (Exception ex) {logger.warn("unable to complete water meter request", ex);}
+
                     logger.info(buffer);
-                    if (buffer.length() > 47) {
+                    if (buffer.length() > 50) {
                         daiPort.writeLogFile(buffer);
                         break;
                     }
