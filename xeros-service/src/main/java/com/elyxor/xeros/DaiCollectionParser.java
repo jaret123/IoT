@@ -65,7 +65,7 @@ public class DaiCollectionParser {
 	}
 	
 	public List<DaiMeterCollection> parse(File file, Map<String, String> fileMeta) throws Exception {
-		byte[] inputData = IOUtils.toByteArray(new FileReader(file));		
+		byte[] inputData = IOUtils.toByteArray(new FileReader(file));
 		StringBuffer fString = new StringBuffer();
 		for ( byte b : inputData ){
 			if( (int)b<10 ) {
@@ -73,7 +73,7 @@ public class DaiCollectionParser {
 			}
 			fString.append((char)b);
 		}
-	    
+
 		List<DaiMeterCollection> parsedCollections = new ArrayList<DaiMeterCollection>();
 		DaiMeterCollection dmc = null;
 		String fLines = fString.toString().replaceAll("\r", "\n");
@@ -88,8 +88,9 @@ public class DaiCollectionParser {
 				dmc.setFileCreateTime(new Timestamp( Long.parseLong(fileMeta.get("file_create_time")) ));
 			}
 
-			if ( line.trim().startsWith("File Write") && collectionLines.size()>1 ) {
+			if ( line.trim().startsWith("File") && collectionLines.size()>1 ) {
 				String origHeader = collectionLines.get(collectionLines.size()-1);
+                collectionLines.remove(collectionLines.size()-1);
 				createCollectionModels(dmc, collectionLines);
 				collectionLines.clear();
 				dmc = null;
@@ -104,7 +105,7 @@ public class DaiCollectionParser {
 		}
 		return parsedCollections;
 	}
-	
+
 	private DaiMeterCollection createCollectionModels(DaiMeterCollection dmc, List<String> lines) {
 		CollectionData cd = new CollectionData();		 
 		boolean inEventData = false;

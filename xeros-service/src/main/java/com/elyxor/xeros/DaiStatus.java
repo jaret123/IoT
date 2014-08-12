@@ -32,7 +32,7 @@ public class DaiStatus {
 		for (ActiveDai dai : daiList) {
 			if (dai.getLastPing() != null) {
 				if ((System.currentTimeMillis() - dai.getLastPing().getTime()) > 3600000)
-					output += dai.getDaiIdentifier()+"\n";
+					output += dai.getDaiIdentifier()+", last ping at: " + dai.getLastPing()+"\n";
 			}
 		}
 		if (!output.equals("list of offline DAQs: "))
