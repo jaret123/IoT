@@ -148,19 +148,53 @@
 				</configuration>
 			</plugin>
 			<plugin>
-				<groupId>org.apache.tomcat.maven</groupId>
-				<artifactId>tomcat7-maven-plugin</artifactId>
-				<version>2.2</version>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<dependencies>
+					<dependency>
+						<groupId>org.apache.ant</groupId>
+						<artifactId>ant</artifactId>
+						<version>1.9.4</version>
+					</dependency>
+					<dependency>
+						<groupId>org.apache.ant</groupId>
+						<artifactId>ant-launcher</artifactId>
+						<version>1.9.4</version>
+					</dependency>
+					<dependency>
+						<groupId>org.apache.ant</groupId>
+						<artifactId>ant-jsch</artifactId>
+						<version>1.9.4</version>
+					</dependency>
+					<dependency>
+						<groupId>ant-contrib</groupId>
+						<artifactId>ant-contrib</artifactId>
+						<version>1.0b3</version>
+						<exclusions>
+							<exclusion>
+								<groupId>ant</groupId>
+								<artifactId>ant</artifactId>
+							</exclusion>
+						</exclusions>
+					</dependency>
+				</dependencies>
 				<configuration>
-					<url>http://${tomcat-manager-url}/text</url>
-					<path>/xsvc</path>
-					<!-- NOTE: add a server username/pw entry to your maven settings file! 
-						<server> <id>tomcat7</id> <username>myusername</username> <password>mypassword</password> 
-						</server> -->
-					<server>xeros-service</server>
-					<update>true</update>
+					<tasks>
+						<taskdef name="sshexec" classname="org.apache.tools.ant.taskdefs.optional.ssh.SSHExec" classpathref="maven.plugin.classpath" />
+						<taskdef name="scp"     classname="org.apache.tools.ant.taskdefs.optional.ssh.Scp" classpathref="maven.plugin.classpath" />
+						<taskdef resource="net/sf/antcontrib/antlib.xml" classpathref="maven.plugin.classpath" />
+						<for list="${remote.hostnames}" delimiter=";" param="hostname">
+							<sequential>
+								<sshexec username="${remote.username}" host="@{hostname}" keyfile="${remote.keyfile}" passphrase="" usepty="true" trust="true" command="sudo service ${remote.tcinstance} stop" failonerror="false" />
+								<sshexec username="${remote.username}" host="@{hostname}" keyfile="${remote.keyfile}" passphrase="" usepty="true" trust="true" command="sudo rm -rf ${remote.tchome}/webapps/${tc.context}*" />
+								<scp     keyfile="${remote.keyfile}" passphrase="" trust="true" file="${project.build.directory}/${project.build.finalName}.war" todir="${remote.username}@@@{hostname}:~/${tc.context}.war"/>
+								<sshexec username="${remote.username}" host="@{hostname}" keyfile="${remote.keyfile}" passphrase="" usepty="true" trust="true" command="sudo cp ~/${tc.context}.war ${remote.tchome}/webapps" />
+								<sshexec username="${remote.username}" host="@{hostname}" keyfile="${remote.keyfile}" passphrase="" usepty="true" trust="true" command="sudo service ${remote.tcinstance} start" />
+							</sequential>
+						</for>
+					</tasks>
 				</configuration>
 			</plugin>
+
 		</plugins>
 	</build>
 
