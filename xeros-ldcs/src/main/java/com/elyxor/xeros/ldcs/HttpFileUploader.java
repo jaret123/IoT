@@ -21,6 +21,7 @@ import org.apache.http.conn.HttpClientConnectionManager;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -45,6 +46,23 @@ public class HttpFileUploader {
 		} catch (Exception ex) {logger.error("Failed to post ping", ex);}
 		return httpStatus;
 	}
+
+    public int postMachineStatus(String daiIdentifier, byte[] machineStates) {
+        int httpStatus = 0;
+        try {
+            String serviceUrl = AppConfiguration.getServiceUrl();
+            String url = serviceUrl.substring(0, serviceUrl.length() - 6) + "rs/machinestatus/" + daiIdentifier + "/" + machineStates[0]+"/"+machineStates[1];
+            HttpPost post = new HttpPost(url);
+            HttpClient client = getHttpClient(url);
+            HttpEntity httpEntity = new ByteArrayEntity(machineStates);
+            post.setEntity(httpEntity);
+            HttpResponse response = client.execute(post);
+            httpStatus = response.getStatusLine().getStatusCode();
+        } catch (Exception ex) {
+            logger.error("Failed to post machine status");
+        }
+        return httpStatus;
+    }
 		
 	public int postFile(Path filePath, long createTime) {
 		int httpStatus = 0;

@@ -1,6 +1,7 @@
 package com.elyxor.xeros;
 
 import java.io.File;
+import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.Consumes;
@@ -47,6 +48,18 @@ public interface RSService {
     Response pingStatus();
 
     @POST
-    @Path("/machinestatus/{daiIdentifier}/{xerosStatus}/{stdStatus}")
+    @Path("/poststatus/{daiIdentifier}/{xerosStatus}/{stdStatus}")
     Response receiveMachineStatus(@PathParam("daiIdentifier") String daiIdentifier, @PathParam("xerosStatus") byte xerosStatus, @PathParam("stdStatus") byte stdStatus);
+
+//    @GET
+//    @Path("/machinestatus/{machineId}")
+//    Response machineStatus(@PathParam("machineId") int machineId);
+
+    @POST
+    @Path("/status/")
+    Response getStatus(List<Integer> machineIdList);
+
+    @POST
+    @Path("/history/")
+    Response getStatusHistory(List<Integer> machineIdList);
 }

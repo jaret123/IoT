@@ -7,6 +7,7 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 
+import com.elyxor.xeros.model.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -116,6 +117,30 @@ public class RSServiceImpl implements RSService {
         ResponseBuilder r = Response.ok();
         try {
             r.entity(daiStatus.receiveMachineStatus(daiIdentifier, xerosStatus, stdStatus));
+        } catch (Exception e) {
+            r = Response.serverError().entity(e.toString());
+        }
+        return r.build();
+    }
+
+    @Override
+    public Response getStatus(List<Integer> machineIdList) {
+        ResponseBuilder r = Response.ok();
+        try {
+            List<Status> statusList = daiStatus.getStatus(machineIdList);
+            r.entity(statusList);
+        } catch (Exception e) {
+            r = Response.serverError().entity(e.toString());
+        }
+        return r.build();
+    }
+
+    @Override
+    public Response getStatusHistory(List<Integer> machineIdList) {
+        ResponseBuilder r = Response.ok();
+        try {
+            List<List<Status>> statusList = daiStatus.getStatusHistory(machineIdList);
+            r.entity(statusList);
         } catch (Exception e) {
             r = Response.serverError().entity(e.toString());
         }

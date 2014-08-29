@@ -228,6 +228,15 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	public void setDaiNum(int num) {
 		this.daiNum = num;
 	}
+
+    public LogWriterInterface getLogWriter() {
+        return this.logWriter;
+    }
+
+    public void setLogWriter(LogWriterInterface lwi) {
+        this.logWriter = lwi;
+    }
+
     public Path getLogFilePath() {
         return logFilePath;
     }
@@ -298,7 +307,7 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		return request;
 	}
 	private String getSystemTime() {
-		SimpleDateFormat timingFormat = new SimpleDateFormat("kk : mm : ss dd-MM-yyyy");
+		SimpleDateFormat timingFormat = new SimpleDateFormat("dd-MM-yyyy kk : mm : ss");
         return timingFormat.format(System.currentTimeMillis());
 	}
 
@@ -330,4 +339,19 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	public boolean ping() {
 		return false;
 	}
+    public String initWaterRequest() {return null;}
+    public long[] calculateWaterLog(String buffer) {
+        return new long[0];
+    }
+    public void writeWaterOnlyLog(long[] meters) {
+
+    }
+
+    public String getConfig() {
+        return null;
+    }
+
+    public boolean sendMachineStatus() {
+        return false;
+    }
 }

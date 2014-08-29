@@ -1,15 +1,16 @@
 package com.elyxor.xeros;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 
+import com.elyxor.xeros.model.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.elyxor.xeros.model.ActiveDai;
 import com.elyxor.xeros.model.Machine;
-import com.elyxor.xeros.model.MachineStatus;
 import com.elyxor.xeros.model.repository.ActiveDaiRepository;
 import com.elyxor.xeros.model.repository.MachineRepository;
 import com.elyxor.xeros.model.repository.StatusRepository;
@@ -54,7 +55,7 @@ public class DaiStatus {
         List<Machine> stdMachines = machineRepository.findByDaiDaiIdentifierAndMachineIdentifier(daiIdentifier, "Std");
         List<Machine> xerosMachines = machineRepository.findByDaiDaiIdentifierAndMachineIdentifier(daiIdentifier, "Xeros");
         for (Machine machine : stdMachines) {
-            MachineStatus status = new MachineStatus();
+            Status status = new Status();
             status.setDaiIdentifier(daiIdentifier);
             status.setMachineId(machine.getId());
             status.setStatusCode((int) stdStatus);
@@ -62,7 +63,7 @@ public class DaiStatus {
             statusRepository.save(status);
         }
         for (Machine machine : xerosMachines) {
-            MachineStatus status = new MachineStatus();
+            Status status = new Status();
             status.setDaiIdentifier(daiIdentifier);
             status.setMachineId(machine.getId());
             status.setStatusCode((int) xerosStatus);
@@ -75,4 +76,19 @@ public class DaiStatus {
         return false;
     }
 
+    public List<Status> getStatus(List<Integer> machineIdList) {
+        List<Status> statusList = new ArrayList<Status>();
+        for (Integer id : machineIdList) {
+            statusList.add(statusRepository.findByMachineId(id));
+        }
+        return statusList;
+    }
+
+    public List<List<Status>> getStatusHistory(List<Integer> machineIdList){
+        List<List<Status>> statusList = new ArrayList<List<Status>>();
+        for (Integer id : machineIdList) {
+            statusList.add(statusRepository.findHistoryByMachineId(id));
+        }
+        return statusList;
+    }
 }

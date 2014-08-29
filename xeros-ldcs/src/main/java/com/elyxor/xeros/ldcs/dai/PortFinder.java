@@ -3,6 +3,7 @@ package com.elyxor.xeros.ldcs.dai;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.quartz.SchedulerException;
 
@@ -25,8 +26,7 @@ public class PortFinder implements Runnable, PortFinderInterface {
 		List<String> activeLocalPorts = new LinkedList<String>();
 
 		while (portFinderRunning) {
-			
-			List<String> newPorts = Arrays.asList(SerialPortList.getPortNames());
+			List<String> newPorts = Arrays.asList(SerialPortList.getPortNames(Pattern.compile("(ttyUSB)[0-9]{1,3}")));
 			
 			for (String portName : newPorts) {
 				if (!activeLocalPorts.contains(portName))
@@ -42,6 +42,11 @@ public class PortFinder implements Runnable, PortFinderInterface {
 				}
 			}
 			activeLocalPorts = newPorts;
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
 		}
 	}
 	

@@ -5,9 +5,9 @@ import java.sql.Timestamp;
 
 @Entity
 @Table(name = "xeros_status")
-public class MachineStatus {
+public class Status {
 
-	public MachineStatus() {}
+	public Status() {}
 
 	private Integer id;
     private Integer machineId;

@@ -1,26 +1,19 @@
 package com.elyxor.xeros.ldcs.dai;
 
+import static org.quartz.DateBuilder.IntervalUnit;
+import static org.quartz.DateBuilder.futureDate;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.*;
 import static org.quartz.CronScheduleBuilder.*;
 import static org.quartz.JobBuilder.*;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 import jssc.SerialPortException;
-import org.quartz.CronTrigger;
-import org.quartz.Job;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerFactory;
-import org.quartz.Trigger;
+import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,34 +55,54 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			}
 		}
 		DaiPortInterface daiPort = new DaiPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix);
-		String daiId = "";
-		String newId = "";
+		String daiId = null;
+		String newId = null;
 		int retryCounter = 0;
 		
 		if (daiPort.openPort()) {
-			daiId = daiPort.getRemoteDaiId();
-			if (daiId == null && retryCounter < 3) {
-				daiId = daiPort.getRemoteDaiId();
-				retryCounter++;
+            while (retryCounter < 3) {
+			    daiId = daiPort.getRemoteDaiId();
+			    if (daiId != null) {
+                    int daiIdInt = Integer.parseInt(daiId);
+                    if (daiId.equals("0")) {
+                        newId = daiPort.setRemoteDaiId(nextDaiNum);
+                        if (newId != null) {
+                            logger.info("Assigned DAI ID " + daiPrefix + nextDaiNum + " to port " + portName);
+                            nextDaiNum++;
+                            break;
+                        }
+                    }
+                    if (daiIdInt > 0) {
+                        daiPort.setDaiNum(daiIdInt);
+                        logger.info("Found existing DAI with ID "+daiPrefix+daiIdInt+" on port"+portName);
+                        nextDaiNum = daiIdInt + 1;
+                        break;
+                    }
+                }
+                retryCounter++;
 			}
-			if (daiId!=null && daiId.equals("0")) {
-				retryCounter = 0;
-				newId = daiPort.setRemoteDaiId(nextDaiNum);
-				if (newId == null && retryCounter < 3) {
-					newId = daiPort.setRemoteDaiId(nextDaiNum);
-					retryCounter++;
-				}
-		    	logger.info("Assigned DAI ID "+daiPrefix+nextDaiNum+" to port "+portName);
-				nextDaiNum++;
-			}
-			else if (daiId!=null) {
-				int daiIdInt = Integer.parseInt(daiId);
-				if (daiIdInt > 0) {
-					daiPort.setDaiNum(daiIdInt);
-					logger.info("Found existing DAI with ID "+daiPrefix+daiId+" on port"+portName);
-					nextDaiNum = daiIdInt + 1;
-				}
-			}
+//			if (daiId!=null && daiId.equals("0")) {
+//				retryCounter = 0;
+//				newId = daiPort.setRemoteDaiId(nextDaiNum);
+//				if (newId == null && retryCounter < 3) {
+//					newId = daiPort.setRemoteDaiId(nextDaiNum);
+//					retryCounter++;
+//				}
+//		    	logger.info("Assigned DAI ID "+daiPrefix+nextDaiNum+" to port "+portName);
+//				nextDaiNum++;
+//			}
+//			else if (daiId!=null) {
+//				int daiIdInt = Integer.parseInt(daiId);
+//				if (daiIdInt > 0) {
+//					daiPort.setDaiNum(daiIdInt);
+//					logger.info("Found existing DAI with ID "+daiPrefix+daiId+" on port"+portName);
+//					nextDaiNum = daiIdInt + 1;
+//				}
+//			}
+            if (waterOnly == 1) {
+                daiPort.initWaterRequest();
+            }
+            daiPort.setLogWriter(new FileLogWriter(path, daiPrefix+daiPort.getDaiNum()+"Log.txt"));
 			portList.put(portName, daiPort);
 			return true;
 		}
@@ -156,7 +169,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	Scheduler sched;
     CronTrigger waterOnlyTrigger = newTrigger()
             .withIdentity("waterOnlyTrigger")
-            .withSchedule(cronSchedule("0 0 */1 * * ?"))
+            .withSchedule(cronSchedule("*/10 * * * * ?"))
             .build();
 	CronTrigger clockSetTrigger = newTrigger()
 			.withIdentity("clockSetTrigger")
@@ -168,18 +181,25 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			.build();
     CronTrigger waterOnlyManualTrigger = newTrigger()
             .withIdentity("waterOnlyManualTrigger")
-            .withSchedule(cronSchedule("0 0 */1 * * ?"))
+            .withSchedule(cronSchedule("*/10 * * * * ?"))
+            .build();
+    Trigger machineStatusTrigger = newTrigger()
+            .withIdentity("machineStatusTrigger")
+            .startAt(futureDate(20, IntervalUnit.SECOND))
+            .withSchedule(simpleSchedule()
+                    .withIntervalInMinutes(5)
+                    .repeatForever())
             .build();
 
 
     public void startScheduler() {
 		try {
 			sched = schedFact.getScheduler();
-			JobDetail pingJob = newJob(PingJob.class) //always set up ping
-					.withIdentity("pingJob")
-					.build();
-			sched.scheduleJob(pingJob, pingTrigger);
-			logger.info("scheduled ping job, next fire time: "+pingTrigger.getNextFireTime().toString());
+//			JobDetail pingJob = newJob(PingJob.class) //always set up ping
+//					.withIdentity("pingJob")
+//					.build();
+//			sched.scheduleJob(pingJob, pingTrigger);
+//			logger.info("scheduled ping job, next fire time: "+pingTrigger.getNextFireTime().toString());
 			if (waterOnly==2) { //DAQ-less water only, no clock set necessary
 				JobDetail waterOnlyManualJob = newJob(WaterOnlyManualJob.class)
 						.withIdentity("waterOnlyManualJob")
@@ -195,7 +215,13 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 					.build();
 			sched.scheduleJob(clockSetJob, clockSetTrigger);
 			logger.info("scheduled clock set job, next fire time: "+clockSetTrigger.getNextFireTime().toString());
-			
+
+            JobDetail machineStatusJob = newJob(MachineStatusJob.class)
+                    .withIdentity("machineStatusJob")
+                    .build();
+            sched.scheduleJob(machineStatusJob, machineStatusTrigger);
+			logger.info("schedule machine status job, next fire time: "+machineStatusTrigger.getNextFireTime().toString());
+
 			if (waterOnly==1) { //water only request if using DAQ and water only
 				JobDetail waterOnlyJob = newJob(WaterOnlyJob.class)
 						.withIdentity("waterOnlyJob")
@@ -211,20 +237,16 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		public WaterOnlyJob() {}
 		public void execute(JobExecutionContext context) throws JobExecutionException {
 			logger.info("Executing water only data collection");
-			String buffer = "";
-            int retry = 0;
+			String buffer = null;
 			for (DaiPortInterface daiPort : portList.values()) {
-				while (retry < 3) {
-                    try {
-                        buffer = daiPort.sendWaterRequest();
-                    } catch (Exception ex) {logger.warn("unable to complete water meter request", ex);}
+                try {
+                    buffer = daiPort.sendWaterRequest();
+                } catch (Exception ex) {logger.warn("unable to complete water meter request", ex);}
 
-                    logger.info(buffer);
-                    if (buffer.length() > 50) {
-                        daiPort.writeLogFile(buffer);
-                        break;
-                    }
-                    retry++;
+                logger.info(buffer);
+                long[] result = daiPort.calculateWaterLog(buffer);
+                if (result!=null) {
+                    daiPort.writeWaterOnlyLog(result);
                 }
 			}
 		}
@@ -259,5 +281,15 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 				daiPort.ping();
 			}
 		}
-	} 
+	}
+    public static class MachineStatusJob implements Job {
+        public MachineStatusJob() {}
+        public void execute(JobExecutionContext context) throws JobExecutionException {
+            logger.info("Executing machine status update");
+            for (DaiPortInterface daiPort : portList.values()) {
+                daiPort.sendMachineStatus();
+                return;
+            }
+        }
+    }
 }
