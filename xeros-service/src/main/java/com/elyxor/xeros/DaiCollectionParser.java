@@ -38,7 +38,7 @@ public class DaiCollectionParser {
 
 	DateTimeFormatter startDtf = DateTimeFormat.forPattern("HH : mm : ss");
 	DateTimeFormatter durationDtf = DateTimeFormat.forPattern("HH : mm : ss.SSS");
-    DateTimeFormatter collectionDtf = DateTimeFormat.forPattern("HH : mm : ss dd-MM-yyyy");
+    DateTimeFormatter collectionDtf = DateTimeFormat.forPattern("dd-MM-yyyy HH : mm : ss");
 	
 	private static Logger logger = LoggerFactory.getLogger(DaiCollectionParser.class);
 	@Autowired DaiMeterCollectionRepository daiMeterCollectionRepo;
@@ -131,12 +131,16 @@ public class DaiCollectionParser {
 				dmc.setMachineIdentifier(StringUtils.trim(cd.fileHeader[1]));
 			} else if ( firstEle.startsWith("File Write") && lineData.length>1 ) {
 				try {
-					DateTime collectionTime = parseTime(StringUtils.trim(lineData[1]));
+					DateTime collectionTime = parseTime(StringUtils.trim(lineData[1]), tz);
 					cd.fileWriteTime = collectionTime.getMillis();
 					dmc.setDaiCollectionTime( new Timestamp( collectionTime.getMillis() ) );
 				} catch (Exception ex) {
 					cd.fileWriteTime = Float.parseFloat(lineData[1].trim());
-					dmc.setDaiCollectionTime( new Timestamp( getMidnightMillis(null)+ ((int)cd.fileWriteTime*1000) ) );
+                    long midMillis = getMidnightMillis(tz);
+                    long writeTime = (long) cd.fileWriteTime * 1000;
+                    long timeZoneOffset = tz.convertUTCToLocal(midMillis + writeTime);
+
+					dmc.setDaiCollectionTime( new Timestamp( timeZoneOffset) );
 				}
 				logger.info(String.format("storing collection data for run %1s", dmc ));
 				inEventData = true;
@@ -258,8 +262,12 @@ public class DaiCollectionParser {
 		}
 		return dmc;
 	}
-	
-	private DateTime parseTime(String ts) {
+
+    private DateTime parseTime(String ts) {
+        return this.parseTime(ts, DateTimeZone.UTC);
+    }
+
+	private DateTime parseTime(String ts, DateTimeZone tz) {
 		LocalTime fileWriteTime = null;
         DateTime collectionTime = null;
 
@@ -272,7 +280,7 @@ public class DaiCollectionParser {
 		} catch (IllegalArgumentException px) {
 			fileWriteTime = LocalTime.parse(ts, startDtf);
 		}
-		collectionTime = fileWriteTime.toDateTimeToday();
+		collectionTime = fileWriteTime.toDateTimeToday(tz);
 		return collectionTime;
 	}
 }

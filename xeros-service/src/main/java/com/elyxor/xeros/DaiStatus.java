@@ -8,12 +8,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.elyxor.xeros.model.ActiveDai;
+import com.elyxor.xeros.model.Machine;
+import com.elyxor.xeros.model.MachineStatus;
 import com.elyxor.xeros.model.repository.ActiveDaiRepository;
+import com.elyxor.xeros.model.repository.MachineRepository;
+import com.elyxor.xeros.model.repository.StatusRepository;
+
 
 @Transactional
 @Service
 public class DaiStatus {
 	@Autowired ActiveDaiRepository activeDaiRepository;
+    @Autowired StatusRepository statusRepository;
+    @Autowired MachineRepository machineRepository;
 
 	public boolean receivePing(String daiIdentifier) {
 		List<ActiveDai> daiList = activeDaiRepository.findByDaiIdentifier(daiIdentifier);
@@ -43,4 +50,29 @@ public class DaiStatus {
 			return output;
 		}
 	}
+    public boolean receiveMachineStatus(String daiIdentifier, byte xerosStatus, byte stdStatus) {
+        List<Machine> stdMachines = machineRepository.findByDaiDaiIdentifierAndMachineIdentifier(daiIdentifier, "Std");
+        List<Machine> xerosMachines = machineRepository.findByDaiDaiIdentifierAndMachineIdentifier(daiIdentifier, "Xeros");
+        for (Machine machine : stdMachines) {
+            MachineStatus status = new MachineStatus();
+            status.setDaiIdentifier(daiIdentifier);
+            status.setMachineId(machine.getId());
+            status.setStatusCode((int) stdStatus);
+            status.setTimestamp(new Timestamp(System.currentTimeMillis()));
+            statusRepository.save(status);
+        }
+        for (Machine machine : xerosMachines) {
+            MachineStatus status = new MachineStatus();
+            status.setDaiIdentifier(daiIdentifier);
+            status.setMachineId(machine.getId());
+            status.setStatusCode((int) xerosStatus);
+            status.setTimestamp(new Timestamp(System.currentTimeMillis()));
+            statusRepository.save(status);
+        }
+        if (stdMachines!=null || xerosMachines!=null) {
+            return true;
+        }
+        return false;
+    }
+
 }

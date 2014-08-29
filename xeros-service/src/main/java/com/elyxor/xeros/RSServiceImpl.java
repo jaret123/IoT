@@ -111,4 +111,14 @@ public class RSServiceImpl implements RSService {
 		return r.build();
 	}
 
+    @Override
+    public Response receiveMachineStatus(String daiIdentifier, byte xerosStatus, byte stdStatus) {
+        ResponseBuilder r = Response.ok();
+        try {
+            r.entity(daiStatus.receiveMachineStatus(daiIdentifier, xerosStatus, stdStatus));
+        } catch (Exception e) {
+            r = Response.serverError().entity(e.toString());
+        }
+        return r.build();
+    }
 }

@@ -45,4 +45,8 @@ public interface RSService {
     @GET
     @Path("/pingstatus")
     Response pingStatus();
+
+    @POST
+    @Path("/machinestatus/{daiIdentifier}/{xerosStatus}/{stdStatus}")
+    Response receiveMachineStatus(@PathParam("daiIdentifier") String daiIdentifier, @PathParam("xerosStatus") byte xerosStatus, @PathParam("stdStatus") byte stdStatus);
 }
