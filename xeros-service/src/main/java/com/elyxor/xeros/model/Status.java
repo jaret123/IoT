@@ -45,7 +45,7 @@ public class Status {
         this.daiIdentifier = daiIdentifier;
     }
 
-    @Column(name = "timestamp")
+    @Column(name = "time_stamp")
     public Timestamp getTimestamp() {
         return timestamp;
     }

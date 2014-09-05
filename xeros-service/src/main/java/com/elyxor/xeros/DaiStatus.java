@@ -1,8 +1,7 @@
 package com.elyxor.xeros;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import com.elyxor.xeros.model.Status;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,10 +83,10 @@ public class DaiStatus {
         return statusList;
     }
 
-    public List<List<Status>> getStatusHistory(List<Integer> machineIdList){
-        List<List<Status>> statusList = new ArrayList<List<Status>>();
+    public List<Status> getStatusHistory(List<Integer> machineIdList){
+        List<Status> statusList = new ArrayList<Status>();
         for (Integer id : machineIdList) {
-            statusList.add(statusRepository.findHistoryByMachineId(id));
+            statusList.addAll(statusRepository.findHistoryByMachineId(id));
         }
         return statusList;
     }

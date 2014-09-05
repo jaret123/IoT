@@ -51,7 +51,7 @@ public class HttpFileUploader {
         int httpStatus = 0;
         try {
             String serviceUrl = AppConfiguration.getServiceUrl();
-            String url = serviceUrl.substring(0, serviceUrl.length() - 6) + "rs/machinestatus/" + daiIdentifier + "/" + machineStates[0]+"/"+machineStates[1];
+            String url = serviceUrl.substring(0, serviceUrl.length() - 6) + "rs/poststatus/" + daiIdentifier + "/" + machineStates[0]+"/"+machineStates[1];
             HttpPost post = new HttpPost(url);
             HttpClient client = getHttpClient(url);
             HttpEntity httpEntity = new ByteArrayEntity(machineStates);

@@ -139,7 +139,7 @@ public class RSServiceImpl implements RSService {
     public Response getStatusHistory(List<Integer> machineIdList) {
         ResponseBuilder r = Response.ok();
         try {
-            List<List<Status>> statusList = daiStatus.getStatusHistory(machineIdList);
+            List<Status> statusList = daiStatus.getStatusHistory(machineIdList);
             r.entity(statusList);
         } catch (Exception e) {
             r = Response.serverError().entity(e.toString());
