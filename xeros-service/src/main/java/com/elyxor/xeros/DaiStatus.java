@@ -53,21 +53,14 @@ public class DaiStatus {
     public boolean receiveMachineStatus(String daiIdentifier, byte xerosStatus, byte stdStatus) {
         List<Machine> stdMachines = machineRepository.findByDaiDaiIdentifierAndMachineIdentifier(daiIdentifier, "Std");
         List<Machine> xerosMachines = machineRepository.findByDaiDaiIdentifierAndMachineIdentifier(daiIdentifier, "Xeros");
+        String stdMessage = "";
+        String xerosMessage = "";
+
         for (Machine machine : stdMachines) {
-            Status status = new Status();
-            status.setDaiIdentifier(daiIdentifier);
-            status.setMachineId(machine.getId());
-            status.setStatusCode((int) stdStatus);
-            status.setTimestamp(new Timestamp(System.currentTimeMillis()));
-            statusRepository.save(status);
+            createStatus(daiIdentifier, machine, stdStatus);
         }
         for (Machine machine : xerosMachines) {
-            Status status = new Status();
-            status.setDaiIdentifier(daiIdentifier);
-            status.setMachineId(machine.getId());
-            status.setStatusCode((int) xerosStatus);
-            status.setTimestamp(new Timestamp(System.currentTimeMillis()));
-            statusRepository.save(status);
+            createStatus(daiIdentifier, machine, xerosStatus);
         }
         if (stdMachines!=null || xerosMachines!=null) {
             return true;
@@ -89,5 +82,23 @@ public class DaiStatus {
             statusList.addAll(statusRepository.findHistoryByMachineId(id));
         }
         return statusList;
+    }
+
+    private Status createStatus(String daiIdentifier, Machine machine, int statusCode) {
+        String message = "";
+        Status status = new Status();
+        status.setDaiIdentifier(daiIdentifier);
+        status.setMachineId(machine.getId());
+        status.setStatusCode(statusCode);
+        status.setTimestamp(new Timestamp(System.currentTimeMillis()));
+
+        if (statusCode == 0) message = "Machine is inactive.";
+        else if (statusCode > 0) message = "Machine is active.";
+        else if (statusCode == -1) message = "Unable to poll machine for status";
+        else message = "Unknown status code.";
+
+        status.setStatusMessage(message);
+        statusRepository.save(status);
+        return status;
     }
 }
