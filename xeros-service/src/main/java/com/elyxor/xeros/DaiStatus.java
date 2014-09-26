@@ -84,6 +84,11 @@ public class DaiStatus {
         return statusList;
     }
 
+    private byte[] checkStatusTime(List<Machine> stdMachines, List<Machine> xerosMachines) {
+        byte[] result = new byte[2];
+        return result;
+    }
+
     private Status createStatus(String daiIdentifier, Machine machine, int statusCode) {
         String message = "";
         Status status = new Status();

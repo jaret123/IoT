@@ -44,7 +44,8 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		}
 	}
 		
-	public boolean portAdded(String portName) {				
+	public boolean portAdded(String portName) {
+        logger.info("Found new USB device: "+portName);
 		if (waterOnly == 2) {
 			WaterMeterPortInterface waterMeterPort = new WaterMeterPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix);
 			if (waterMeterPort.openPort()) {
@@ -81,26 +82,12 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
                 }
                 retryCounter++;
 			}
-//			if (daiId!=null && daiId.equals("0")) {
-//				retryCounter = 0;
-//				newId = daiPort.setRemoteDaiId(nextDaiNum);
-//				if (newId == null && retryCounter < 3) {
-//					newId = daiPort.setRemoteDaiId(nextDaiNum);
-//					retryCounter++;
-//				}
-//		    	logger.info("Assigned DAI ID "+daiPrefix+nextDaiNum+" to port "+portName);
-//				nextDaiNum++;
-//			}
-//			else if (daiId!=null) {
-//				int daiIdInt = Integer.parseInt(daiId);
-//				if (daiIdInt > 0) {
-//					daiPort.setDaiNum(daiIdInt);
-//					logger.info("Found existing DAI with ID "+daiPrefix+daiId+" on port"+portName);
-//					nextDaiNum = daiIdInt + 1;
-//				}
-//			}
-            if (waterOnly == 1) {
+            if (waterOnly == 1||waterOnly==3) {
                 daiPort.initWaterRequest();
+            }
+            if (daiId == null) {
+                daiPort.closePort();
+                return false;
             }
             daiPort.setLogWriter(new FileLogWriter(path, daiPrefix+daiPort.getDaiNum()+"Log.txt"));
 			portList.put(portName, daiPort);
@@ -110,6 +97,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	}
 	
 	public boolean portRemoved(String portName) {
+        logger.info("USB Device removed: "+portName);
 		DaiPortInterface daiPort = findDaiPort(portName);
 		if (daiPort != null) {
 			if (daiPort.closePort()) {
@@ -167,9 +155,19 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	//quartz setup for scheduled tasks for water only and clock set
 	SchedulerFactory schedFact = new org.quartz.impl.StdSchedulerFactory();
 	Scheduler sched;
-    CronTrigger waterOnlyTrigger = newTrigger()
+    Trigger waterOnlyTrigger = newTrigger()
             .withIdentity("waterOnlyTrigger")
-            .withSchedule(cronSchedule("*/10 * * * * ?"))
+            .startAt(futureDate(90, IntervalUnit.SECOND))
+            .withSchedule(simpleSchedule()
+                    .withIntervalInMinutes(15)
+                    .repeatForever())
+            .build();
+    Trigger waterOnlyXerosTrigger = newTrigger()
+            .withIdentity("waterOnlyXerosTrigger")
+            .startAt(futureDate(90, IntervalUnit.SECOND))
+            .withSchedule(simpleSchedule()
+                    .withIntervalInMinutes(15)
+                    .repeatForever())
             .build();
 	CronTrigger clockSetTrigger = newTrigger()
 			.withIdentity("clockSetTrigger")
@@ -185,9 +183,9 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
             .build();
     Trigger machineStatusTrigger = newTrigger()
             .withIdentity("machineStatusTrigger")
-            .startAt(futureDate(20, IntervalUnit.SECOND))
+            .startAt(futureDate(60, IntervalUnit.SECOND))
             .withSchedule(simpleSchedule()
-                    .withIntervalInMinutes(5)
+                    .withIntervalInMinutes(10)
                     .repeatForever())
             .build();
 
@@ -229,6 +227,14 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 				sched.scheduleJob(waterOnlyJob, waterOnlyTrigger);
 				logger.info("scheduled water only job, next fire time: "+waterOnlyTrigger.getNextFireTime().toString());
 			}
+            if (waterOnly==3) { //water only request using the Digital side of the DAQ
+                JobDetail waterOnlyXerosJob = newJob(WaterOnlyXerosJob.class)
+                        .withIdentity("waterOnlyXerosJob")
+                        .build();
+                sched.scheduleJob(waterOnlyXerosJob, waterOnlyXerosTrigger);
+                logger.info("scheduled water only job, next fire time: "+waterOnlyXerosTrigger.getNextFireTime().toString());
+
+            }
 			sched.start();
 		} catch (Exception ex) {logger.warn("could not start scheduler",ex);}
 	}
@@ -288,7 +294,24 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
             logger.info("Executing machine status update");
             for (DaiPortInterface daiPort : portList.values()) {
                 daiPort.sendMachineStatus();
-                return;
+            }
+        }
+    }
+    public static class WaterOnlyXerosJob implements Job {
+        public WaterOnlyXerosJob() {}
+        public void execute(JobExecutionContext context) throws JobExecutionException {
+            logger.info("Executing water only data collection");
+            String buffer = null;
+            for (DaiPortInterface daiPort : portList.values()) {
+                try {
+                    buffer = daiPort.sendXerosWaterRequest();
+                } catch (Exception ex) {logger.warn("unable to complete water meter request", ex);}
+
+                logger.info(buffer);
+                long[] result = daiPort.calculateWaterLog(buffer);
+                if (result!=null) {
+                    daiPort.writeWaterOnlyXerosLog(result);
+                }
             }
         }
     }

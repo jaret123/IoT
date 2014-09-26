@@ -27,8 +27,8 @@ public class PortFinder implements Runnable, PortFinderInterface {
 
 		while (portFinderRunning) {
 			List<String> newPorts = Arrays.asList(SerialPortList.getPortNames(Pattern.compile("(ttyUSB)[0-9]{1,3}")));
-			
-			for (String portName : newPorts) {
+
+            for (String portName : newPorts) {
 				if (!activeLocalPorts.contains(portName))
 					try {
 						_portListener.portAdded(portName);

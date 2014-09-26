@@ -29,10 +29,13 @@ public interface DaiPortInterface {
 	public String sendStdRequest();
 	public String sendXerosRequest();
 	public String sendWaterRequest() throws Exception;
-	public String sendRequest();
+    public String sendXerosWaterRequest() throws Exception;
+
+    public String sendRequest();
     public String initWaterRequest();
     public long[] calculateWaterLog(String buffer);
     public void writeWaterOnlyLog(long[] meters);
+    void writeWaterOnlyXerosLog(long[] result);
     public String getConfig();
 
     public boolean sendMachineStatus();
@@ -40,4 +43,5 @@ public interface DaiPortInterface {
 	//utilities
 	public void writeLogFile(String s);
 	public boolean ping();
+
 }

@@ -336,7 +336,13 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	public String sendWaterRequest() {
 		return null;
 	}
-	public boolean ping() {
+
+    @Override
+    public String sendXerosWaterRequest() throws Exception {
+        return null;
+    }
+
+    public boolean ping() {
 		return false;
 	}
     public String initWaterRequest() {return null;}
@@ -344,6 +350,9 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
         return new long[0];
     }
     public void writeWaterOnlyLog(long[] meters) {
+
+    }
+    public void writeWaterOnlyXerosLog(long[] meters) {
 
     }
 
