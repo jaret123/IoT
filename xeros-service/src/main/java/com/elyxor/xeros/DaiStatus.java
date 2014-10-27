@@ -5,6 +5,7 @@ import java.util.*;
 
 import com.elyxor.xeros.model.Status;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -84,8 +85,14 @@ public class DaiStatus {
         return statusList;
     }
 
-    private byte[] checkStatusTime(List<Machine> stdMachines, List<Machine> xerosMachines) {
+
+    @Scheduled(cron="*/10 * * * * ?")
+    private byte[] checkStatusTime() {
         byte[] result = new byte[2];
+        Iterable<Machine> machines = machineRepository.findAll();
+
+
+
         return result;
     }
 
