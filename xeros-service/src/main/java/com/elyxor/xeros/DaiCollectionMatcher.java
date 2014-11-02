@@ -1,10 +1,7 @@
 package com.elyxor.xeros;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-
+import com.elyxor.xeros.model.*;
+import com.elyxor.xeros.model.repository.*;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
@@ -13,20 +10,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.elyxor.xeros.model.CollectionClassificationMap;
-import com.elyxor.xeros.model.CollectionClassificationMapDetail;
-import com.elyxor.xeros.model.DaiMeterActual;
-import com.elyxor.xeros.model.DaiMeterCollection;
-import com.elyxor.xeros.model.DaiMeterCollectionDetail;
-import com.elyxor.xeros.model.Machine;
-import com.elyxor.xeros.model.repository.ActiveDaiRepository;
-import com.elyxor.xeros.model.repository.ClassificationRepository;
-import com.elyxor.xeros.model.repository.CollectionClassificationMapDetailRepository;
-import com.elyxor.xeros.model.repository.CollectionClassificationMapRepository;
-import com.elyxor.xeros.model.repository.DaiMeterActualRepository;
-import com.elyxor.xeros.model.repository.DaiMeterCollectionDetailRepository;
-import com.elyxor.xeros.model.repository.DaiMeterCollectionRepository;
-import com.elyxor.xeros.model.repository.MachineRepository;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 
 @Transactional
 @Service
@@ -42,7 +29,9 @@ public class DaiCollectionMatcher {
 	@Autowired CollectionClassificationMapRepository collectionClassificationMapRepo;
 	@Autowired CollectionClassificationMapDetailRepository collectionClassificationMapDetailRepo;
 	@Autowired MachineRepository machineRepository;
-	
+
+    private static final Float ROLLOVER_DAQ = 65535f;
+    private static final Float ROLLOVER_EKM = 10000000f;
 
 	
 	public CollectionClassificationMap match(int collectionId) throws Exception {
@@ -144,7 +133,17 @@ public class DaiCollectionMatcher {
 			for ( DaiMeterCollectionDetail cd : c.getCollectionDetails() ) {
 				if ( cd.getMeterType().equals(m.getColdWaterMeterType()) ) {
 					int waterOnly = m.getWaterOnly()!=null?m.getWaterOnly():0;
-					return waterOnly==1?new Float(cd.getMeterValue()):new Float(cd.getDuration());
+					Float result = waterOnly==1?new Float(cd.getMeterValue()):new Float(cd.getDuration());
+
+                    //adjustment for rollover of DAQ water meter (meter turns over at 65535)
+                    if (result > -9000000 && result < -55000) {
+                        result = result + ROLLOVER_DAQ;
+                    }
+                    //adjustment for rollover of EK water meter (meter turns over at 10,000,000)
+                    else if (result < -9000000) {
+                        result = result + ROLLOVER_EKM;
+                    }
+                    return result;
 				}
 			}
 		}
@@ -158,7 +157,17 @@ public class DaiCollectionMatcher {
 			for ( DaiMeterCollectionDetail cd : c.getCollectionDetails() ) {
 				if ( cd.getMeterType().equals(m.getHotWaterMeterType()) ) {
 					int waterOnly = m.getWaterOnly()!=null?m.getWaterOnly():0;
-					return waterOnly==1?new Float(cd.getMeterValue()):new Float(cd.getDuration());
+					Float result = waterOnly==1?new Float(cd.getMeterValue()):new Float(cd.getDuration());
+
+                    //adjustment for rollover of DAQ water meter (meter turns over at 65535)
+                    if (result > -9000000 && result < -55000) {
+                        result = result + ROLLOVER_DAQ;
+                    }
+                    //adjustment for rollover of EK water meter (meter turns over at 10,000,000)
+                    else if (result < -9000000) {
+                        result = result + ROLLOVER_EKM;
+                    }
+                    return result;
 				}
 			}
 		}
