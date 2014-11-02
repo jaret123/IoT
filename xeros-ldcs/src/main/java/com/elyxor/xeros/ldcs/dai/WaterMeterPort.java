@@ -1,5 +1,13 @@
 package com.elyxor.xeros.ldcs.dai;
 
+import com.elyxor.xeros.ldcs.util.FileLogWriter;
+import com.elyxor.xeros.ldcs.util.LogWriterInterface;
+import jssc.SerialPort;
+import jssc.SerialPortException;
+import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -7,16 +15,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-
-import com.elyxor.xeros.ldcs.util.FileLogWriter;
-import org.apache.commons.io.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.elyxor.xeros.ldcs.util.LogWriterInterface;
-
-import jssc.SerialPort;
-import jssc.SerialPortException;
 
 public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface {
 	final static Logger logger = LoggerFactory.getLogger(WaterMeterPort.class);
@@ -31,6 +29,7 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	private String waterMeterId;
     private Path logFilePath;
     private LogWriterInterface waterMeterLogWriter;
+    private boolean logSent;
 	
 	final static String defaultId = "999999999999";
 	final static int frontPadding = 2;
@@ -40,16 +39,20 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	final static int meterDataStartLocation = 203;
 	final static int meterDataLength = 8;
 	final static int responseLength = 255;
+
+    private long meterDiff1;
+    private long meterDiff2;
 	
 	final static byte[] requestBytes = {(byte)0x2f,(byte)0x3f,(byte)0x30,(byte)0x30,(byte)0x30,
 			(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,
 			(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x21,(byte)0x0d,(byte)0x0a}; 
 	
-	public WaterMeterPort(SerialPort sp, int num, LogWriterInterface lwi, String prefix) {
+	public WaterMeterPort(SerialPort sp, int num, LogWriterInterface lwi, String prefix, String waterMeterId) {
 		this.serialPort = sp;
 		this.daiNum = num;
 		this.logWriter = lwi;
 		this.daiPrefix = prefix;
+        this.waterMeterId = waterMeterId;
 	}
 	
 	public boolean openPort() {
@@ -91,17 +94,20 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 			String msg = "failed to send init request";
 			logger.warn(msg, e);
 		}
-		this.setWaterMeterId(parseIdFromResponse(buffer));
+        String meterId = parseIdFromResponse(buffer);
+		this.setWaterMeterId(meterId);
         this.setLogFilePath(Paths.get(this.logWriter.getPath().getParent().toString(), "/waterMeters"));
-        this.setWaterMeterLogWriter(new FileLogWriter(this.logFilePath, daiPrefix + "meterLogging.txt"));
+        this.setWaterMeterLogWriter(new FileLogWriter(this.logFilePath, daiPrefix + waterMeterId + "meterLogging.txt"));
         long[] meters = parsePrevMetersFromFile();
-
-        if (meters == null) {
+        logSent = true;
+        if (Arrays.equals(meters, new long[]{0,0})) {
+            logSent = false;
             meters = parseMetersFromResponse(buffer);
             this.storePrevMeters(meters);
         }
         this.setPrevMeters(meters[0],meters[1]);
-        return buffer == null || buffer.length == 0 ? "" : buffer.toString();
+
+        return meterId;
     }
 
     public String sendRequest() {
@@ -125,25 +131,41 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
         if (buffer == null || buffer.length == 0) return result;
 
         logger.info("Captured log file");
-        long[] meters = this.parseMetersFromResponse(buffer);
-        meter1 = meters[0];
-        meter2 = meters[1];
+        long[] currentMeters = this.parseMetersFromResponse(buffer);
+        meter1 = currentMeters[0] - prevMeters[0];
+        meter2 = currentMeters[1] - prevMeters[1];
 
-        result = this.getDaiNum() + " , Std , \nFile Write Time: , "
-                + getSystemTime() + "\n"
-                + "WM2: , 0 , 0 , "
-                + (meter1 - prevMeters[0]) + "\n"
-                + "WM3: , 0 , 0 , "
-                + (meter2 - prevMeters[1]);
+        if (meter1 == 0 && meter2 == 0) {
+            if (!logSent) {
+                result = this.getWaterMeterId() + " , Std , \nFile Write Time: , "
+                        + getSystemTimeAndDate() + "\n"
+                        + "WM2: , 0 , 0 , "
+                        + meterDiff1 + "\n"
+                        + "WM3: , 0 , 0 , "
+                        + meterDiff2 + "\n";
+                meterDiff1 = meterDiff2 = 0;
+                logSent = true;
+                return result;
+            }
+            return result;
+        }
+        meterDiff1 += meter1;
+        meterDiff2 += meter2;
+
         try {
             Files.delete(this.getWaterMeterLogWriter().getFile().toPath());
         } catch (IOException e) {
             e.printStackTrace();
         }
-        this.setPrevMeters(meter1, meter2);
-        this.storePrevMeters(meters);
+        logSent = false;
+        this.storePrevMeters(currentMeters);
         return result;
 	}
+
+    public long[] calculateWaterLog(String buffer) {
+        return new long[0];
+    }
+
 
     private void storePrevMeters(long[] meters) {
         for (int i = 0; i < meters.length; i++) {
@@ -163,7 +185,7 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
             inputData = IOUtils.toByteArray(new FileReader(this.getWaterMeterLogWriter().getFile()));
         } catch (Exception ex) {
             logger.warn("could not open meter log file",ex);
-            return null;
+            return new long[]{0,0};
         }
 
         StringBuffer fString = new StringBuffer();
@@ -310,8 +332,15 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		SimpleDateFormat timingFormat = new SimpleDateFormat("dd-MM-yyyy kk : mm : ss");
         return timingFormat.format(System.currentTimeMillis());
 	}
+    private String getSystemTimeAndDate() {
+        String result = "";
+        SimpleDateFormat timingFormat = new SimpleDateFormat("dd-MM-yyyy kk : mm : ss");
+        result = timingFormat.format(System.currentTimeMillis());
+        return result;
+    }
 
-	//unused stubs
+
+    //unused stubs
 	public String getRemoteDaiId() {
 		return null;
 	}
@@ -346,9 +375,6 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		return false;
 	}
     public String initWaterRequest() {return null;}
-    public long[] calculateWaterLog(String buffer) {
-        return new long[0];
-    }
     public void writeWaterOnlyLog(long[] meters) {
 
     }

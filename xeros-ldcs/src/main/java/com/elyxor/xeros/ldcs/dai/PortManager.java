@@ -1,26 +1,26 @@
 package com.elyxor.xeros.ldcs.dai;
 
-import static org.quartz.DateBuilder.IntervalUnit;
-import static org.quartz.DateBuilder.futureDate;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.*;
-import static org.quartz.CronScheduleBuilder.*;
-import static org.quartz.JobBuilder.*;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.Map.Entry;
-
-import jssc.SerialPortException;
+import com.elyxor.xeros.ldcs.AppConfiguration;
+import com.elyxor.xeros.ldcs.util.FileLogWriter;
+import jssc.SerialPort;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.elyxor.xeros.ldcs.AppConfiguration;
-import com.elyxor.xeros.ldcs.util.FileLogWriter;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
-import jssc.SerialPort;
+import static org.quartz.CronScheduleBuilder.cronSchedule;
+import static org.quartz.DateBuilder.IntervalUnit;
+import static org.quartz.DateBuilder.futureDate;
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 public class PortManager implements PortManagerInterface, PortChangedListenerInterface {
 
@@ -47,9 +47,11 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	public boolean portAdded(String portName) {
         logger.info("Found new USB device: "+portName);
 		if (waterOnly == 2) {
-			WaterMeterPortInterface waterMeterPort = new WaterMeterPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix);
+			WaterMeterPortInterface waterMeterPort = new WaterMeterPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix, null);
 			if (waterMeterPort.openPort()) {
-				waterMeterPort.initRequest();
+				String id =  waterMeterPort.initRequest();
+                waterMeterPort.setLogWriter(new FileLogWriter(path, daiPrefix + waterMeterPort.getWaterMeterId() + "Log.txt") {
+                });
 				portList.put(portName, waterMeterPort);
 				nextDaiNum++;
 				return true;
@@ -177,9 +179,12 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			.withIdentity("pingTrigger")
 			.withSchedule(cronSchedule("0 0 */1 * * ?"))
 			.build();
-    CronTrigger waterOnlyManualTrigger = newTrigger()
+    Trigger waterOnlyManualTrigger = newTrigger()
             .withIdentity("waterOnlyManualTrigger")
-            .withSchedule(cronSchedule("*/10 * * * * ?"))
+            .startAt(futureDate(30, IntervalUnit.SECOND))
+            .withSchedule(simpleSchedule()
+                    .withIntervalInMinutes(1)
+                    .repeatForever())
             .build();
     Trigger machineStatusTrigger = newTrigger()
             .withIdentity("machineStatusTrigger")
@@ -203,7 +208,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 						.withIdentity("waterOnlyManualJob")
 						.build();
 				sched.scheduleJob(waterOnlyManualJob, waterOnlyManualTrigger);
-                logger.info("scheduled DAQless water only, next fire time: "+pingTrigger.getNextFireTime().toString());
+                logger.info("scheduled DAQless water only, next fire time: "+waterOnlyManualTrigger.getNextFireTime().toString());
 				sched.start();
 				return;
 			}
@@ -264,7 +269,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			String buffer = null;
 			for (DaiPortInterface daiPort : portList.values()) {
 				buffer = daiPort.sendRequest();
-				if (buffer!=null) {
+				if (!buffer.equals("")) {
 					daiPort.writeLogFile(buffer);
 				}
 			}
