@@ -269,7 +269,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			String buffer = null;
 			for (DaiPortInterface daiPort : portList.values()) {
 				buffer = daiPort.sendRequest();
-				if (!buffer.equals("")) {
+				if (buffer != null && !buffer.equals("")) {
 					daiPort.writeLogFile(buffer);
 				}
 			}
