@@ -1,18 +1,20 @@
 package com.elyxor.xeros;
 
-import java.sql.Timestamp;
-import java.util.*;
-
-import com.elyxor.xeros.model.Status;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.elyxor.xeros.model.ActiveDai;
 import com.elyxor.xeros.model.Machine;
+import com.elyxor.xeros.model.Status;
 import com.elyxor.xeros.model.repository.ActiveDaiRepository;
 import com.elyxor.xeros.model.repository.MachineRepository;
 import com.elyxor.xeros.model.repository.StatusRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
 
 
 @Transactional
@@ -21,6 +23,7 @@ public class DaiStatus {
 	@Autowired ActiveDaiRepository activeDaiRepository;
     @Autowired StatusRepository statusRepository;
     @Autowired MachineRepository machineRepository;
+    @Autowired ApplicationConfig appConfig;
 
 	public boolean receivePing(String daiIdentifier) {
 		List<ActiveDai> daiList = activeDaiRepository.findByDaiIdentifier(daiIdentifier);
@@ -79,14 +82,60 @@ public class DaiStatus {
     public List<Status> getStatusHistory(List<Integer> machineIdList){
         List<Status> statusList = new ArrayList<Status>();
         for (Integer id : machineIdList) {
-            statusList.addAll(statusRepository.findHistoryByMachineId(id));
+            statusList.addAll(statusRepository.findHistoryByMachineId(id, 100));
         }
         return statusList;
     }
 
-    private byte[] checkStatusTime(List<Machine> stdMachines, List<Machine> xerosMachines) {
-        byte[] result = new byte[2];
+    public List<Status> getStatusGaps(List<Integer> machineIdList){
+        List<Status> statusList = new ArrayList<Status>();
+        List<Status> result = new ArrayList<Status>();
+        if (machineIdList.size() == 0) {
+            machineIdList = machineRepository.findAllMachineIds();
+        }
+        for (Integer id : machineIdList) {
+            statusList.addAll(statusRepository.findHistoryByMachineId(id, 1000000000));
+            for (int i = 0; i < statusList.size() - 1; i++) {
+                Status current = statusList.get(i);
+                Status prev = statusList.get(i+1);
+                long diff = current.getTimestamp().getTime() - prev.getTimestamp().getTime();
+                if (diff > 3600000) {
+                    result.add(statusList.get(i));
+                    result.add(statusList.get(i+1));
+                }
+            }
+            statusList.clear();
+        }
         return result;
+    }
+
+    public String getStatusGaps() {
+        List<Status> statusList = getStatusGaps(new ArrayList<Integer>());
+        String output = "";
+        for (Status status : statusList) {
+            output += "Machine ID: " + status.getMachineId() + ", DAI Identifier: " + status.getDaiIdentifier() + ", Timestamp:" + status.getTimestamp().toString() + "\n";
+        }
+        return output;
+
+    }
+
+    @Scheduled(cron = "0 0 0/2 * * *")
+    private void checkStatusTime() {
+        List<Integer> machineIds = machineRepository.findAllMachineIds();
+        List<Status> statusList = getStatus(machineIds);
+
+        for (Status status : statusList) {
+            if (status.getTimestamp().before(getTimestampForIdleInterval())) {
+                Machine machine =  machineRepository.findById(status.getMachineId());
+                createStatus(status.getDaiIdentifier(), machine, -2);
+            }
+        }
+    }
+
+    private Timestamp getTimestampForIdleInterval() {
+        Calendar c = Calendar.getInstance();
+        c.add(Calendar.HOUR, -4);
+        return new Timestamp(c.getTimeInMillis());
     }
 
     private Status createStatus(String daiIdentifier, Machine machine, int statusCode) {
@@ -100,6 +149,7 @@ public class DaiStatus {
         if (statusCode == 0) message = "Machine is inactive.";
         else if (statusCode > 0) message = "Machine is active.";
         else if (statusCode == -1) message = "Unable to poll machine for status";
+        else if (statusCode == -2) message = "Machine is disconnected.";
         else message = "Unknown status code.";
 
         status.setStatusMessage(message);
