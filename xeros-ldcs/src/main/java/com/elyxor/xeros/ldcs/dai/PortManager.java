@@ -54,6 +54,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
                 });
 				portList.put(portName, waterMeterPort);
 				nextDaiNum++;
+                logger.info("Added EK meter with ID: " + daiPrefix + waterMeterPort.getWaterMeterId());
 				return true;
 			}
 		}
@@ -193,6 +194,14 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
                     .withIntervalInMinutes(10)
                     .repeatForever())
             .build();
+    Trigger machineStatusEkTrigger = newTrigger()
+            .withIdentity("machineStatusEkTrigger")
+            .startAt(futureDate(60, IntervalUnit.SECOND))
+            .withSchedule(simpleSchedule()
+                    .withIntervalInMinutes(10)
+                    .repeatForever())
+            .build();
+
 
 
     public void startScheduler() {
@@ -209,6 +218,13 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 						.build();
 				sched.scheduleJob(waterOnlyManualJob, waterOnlyManualTrigger);
                 logger.info("scheduled DAQless water only, next fire time: "+waterOnlyManualTrigger.getNextFireTime().toString());
+
+                JobDetail machineStatusEkJob = newJob(MachineStatusEkJob.class)
+                        .withIdentity("machineStatusEkJob")
+                        .build();
+                sched.scheduleJob(machineStatusEkJob, machineStatusEkTrigger);
+                logger.info("scheduled ek machine status, next fire time: " + machineStatusEkTrigger.getNextFireTime().toString());
+
 				sched.start();
 				return;
 			}
@@ -297,6 +313,15 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
         public MachineStatusJob() {}
         public void execute(JobExecutionContext context) throws JobExecutionException {
             logger.info("Executing machine status update");
+            for (DaiPortInterface daiPort : portList.values()) {
+                daiPort.sendMachineStatus();
+            }
+        }
+    }
+    public static class MachineStatusEkJob implements Job {
+        public MachineStatusEkJob() {}
+        public void execute(JobExecutionContext context) throws JobExecutionException {
+            logger.info("Executing EK machine status update");
             for (DaiPortInterface daiPort : portList.values()) {
                 daiPort.sendMachineStatus();
             }

@@ -1,5 +1,6 @@
 package com.elyxor.xeros.ldcs.dai;
 
+import com.elyxor.xeros.ldcs.HttpFileUploader;
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 import jssc.SerialPort;
@@ -130,8 +131,8 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		}
         if (buffer == null || buffer.length == 0) return result;
 
-        logger.info("Captured log file");
         long[] currentMeters = this.parseMetersFromResponse(buffer);
+        logger.info("Captured log file, meter1: "+currentMeters[0]+", meter2: "+currentMeters[1]);
         meter1 = currentMeters[0] - prevMeters[0];
         meter2 = currentMeters[1] - prevMeters[1];
 
@@ -171,7 +172,7 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
         for (int i = 0; i < meters.length; i++) {
             try {
                 this.getWaterMeterLogWriter().write("meter"+i+","+meters[i] +","+ getSystemTime()+"\n");
-                logger.info("successfully stored previous meters in log file");
+                logger.info("successfully stored previous meters in log file, "+this.getWaterMeterLogWriter().getFilename());
             } catch (IOException e) {
                 e.printStackTrace();
                 logger.warn("failed to store previous meters",e);
@@ -387,6 +388,20 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
     }
 
     public boolean sendMachineStatus() {
+        byte status;
+        if (meterDiff1 > 0 || meterDiff2 > 0)
+            status = 1;
+        else if (meterDiff1 == 0 && meterDiff2 == 0)
+            status = 0;
+        else
+            status = -1;
+        byte[] statusBytes = {0, status};
+        int responseStatus = new HttpFileUploader().postMachineStatus(daiPrefix+this.getWaterMeterId(), statusBytes);
+        if (responseStatus == 200) {
+            logger.info("successfully sent machine status for meter: " + daiPrefix + this.getWaterMeterId());
+            return true;
+        }
+        logger.info("failed to send machine status due to http response:" + responseStatus);
         return false;
     }
 }
