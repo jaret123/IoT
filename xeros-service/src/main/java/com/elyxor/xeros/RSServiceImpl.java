@@ -1,20 +1,18 @@
 package com.elyxor.xeros;
 
-import java.io.File;
-import java.util.List;
-import java.util.Map;
-
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-
+import com.elyxor.xeros.model.CollectionClassificationMap;
+import com.elyxor.xeros.model.DaiMeterCollection;
 import com.elyxor.xeros.model.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.elyxor.xeros.model.CollectionClassificationMap;
-import com.elyxor.xeros.model.DaiMeterCollection;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
+import java.io.File;
+import java.util.List;
+import java.util.Map;
 
 @Service("rssvc")
 public class RSServiceImpl implements RSService {
@@ -146,4 +144,27 @@ public class RSServiceImpl implements RSService {
         }
         return r.build();
     }
+
+    @Override
+    public Response getStatusGaps(List<Integer> machineIdList) {
+        ResponseBuilder r = Response.ok();
+        try {
+            List<Status> statusList = daiStatus.getStatusGaps(machineIdList);
+            r.entity(statusList);
+        } catch (Exception e) {
+            r = Response.serverError().entity(e.toString());
+        }
+        return r.build();
+    }
+    @Override
+    public Response getStatusGaps() {
+        ResponseBuilder r = Response.ok();
+        try {
+            r.entity(daiStatus.getStatusGaps()).header("Content-Disposition", "attachment; filename=statusgaps.csv");
+        } catch (Exception e) {
+            r = Response.serverError().entity(e.toString());
+        }
+        return r.build();
+    }
+
 }
