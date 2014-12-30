@@ -1,20 +1,8 @@
 package com.elyxor.xeros.model;
 
+import javax.persistence.*;
 import java.sql.Timestamp;
 import java.util.Collection;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
 
 @Entity
 @Table(name = "xeros_dai_meter_collection")
@@ -38,6 +26,7 @@ public class DaiMeterCollection {
     private DaiMeterActual daiMeterActual;
     
     private float earliestValue;
+    private Integer exception;
 
     @Id
     @Column(columnDefinition = "INT unsigned")
@@ -152,8 +141,9 @@ public class DaiMeterCollection {
 	public void setCollectionDetails(Collection<DaiMeterCollectionDetail> collectionDetails) {
 		this.collectionDetails = collectionDetails;
 	}
+    @Column(name = "earliestValue")
 	public float getEarliestValue() {
-		return earliestValue;
+		return this.earliestValue;
 	}
 	public void setEarliestValue(float value) {
 		this.earliestValue = value;

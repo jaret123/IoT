@@ -1,7 +1,9 @@
 package com.elyxor.xeros;
 
 import javax.ws.rs.*;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
@@ -64,4 +66,19 @@ public interface RSService {
     @GET
     @Path("/statusgaps/")
     Response getStatusGaps();
+
+    @GET
+    @Path("/report/")
+    @Produces("application/vnd.ms-excel")
+    Response getSimpleCycleReport(@Context UriInfo info);
+
+//    @GET
+//    @Path("/cycle/{startDate}/{endDate}")
+//    @Produces("application/vnd.ms-excel")
+//    Response getSimpleCycleReport(@PathParam("startDate") String startDate, @PathParam("endDate") String endDate);
+//
+//    @GET
+//    @Path("/cycle/{startDate}/{endDate}/{exceptionType}")
+//    @Produces("application/vnd.ms-excel")
+//    Response getSimpleCycleReport(@PathParam("startDate") String startDate, @PathParam("endDate") String endDate, @PathParam("exceptionType") Integer exceptionType);
 }

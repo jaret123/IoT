@@ -1,16 +1,7 @@
 package com.elyxor.xeros.model;
 
+import javax.persistence.*;
 import java.sql.Timestamp;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
 
 @Entity
 @Table(name = "xeros_dai_meter_actual")
@@ -26,6 +17,7 @@ public class DaiMeterActual {
 	private Float coldWater;
 	private Integer runTime;
 	private Machine machine;
+    private String exception;
 	
 	
     @Id
@@ -57,7 +49,6 @@ public class DaiMeterActual {
 	public void setActiveDai(ActiveDai activeDai) {
 		this.activeDai = activeDai;
 	}
-
 	
 	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classification_id", referencedColumnName = "classification_id")	
@@ -106,6 +97,9 @@ public class DaiMeterActual {
 		this.machine = machine;
 	}
 
+    @Column(name = "exception")
+    public String getException() { return this.exception;}
+    public void setException(String exception) {this.exception = exception;}
 
 	
 

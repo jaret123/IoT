@@ -39,6 +39,8 @@ public class Machine {
 	private Integer useStartTime;
 	private Integer waterOnly;
 	private Integer classificationBase;
+    private String name;
+    private Float waterMeterRate;
 	
     @Id
     @Column(name = "machine_id", columnDefinition = "INT unsigned")
@@ -256,4 +258,12 @@ public class Machine {
 	public void setClassificationBase(Integer classificationBase) {
 		this.classificationBase = classificationBase;
 	}
+
+    @Column (name = "machine_name")
+    public String getName() {return this.name;}
+    public void setName(String name) {this.name = name;}
+
+    @Column (name = "water_meter_rate")
+    public Float getWaterMeterRate() {return this.waterMeterRate;}
+    public void setWaterMeterRate(Float waterMeterRate) {this.waterMeterRate = waterMeterRate;}
 }

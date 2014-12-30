@@ -29,11 +29,22 @@ public class DaiCollectionMatcher {
 	@Autowired CollectionClassificationMapRepository collectionClassificationMapRepo;
 	@Autowired CollectionClassificationMapDetailRepository collectionClassificationMapDetailRepo;
 	@Autowired MachineRepository machineRepository;
+    @Autowired XerosLocalStaticValueRepository xlsvRepository;
+    @Autowired LocalStaticValueRepository lsvRepository;
+    @Autowired StaticValueRepository staticValueRepository;
 
     private static final Float ROLLOVER_DAQ = 65535f;
     private static final Float ROLLOVER_EKM = 10000000f;
 
-	
+    private static final int EXCEPTION_CW_HIGH = 1;
+    private static final int EXCEPTION_CW_LOW = 2;
+    private static final int EXCEPTION_HW_HIGH = 3;
+    private static final int EXCEPTION_HW_LOW = 4;
+    private static final int EXCEPTION_TIME_HIGH = 5;
+    private static final int EXCEPTION_TIME_LOW = 6;
+    private static final int EXCEPTION_WATER_MIN = 7;
+
+
 	public CollectionClassificationMap match(int collectionId) throws Exception {
 		return this.match(daiMeterCollectionRepo.findOne(collectionId));
 	}
@@ -63,6 +74,7 @@ public class DaiCollectionMatcher {
 		}
 		if ( collectionData.getCollectionClassificationMap()!=null && collectionData.getDaiMeterActual()==null) {
 			collectionData.setDaiMeterActual(createDaiMeterActual(collectionData));
+            collectionData.getDaiMeterActual().setException(checkCollectionException(collectionData));
 			daiMeterCollectionRepo.save(collectionData);
 		}
 		//if no matches found, map to 9999 and create dai actual record
@@ -109,9 +121,60 @@ public class DaiCollectionMatcher {
 		}
 		return matchedMap;
 	}
-	
-	
-	private Float calculateRunTime(DaiMeterCollection c) {
+
+    private String checkCollectionException(DaiMeterCollection collectionData) {
+        String result = "";
+
+        Float waterVariance = Float.valueOf(staticValueRepository.findByName("water_variance").getValue());
+        Float timeVariance = Float.valueOf(staticValueRepository.findByName("time_variance").getValue());
+        Float waterMin = Float.valueOf(staticValueRepository.findByName("water_minimum").getValue());
+
+        DaiMeterActual actual = collectionData.getDaiMeterActual();
+        Machine machine = collectionData.getMachine();
+        Float waterMeterRate = machine.getWaterMeterRate();
+        Float coldDiff;
+        Float hotDiff;
+        Float timeDiff;
+        Float coldWater = actual.getColdWater() * waterMeterRate;
+        Float hotWater = actual.getHotWater() * waterMeterRate;
+        Float runTime = (float) actual.getRunTime() / 60;
+
+        if (collectionData.getMachine().getManufacturer().equalsIgnoreCase("xeros")) {
+            XerosLocalStaticValue xlsv = xlsvRepository.findByClassification(collectionData.getCollectionClassificationMap().getClassification());
+            coldDiff = calculatePercentageDiff(xlsv.getColdWater(), coldWater);
+            hotDiff = calculatePercentageDiff(xlsv.getHotWater(), hotWater);
+            timeDiff = calculatePercentageDiff((float) xlsv.getRunTime(), runTime);
+        }
+        else {
+            LocalStaticValue lsv = lsvRepository.findByClassification(collectionData.getCollectionClassificationMap().getClassification());
+            coldDiff = calculatePercentageDiff(lsv.getColdWater(), coldWater);
+            hotDiff = calculatePercentageDiff(lsv.getHotWater(), hotWater);
+            timeDiff = calculatePercentageDiff((float) lsv.getRunTime(), runTime);
+        }
+        if (coldDiff > waterVariance)
+            result += EXCEPTION_CW_HIGH;
+        if (coldDiff < -waterVariance)
+            result += EXCEPTION_CW_LOW;
+        if (hotDiff > waterVariance)
+            result += EXCEPTION_HW_HIGH;
+        if (hotDiff < -waterVariance)
+            result += EXCEPTION_HW_LOW;
+        if (timeDiff > timeVariance)
+            result += EXCEPTION_TIME_HIGH;
+        if (timeDiff < -timeVariance)
+            result += EXCEPTION_TIME_LOW;
+        if (coldWater <= waterMin && hotWater <= waterMin)
+            result += EXCEPTION_WATER_MIN;
+        return result;
+    }
+
+    private Float calculatePercentageDiff(Float benchmarkValue, Float actualValue) {
+        Float change = actualValue - benchmarkValue;
+        Float diff = change / benchmarkValue;
+        return diff;
+    }
+
+    private Float calculateRunTime(DaiMeterCollection c) {
 		float startTime = c.getEarliestValue();
 		float endTime = calculateEndTime(c);
 		
@@ -124,8 +187,6 @@ public class DaiCollectionMatcher {
 		
 		return runTime + startOffset + endOffset;
 	}
-	
-	
 
 	private Float calculateColdWater(DaiMeterCollection c) {
 		Machine m = c.getMachine();
@@ -149,7 +210,6 @@ public class DaiCollectionMatcher {
 		}
 		return new Float(0);
 	}
-	
 
 	private Float calculateHotWater(DaiMeterCollection c) {
 		Machine m = c.getMachine();
@@ -174,7 +234,6 @@ public class DaiCollectionMatcher {
 		return new Float(0);
 	}
 
-	
 	public DaiMeterActual createDaiMeterActual(DaiMeterCollection collectionData) throws Exception {
 		// TODO : tons of checking for valid matches 
 		DaiMeterActual daia = null;
@@ -195,9 +254,7 @@ public class DaiCollectionMatcher {
 		}
 		return daia;
 	}
-	
-		
-	
+
 	private CollectionClassificationMap findMatches(DaiMeterCollection collectionData, Iterable<CollectionClassificationMap> existingCollections) {
 		CollectionClassificationMap matchedMap = null;
 		Machine collectionMachine = collectionData.getMachine();
@@ -289,7 +346,6 @@ public class DaiCollectionMatcher {
 		return normalizedDetails;		
 	}
 
-	
 	public CollectionClassificationMap createCollectionClassificationMap(int collectionId, int classificationId) throws Exception {
 		DaiMeterCollection dmc = this.daiMeterCollectionRepo.findOne(collectionId);
 		if ( dmc.getMachine()==null ) {

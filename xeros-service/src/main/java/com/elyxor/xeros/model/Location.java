@@ -1,11 +1,6 @@
 package com.elyxor.xeros.model;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
 
 @Entity
 @Table(name = "xeros_location")
@@ -15,6 +10,8 @@ public class Location {
 	}
 
 	private int id;
+    private Company company;
+    private String name;
 
 	@Id
 	@Column(name = "location_id", columnDefinition = "INT unsigned", updatable=false, insertable=false)
@@ -26,4 +23,12 @@ public class Location {
 		this.id = id;
 	}
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", referencedColumnName = "company_id")
+    public Company getCompany() {return company;}
+    public void setCompany(Company company) {this.company = company;}
+
+    @Column(name = "location_name")
+    public String getName() {return this.name;}
+    public void setName(String name) {this.name = name;}
 }

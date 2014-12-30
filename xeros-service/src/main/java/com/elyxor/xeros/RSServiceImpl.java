@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.UriInfo;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
@@ -167,4 +168,28 @@ public class RSServiceImpl implements RSService {
         return r.build();
     }
 
+    @Override
+    public Response getSimpleCycleReport(UriInfo info) {
+        ResponseBuilder r = Response.ok();
+        String machine = info.getPathParameters().getFirst("machine");
+        String company = info.getPathParameters().getFirst("company");
+        String location = info.getPathParameters().getFirst("location");
+        if (machine != null && company != null) {
+            return Response.serverError().entity("cannot use machine and company together").build();
+        }
+        else if (machine != null && location != null) {
+            return Response.serverError().entity("cannot use machine and location together").build();
+        }
+        else if (company != null && location != null) {
+            return Response.serverError().entity("cannot use company and location together").build();
+        }
+        else {
+            try {
+                r.entity(daiStatus.getCycleReports(info)).header("Content-Disposition", "attachment; filename=cycleReport.xls");
+            } catch (Exception e) {
+                r = Response.serverError().entity(e.toString());
+            }
+            return r.build();
+        }
+    }
 }
