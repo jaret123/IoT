@@ -37,6 +37,8 @@ public class DaiPort implements DaiPortInterface {
     private long meterDiff2;
 
     private boolean logSent;
+    boolean meterClearProcessed = false;
+
 
     public DaiPort (SerialPort port, int num, LogWriterInterface logWriter, String prefix) {
 		this.serialPort = port;
@@ -75,7 +77,10 @@ public class DaiPort implements DaiPortInterface {
 		String result = "";
 		try {
 			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0 19\n");
+			this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("19\n");
 			Thread.sleep(1000);
 			result = this.serialPort.readString();
 			Thread.sleep(4000); //let the DAQ timeout to avoid setting a new id accidentally
@@ -91,7 +96,10 @@ public class DaiPort implements DaiPortInterface {
 		String result = "";
 		try {
 			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0 19\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("19\n");
 			Thread.sleep(1000);
 			this.serialPort.readString(); //clear buffer, DAQ writes old daiId
             logger.info("setting new id: " + id);
@@ -110,7 +118,10 @@ public class DaiPort implements DaiPortInterface {
 		String result = "";
 		try {
 			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0 12\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("12\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
 				result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
@@ -129,7 +140,10 @@ public class DaiPort implements DaiPortInterface {
 		String result = "";
 		try {
 			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0 11\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("11\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
 				result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
@@ -193,7 +207,10 @@ public class DaiPort implements DaiPortInterface {
         int retry = 0;
         this.serialPort.removeEventListener();
         while (retry < 3) {
-            this.serialPort.writeString("0 13\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("13\n");
             Thread.sleep(1000);
             while (this.serialPort.getInputBufferBytesCount() > 0) {
                 result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
@@ -212,7 +229,10 @@ public class DaiPort implements DaiPortInterface {
         int retry = 0;
         this.serialPort.removeEventListener();
         while (retry < 3) {
-            this.serialPort.writeString("0 11\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("11\n");
             Thread.sleep(1000);
             while (this.serialPort.getInputBufferBytesCount() > 0) {
                 result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
@@ -249,13 +269,26 @@ public class DaiPort implements DaiPortInterface {
         meterDiff2 += meter2;
         try {
             String time = getSystemTime();
-            if (time.startsWith("24 : 00 : 0") || time.startsWith("24 : 00 : 1")) {
-                serialPort.writeString("0 113\n");
+            if (time.startsWith("00") && !meterClearProcessed) {
+                this.serialPort.writeString("0\n");
+                Thread.sleep(50);
+                logger.info(this.serialPort.readString());
+                serialPort.writeString("113\n");
                 Thread.sleep(500);
-                serialPort.writeString("0 113\n");
+                this.serialPort.writeString("0\n");
+                Thread.sleep(50);
+                logger.info(this.serialPort.readString());
+                serialPort.writeString("113\n");
                 Thread.sleep(500);
-                serialPort.writeString("0 113\n");
+                this.serialPort.writeString("0\n");
+                Thread.sleep(50);
+                logger.info(this.serialPort.readString());
+                serialPort.writeString("113\n");
                 Thread.sleep(500);
+                meterClearProcessed = true;
+            }
+            if (time.startsWith("01")) {
+                meterClearProcessed = false;
             }
             Files.delete(this.getWaterMeterLogWriter().getFile().toPath());
         } catch (Exception e) {
@@ -300,7 +333,10 @@ public class DaiPort implements DaiPortInterface {
     public String sendRequest() {
 		String result = "";	    		
 		try {
-			this.serialPort.writeString("0 999\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("999\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
 				result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
@@ -317,7 +353,10 @@ public class DaiPort implements DaiPortInterface {
         String result = "";
         try {
             this.serialPort.removeEventListener();
-            this.serialPort.writeString("0 16\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("16\n");
             String[] timeSplit = this.getSystemTime().replaceAll(" ","").split(":");
             Thread.sleep(100);
             this.serialPort.writeString(timeSplit[0] + "\n");
@@ -341,7 +380,10 @@ public class DaiPort implements DaiPortInterface {
 		String result = "";
 		try {
 			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0 15\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("15\n");
 			Thread.sleep(5000);
 			result = this.serialPort.readString();
 			
@@ -360,7 +402,10 @@ public class DaiPort implements DaiPortInterface {
         try {
             while (retryCounter < 3) {
                 this.serialPort.removeEventListener();
-                this.serialPort.writeString("0 10\n");
+                this.serialPort.writeString("0\n");
+                Thread.sleep(50);
+                logger.info(this.serialPort.readString());
+                this.serialPort.writeString("10\n");
                 Thread.sleep(500);
                 while (this.serialPort.getInputBufferBytesCount() > 0) {
                     result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
