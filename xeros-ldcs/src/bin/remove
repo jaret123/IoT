@@ -1,0 +1,6 @@
+#! /bin/sh
+
+./xeros-command remove
+./xeros-ldcs remove
+
+exit 0

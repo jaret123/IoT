@@ -15,8 +15,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Date;
 
 public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface {
@@ -34,7 +36,7 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
     private LogWriterInterface waterMeterLogWriter;
     private boolean logSent;
     private String lastLogSentTime;
-
+	
 	final static String defaultId = "999999999999";
 	final static int frontPadding = 2;
 	final static int backPadding = 5;

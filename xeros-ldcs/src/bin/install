@@ -1,0 +1,8 @@
+#! /bin/sh
+
+./xeros-command install
+./xeros-ldcs install
+./xeros-ldcs start
+./xeros-command start
+
+exit 0

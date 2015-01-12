@@ -119,13 +119,13 @@ public class DaiStatus {
 
     }
 
-    @Scheduled(cron = "0 0 0/2 * * *")
-    private void checkStatusTime() {
+    @Scheduled(cron = "* * */2 * * *")
+    public void checkStatusTime() {
         List<Integer> machineIds = machineRepository.findAllMachineIds();
         List<Status> statusList = getStatus(machineIds);
 
         for (Status status : statusList) {
-            if (status.getTimestamp().before(getTimestampForIdleInterval())) {
+            if (status != null && status.getTimestamp().before(getTimestampForIdleInterval())) {
                 Machine machine =  machineRepository.findById(status.getMachineId());
                 createStatus(status.getDaiIdentifier(), machine, -2);
             }
