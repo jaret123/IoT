@@ -65,21 +65,26 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		String daiId = null;
 		String newId = null;
 		int retryCounter = 0;
+        int daiIdInt = 0;
 		
 		if (daiPort.openPort()) {
             while (retryCounter < 3) {
 			    daiId = daiPort.getRemoteDaiId();
 			    if (daiId != null) {
-                    int daiIdInt = Integer.parseInt(daiId);
-                    logger.info("DAI ID is: '" +daiIdInt+"'");
-                    if (daiId.equals("0")) {
-                        newId = daiPort.setRemoteDaiId(nextDaiNum);
-                        if (newId != null && !newId.equals("0")) {
-                            logger.info("Assigned DAI ID " + daiPrefix + nextDaiNum + " to port " + portName);
-                            nextDaiNum++;
-                            break;
-                        }
+                    try {
+                        daiIdInt = Integer.parseInt(daiId.trim());
+                    } catch (NumberFormatException e) {
+                        logger.warn("failed to parse integer", e.getMessage());
                     }
+                    logger.info("DAI ID is: '" +daiIdInt+"'");
+//                    if (daiId.equals("0")) {
+//                        newId = daiPort.setRemoteDaiId(nextDaiNum);
+//                        if (newId != null && !newId.equals("0")) {
+//                            logger.info("Assigned DAI ID " + daiPrefix + nextDaiNum + " to port " + portName);
+//                            nextDaiNum++;
+//                            break;
+//                        }
+//                    }
                     if (daiIdInt > 0) {
                         daiPort.setDaiNum(daiIdInt);
                         logger.info("Found existing DAI with ID "+daiPrefix+daiIdInt+" on port"+portName);
