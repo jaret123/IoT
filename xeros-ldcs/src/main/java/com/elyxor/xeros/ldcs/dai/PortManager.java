@@ -50,8 +50,11 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			WaterMeterPortInterface waterMeterPort = new WaterMeterPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix, null);
 			if (waterMeterPort.openPort()) {
 				String id =  waterMeterPort.initRequest();
-                waterMeterPort.setLogWriter(new FileLogWriter(path, daiPrefix + waterMeterPort.getWaterMeterId() + "Log.txt") {
-                });
+                if (id == null) {
+                    waterMeterPort.closePort();
+                    return false;
+                }
+                waterMeterPort.setLogWriter(new FileLogWriter(path, daiPrefix + waterMeterPort.getWaterMeterId() + "Log.txt"));
 				portList.put(portName, waterMeterPort);
 				nextDaiNum++;
                 logger.info("Added EK meter with ID: " + daiPrefix + waterMeterPort.getWaterMeterId());
@@ -62,20 +65,26 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		String daiId = null;
 		String newId = null;
 		int retryCounter = 0;
+        int daiIdInt = 0;
 		
 		if (daiPort.openPort()) {
             while (retryCounter < 3) {
 			    daiId = daiPort.getRemoteDaiId();
 			    if (daiId != null) {
-                    int daiIdInt = Integer.parseInt(daiId);
-                    if (daiId.equals("0")) {
-                        newId = daiPort.setRemoteDaiId(nextDaiNum);
-                        if (newId != null) {
-                            logger.info("Assigned DAI ID " + daiPrefix + nextDaiNum + " to port " + portName);
-                            nextDaiNum++;
-                            break;
-                        }
+                    try {
+                        daiIdInt = Integer.parseInt(daiId.trim());
+                    } catch (NumberFormatException e) {
+                        logger.warn("failed to parse integer", e.getMessage());
                     }
+                    logger.info("DAI ID is: '" +daiIdInt+"'");
+//                    if (daiId.equals("0")) {
+//                        newId = daiPort.setRemoteDaiId(nextDaiNum);
+//                        if (newId != null && !newId.equals("0")) {
+//                            logger.info("Assigned DAI ID " + daiPrefix + nextDaiNum + " to port " + portName);
+//                            nextDaiNum++;
+//                            break;
+//                        }
+//                    }
                     if (daiIdInt > 0) {
                         daiPort.setDaiNum(daiIdInt);
                         logger.info("Found existing DAI with ID "+daiPrefix+daiIdInt+" on port"+portName);
@@ -160,14 +169,14 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	Scheduler sched;
     Trigger waterOnlyTrigger = newTrigger()
             .withIdentity("waterOnlyTrigger")
-            .startAt(futureDate(90, IntervalUnit.SECOND))
+            .startAt(futureDate(3, IntervalUnit.MINUTE))
             .withSchedule(simpleSchedule()
                     .withIntervalInMinutes(15)
                     .repeatForever())
             .build();
     Trigger waterOnlyXerosTrigger = newTrigger()
             .withIdentity("waterOnlyXerosTrigger")
-            .startAt(futureDate(90, IntervalUnit.SECOND))
+            .startAt(futureDate(3, IntervalUnit.MINUTE))
             .withSchedule(simpleSchedule()
                     .withIntervalInMinutes(15)
                     .repeatForever())
@@ -182,21 +191,21 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			.build();
     Trigger waterOnlyManualTrigger = newTrigger()
             .withIdentity("waterOnlyManualTrigger")
-            .startAt(futureDate(30, IntervalUnit.SECOND))
+            .startAt(futureDate(2, IntervalUnit.MINUTE))
             .withSchedule(simpleSchedule()
                     .withIntervalInMinutes(1)
                     .repeatForever())
             .build();
     Trigger machineStatusTrigger = newTrigger()
             .withIdentity("machineStatusTrigger")
-            .startAt(futureDate(60, IntervalUnit.SECOND))
+            .startAt(futureDate(5, IntervalUnit.MINUTE))
             .withSchedule(simpleSchedule()
                     .withIntervalInMinutes(10)
                     .repeatForever())
             .build();
     Trigger machineStatusEkTrigger = newTrigger()
             .withIdentity("machineStatusEkTrigger")
-            .startAt(futureDate(60, IntervalUnit.SECOND))
+            .startAt(futureDate(1, IntervalUnit.MINUTE))
             .withSchedule(simpleSchedule()
                     .withIntervalInMinutes(10)
                     .repeatForever())

@@ -8,7 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-public class PortFinder implements Runnable, PortFinderInterface {
+public class    PortFinder implements Runnable, PortFinderInterface {
 	
 	PortChangedListenerInterface _portListener;
 	public boolean portFinderRunning;

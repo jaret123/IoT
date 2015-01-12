@@ -14,8 +14,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 
 public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface {
 	final static Logger logger = LoggerFactory.getLogger(WaterMeterPort.class);
@@ -31,7 +33,8 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
     private Path logFilePath;
     private LogWriterInterface waterMeterLogWriter;
     private boolean logSent;
-	
+    private String lastLogSentTime;
+
 	final static String defaultId = "999999999999";
 	final static int frontPadding = 2;
 	final static int backPadding = 5;
@@ -40,6 +43,8 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	final static int meterDataStartLocation = 203;
 	final static int meterDataLength = 8;
 	final static int responseLength = 255;
+
+    final static private SimpleDateFormat dateAndTimeFormat = new SimpleDateFormat("dd-MM-yyyy kk : mm : ss");
 
     private long meterDiff1;
     private long meterDiff2;
@@ -95,6 +100,9 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 			String msg = "failed to send init request";
 			logger.warn(msg, e);
 		}
+        if (buffer == null) {
+            return null;
+        }
         String meterId = parseIdFromResponse(buffer);
 		this.setWaterMeterId(meterId);
         this.setLogFilePath(Paths.get(this.logWriter.getPath().getParent().toString(), "/waterMeters"));
@@ -138,8 +146,9 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 
         if (meter1 == 0 && meter2 == 0) {
             if (!logSent) {
+                lastLogSentTime = getSystemTimeAndDate();
                 result = this.getWaterMeterId() + " , Std , \nFile Write Time: , "
-                        + getSystemTimeAndDate() + "\n"
+                        + lastLogSentTime + "\n"
                         + "WM2: , 0 , 0 , "
                         + meterDiff1 + "\n"
                         + "WM3: , 0 , 0 , "
@@ -330,14 +339,10 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		return request;
 	}
 	private String getSystemTime() {
-		SimpleDateFormat timingFormat = new SimpleDateFormat("dd-MM-yyyy kk : mm : ss");
-        return timingFormat.format(System.currentTimeMillis());
+        return dateAndTimeFormat.format(System.currentTimeMillis());
 	}
     private String getSystemTimeAndDate() {
-        String result = "";
-        SimpleDateFormat timingFormat = new SimpleDateFormat("dd-MM-yyyy kk : mm : ss");
-        result = timingFormat.format(System.currentTimeMillis());
-        return result;
+        return dateAndTimeFormat.format(System.currentTimeMillis());
     }
 
 
@@ -389,9 +394,21 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 
     public boolean sendMachineStatus() {
         byte status;
-        if (meterDiff1 > 0 || meterDiff2 > 0)
+        Date lastLogDate = new Date();
+        if (lastLogSentTime == null) {
+            lastLogSentTime = getSystemTimeAndDate();
+        }
+        try {
+            lastLogDate = dateAndTimeFormat.parse(lastLogSentTime);
+        } catch (ParseException e) {
+            logger.warn("failed to parse last log date", e.getMessage());
+        }
+        Date activeMarginDate = new Date();
+        activeMarginDate.setTime(System.currentTimeMillis() - 600000);
+
+        if (lastLogDate.after(activeMarginDate))
             status = 1;
-        else if (meterDiff1 == 0 && meterDiff2 == 0)
+        else if (lastLogDate.before(activeMarginDate))
             status = 0;
         else
             status = -1;
