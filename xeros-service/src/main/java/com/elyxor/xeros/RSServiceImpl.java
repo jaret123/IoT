@@ -192,4 +192,15 @@ public class RSServiceImpl implements RSService {
             return r.build();
         }
     }
+
+    @Override
+    public Response getLastLog() {
+        ResponseBuilder r = Response.ok();
+        try {
+            r.entity(daiStatus.getLastLog()).header("Content-Disposition", "attachment; filename=lastLogReport.xls");
+        } catch (Exception e) {
+            r = Response.serverError().entity(e.toString());
+        }
+        return r.build();
+    }
 }

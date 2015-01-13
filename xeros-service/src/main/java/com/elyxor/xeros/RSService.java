@@ -72,6 +72,11 @@ public interface RSService {
     @Produces("application/vnd.ms-excel")
     Response getSimpleCycleReport(@Context UriInfo info);
 
+    @GET
+    @Path("/lastLog")
+    @Produces("application/vnd.ms-excel")
+    Response getLastLog();
+
 //    @GET
 //    @Path("/cycle/{startDate}/{endDate}")
 //    @Produces("application/vnd.ms-excel")

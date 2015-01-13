@@ -13,6 +13,8 @@ import java.util.List;
 public interface CycleRepository extends CrudRepository<Cycle, Integer> {
     public final static String FIND_WITH_EXCEPTION = "SELECT cycle FROM CYCLE c LEFT JOIN c.daiMeterActual actual WHERE actual.exception like :exception";
 
+    public Cycle findLastByMachineIdByOrderByReadingTimestamp(Integer machineId);
+
     @Query(value = "SELECT * FROM xeros_cycle where machine_id = :machineId AND reading_timestamp >= :cycleStart AND reading_timestamp <= :cycleEnd", nativeQuery = true)
     public List<Cycle> findCyclesForCycleTime(@Param("machineId") Integer machineId, @Param("cycleStart") Timestamp cycleStart, @Param("cycleEnd") Timestamp cycleEnd);
 

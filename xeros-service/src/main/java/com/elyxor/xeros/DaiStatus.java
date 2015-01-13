@@ -9,7 +9,6 @@ import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -135,7 +134,7 @@ public class DaiStatus {
 
     }
 
-    @Scheduled(cron = "* * */2 * * *")
+//    @Scheduled(cron = "* * */2 * * *")
     public void checkStatusTime() {
         List<Integer> machineIds = machineRepository.findAllMachineIds();
         List<Status> statusList = getStatus(machineIds);
@@ -423,6 +422,73 @@ public class DaiStatus {
         Calendar c = Calendar.getInstance();
         c.add(Calendar.HOUR, -4);
         return new Timestamp(c.getTimeInMillis());
+    }
+
+    private Timestamp getTimestampForLastLog() {
+        Calendar c = Calendar.getInstance();
+        c.add(Calendar.HOUR, -24);
+        return new Timestamp(c.getTimeInMillis());
+    }
+
+    private String getCurrentDateAndTime() {
+        Calendar c = Calendar.getInstance();
+        return c.getTime().toString();
+    }
+
+    public File getLastLog() {
+        HSSFWorkbook workbook = new HSSFWorkbook();
+        HSSFSheet sheet = null;
+        int i = 1;
+
+        for (Machine machine : machineRepository.findAll()) {
+            Integer machineId = machine.getId();
+            Cycle cycle = cycleRepository.findLastByMachineIdByOrderByReadingTimestamp(machineId);
+            if (cycle != null && cycle.getReadingTimestamp().before(getTimestampForLastLog())) {
+                if (sheet == null) {
+                    sheet = workbook.createSheet(getCurrentDateAndTime());
+                    initializeLogSheet(sheet);
+                }
+                HSSFRow row = sheet.createRow(i);
+                String company = machine.getLocation().getCompany().getName();
+                String location = machine.getLocation().getName();
+                String machineName = machine.getName();
+                String lastLog = cycle.getReadingTimestamp().toString();
+
+                row.createCell(0).setCellValue(company);
+                row.createCell(1).setCellValue(location);
+                row.createCell(2).setCellValue(machineName);
+                row.createCell(3).setCellValue(lastLog);
+            }
+        }
+        if (sheet != null) {
+            for (int j=0; j<sheet.getRow(0).getPhysicalNumberOfCells(); j++) {
+                sheet.autoSizeColumn(j);
+            }
+        }
+
+        return writeFile(workbook);
+    }
+
+    private File writeFile(HSSFWorkbook workbook) {
+        File file = new File("output.xls");
+        try {
+            FileOutputStream out = new FileOutputStream(file);
+            workbook.write(out);
+            out.close();
+        } catch (FileNotFoundException e) {
+            //handle
+        } catch (IOException ex) {
+            //handle
+        }
+        return file;
+    }
+
+    private void initializeLogSheet(HSSFSheet sheet) {
+        HSSFRow header = sheet.createRow(0);
+        header.createCell(0).setCellValue("Company Name");
+        header.createCell(0).setCellValue("Location Name");
+        header.createCell(0).setCellValue("Machine Name");
+        header.createCell(0).setCellValue("Last Log Date And Time");
     }
 
     private Status createStatus(String daiIdentifier, Machine machine, int statusCode) {
