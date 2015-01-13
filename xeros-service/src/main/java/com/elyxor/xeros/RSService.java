@@ -1,5 +1,7 @@
 package com.elyxor.xeros;
 
+import com.elyxor.xeros.model.Machine;
+
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
@@ -61,10 +63,11 @@ public interface RSService {
 
     @POST
     @Path("/statusgaps/")
-    Response getStatusGaps(List<Integer> machineIdList);
+    Response getStatusGaps(List<Machine> machineList);
 
     @GET
     @Path("/statusgaps/")
+    @Produces("application/vnd.ms-excel")
     Response getStatusGaps();
 
     @GET

@@ -2,9 +2,12 @@ package com.elyxor.xeros;
 
 import com.elyxor.xeros.model.*;
 import com.elyxor.xeros.model.repository.*;
+import org.apache.poi.hssf.usermodel.HSSFFont;
 import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -19,9 +22,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.time.ZoneOffset;
+import java.time.chrono.ChronoLocalDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 
 @Transactional
@@ -97,24 +104,26 @@ public class DaiStatus {
     public List<Status> getStatusHistory(List<Integer> machineIdList){
         List<Status> statusList = new ArrayList<Status>();
         for (Integer id : machineIdList) {
-            statusList.addAll(statusRepository.findHistoryByMachineId(id, 100));
+            statusList.addAll(statusRepository.findHistoryByMachineIdWithLimit(id, 100));
         }
         return statusList;
     }
 
-    public List<Status> getStatusGaps(List<Integer> machineIdList){
+    public List<Status> getStatusGaps(List<Machine> machineList){
         List<Status> statusList = new ArrayList<Status>();
         List<Status> result = new ArrayList<Status>();
-        if (machineIdList.size() == 0) {
-            machineIdList = machineRepository.findAllMachineIds();
+        if (machineList.size() == 0) {
+            machineList = (ArrayList<Machine>) machineRepository.findAll();
         }
-        for (Integer id : machineIdList) {
-            statusList.addAll(statusRepository.findHistoryByMachineId(id, 1000000000));
+        for (Machine machine : machineList) {
+            statusList.addAll(statusRepository.findByMachineOrderByTimestampDesc(machine));
             for (int i = 0; i < statusList.size() - 1; i++) {
                 Status current = statusList.get(i);
-                Status prev = statusList.get(i+1);
-                long diff = current.getTimestamp().getTime() - prev.getTimestamp().getTime();
-                if (diff > 3600000) {
+                Status prev = statusList.get(i + 1);
+                long currentLong = ((ChronoLocalDateTime)current.getTimestamp().toLocalDateTime()).toEpochSecond(ZoneOffset.UTC);
+                long prevLong = ((ChronoLocalDateTime)prev.getTimestamp().toLocalDateTime()).toEpochSecond(ZoneOffset.UTC);
+                long diff = currentLong - prevLong;
+                if (diff > 3600) {
                     result.add(statusList.get(i));
                     result.add(statusList.get(i+1));
                 }
@@ -124,24 +133,83 @@ public class DaiStatus {
         return result;
     }
 
-    public String getStatusGaps() {
-        List<Status> statusList = getStatusGaps(new ArrayList<Integer>());
+    public File getStatusGaps() {
+        List<Status> statusList = getStatusGaps(new ArrayList<Machine>());
         String output = "";
-        for (Status status : statusList) {
-            output += "Machine ID: " + status.getMachineId() + ", DAI Identifier: " + status.getDaiIdentifier() + ", Timestamp:" + status.getTimestamp().toString() + "\n";
+        HSSFWorkbook workbook = new HSSFWorkbook();
+        HSSFSheet sheet = workbook.createSheet(getCurrentDateAndTime());
+        initializeStatusGapSheet(sheet);
+        int k = 1;
+        for (int i = 0; i < statusList.size() - 1; i++) {
+            Status current = statusList.get(i);
+            Status prev = statusList.get(i+1);
+            HSSFRow row = sheet.createRow(k);
+
+            String company = current.getMachine().getLocation().getCompany().getName();
+            String location = current.getMachine().getLocation().getName();
+            String machine = current.getMachine().getName();
+            String disconnected = prev.getTimestamp().toString();
+            String reconnected = current.getTimestamp().toString();
+
+            long currentLong = ((ChronoLocalDateTime)current.getTimestamp().toLocalDateTime()).toEpochSecond(ZoneOffset.UTC);
+            long prevLong = ((ChronoLocalDateTime)prev.getTimestamp().toLocalDateTime()).toEpochSecond(ZoneOffset.UTC);
+            long diff = currentLong - prevLong;
+
+            String diffString = String.format("%02d:%02d:%02d", TimeUnit.SECONDS.toHours(diff),
+                    TimeUnit.SECONDS.toMinutes(diff) % TimeUnit.HOURS.toMinutes(1),
+                    TimeUnit.SECONDS.toSeconds(diff) % TimeUnit.MINUTES.toSeconds(1));
+
+            row.createCell(0).setCellValue(company);
+            row.createCell(1).setCellValue(location);
+            row.createCell(2).setCellValue(machine);
+            row.createCell(3).setCellValue(disconnected);
+            row.createCell(4).setCellValue(reconnected);
+            row.createCell(5).setCellValue(diffString);
+
+            k++;
+            i++;
         }
-        return output;
+
+//        for (Status status : statusList) {
+//            output += "Machine ID: " + status.getMachineId() + ", DAI Identifier: " + status.getDaiIdentifier() + ", Timestamp:" + status.getTimestamp().toString() + "\n";
+//        }
+        if (sheet != null) {
+            for (int j=0; j<sheet.getRow(0).getPhysicalNumberOfCells(); j++) {
+                sheet.autoSizeColumn(j);
+            }
+        }
+        return writeFile(workbook);
 
     }
 
-//    @Scheduled(cron = "* * */2 * * *")
+    private void initializeStatusGapSheet(HSSFSheet sheet) {
+        HSSFRow header = sheet.createRow(0);
+        CellStyle style = sheet.getWorkbook().createCellStyle();
+        HSSFFont font = sheet.getWorkbook().createFont();
+        font.setBoldweight(Font.BOLDWEIGHT_BOLD);
+        style.setBorderBottom(CellStyle.BORDER_MEDIUM);
+        style.setFont(font);
+
+        header.createCell(0).setCellValue("Company Name");
+        header.createCell(1).setCellValue("Location Name");
+        header.createCell(2).setCellValue("Machine Name");
+        header.createCell(3).setCellValue("Disconnected");
+        header.createCell(4).setCellValue("Reconnected");
+        header.createCell(5).setCellValue("Gap Length");
+
+        for (int i=0; i<6; i++) {
+            header.getCell(i).setCellStyle(style);
+        }
+    }
+
+    //    @Scheduled(cron = "* * */2 * * *")
     public void checkStatusTime() {
         List<Integer> machineIds = machineRepository.findAllMachineIds();
         List<Status> statusList = getStatus(machineIds);
 
         for (Status status : statusList) {
             if (status != null && status.getTimestamp().before(getTimestampForIdleInterval())) {
-                Machine machine =  machineRepository.findById(status.getMachineId());
+                Machine machine =  status.getMachine();
                 createStatus(status.getDaiIdentifier(), machine, -2);
             }
         }
@@ -432,7 +500,9 @@ public class DaiStatus {
 
     private String getCurrentDateAndTime() {
         Calendar c = Calendar.getInstance();
-        return c.getTime().toString();
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH.mm.ss z");
+
+        return sdf.format(c.getTime());
     }
 
     public File getLastLog() {
@@ -442,7 +512,7 @@ public class DaiStatus {
 
         for (Machine machine : machineRepository.findAll()) {
             Integer machineId = machine.getId();
-            Cycle cycle = cycleRepository.findLastByMachineIdByOrderByReadingTimestamp(machineId);
+            Cycle cycle = cycleRepository.findLastCycleByMachine(machineId);
             if (cycle != null && cycle.getReadingTimestamp().before(getTimestampForLastLog())) {
                 if (sheet == null) {
                     sheet = workbook.createSheet(getCurrentDateAndTime());
@@ -458,6 +528,7 @@ public class DaiStatus {
                 row.createCell(1).setCellValue(location);
                 row.createCell(2).setCellValue(machineName);
                 row.createCell(3).setCellValue(lastLog);
+                i++;
             }
         }
         if (sheet != null) {
@@ -485,17 +556,28 @@ public class DaiStatus {
 
     private void initializeLogSheet(HSSFSheet sheet) {
         HSSFRow header = sheet.createRow(0);
+        CellStyle style = sheet.getWorkbook().createCellStyle();
+        HSSFFont font = sheet.getWorkbook().createFont();
+        font.setBoldweight(Font.BOLDWEIGHT_BOLD);
+
+        style.setBorderBottom(CellStyle.BORDER_MEDIUM);
+        style.setFont(font);
+
         header.createCell(0).setCellValue("Company Name");
-        header.createCell(0).setCellValue("Location Name");
-        header.createCell(0).setCellValue("Machine Name");
-        header.createCell(0).setCellValue("Last Log Date And Time");
+        header.createCell(1).setCellValue("Location Name");
+        header.createCell(2).setCellValue("Machine Name");
+        header.createCell(3).setCellValue("Last Cycle");
+
+        for (int i = 0; i < 4; i++) {
+            header.getCell(i).setCellStyle(style);
+        }
     }
 
     private Status createStatus(String daiIdentifier, Machine machine, int statusCode) {
         String message = "";
         Status status = new Status();
         status.setDaiIdentifier(daiIdentifier);
-        status.setMachineId(machine.getId());
+        status.setMachine(machine);
         status.setStatusCode(statusCode);
         status.setTimestamp(new Timestamp(System.currentTimeMillis()));
 
@@ -509,6 +591,7 @@ public class DaiStatus {
         statusRepository.save(status);
         return status;
     }
+
     private final int INDEX_COMPANY = 1;
     private final int INDEX_LOCATION = 2;
     private final int INDEX_MACHINE = 3;

@@ -2,6 +2,7 @@ package com.elyxor.xeros;
 
 import com.elyxor.xeros.model.CollectionClassificationMap;
 import com.elyxor.xeros.model.DaiMeterCollection;
+import com.elyxor.xeros.model.Machine;
 import com.elyxor.xeros.model.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -147,10 +148,10 @@ public class RSServiceImpl implements RSService {
     }
 
     @Override
-    public Response getStatusGaps(List<Integer> machineIdList) {
+    public Response getStatusGaps(List<Machine> machineList) {
         ResponseBuilder r = Response.ok();
         try {
-            List<Status> statusList = daiStatus.getStatusGaps(machineIdList);
+            List<Status> statusList = daiStatus.getStatusGaps(machineList);
             r.entity(statusList);
         } catch (Exception e) {
             r = Response.serverError().entity(e.toString());
@@ -161,7 +162,7 @@ public class RSServiceImpl implements RSService {
     public Response getStatusGaps() {
         ResponseBuilder r = Response.ok();
         try {
-            r.entity(daiStatus.getStatusGaps()).header("Content-Disposition", "attachment; filename=statusgaps.csv");
+            r.entity(daiStatus.getStatusGaps()).header("Content-Disposition", "attachment; filename=statusgaps.xls");
         } catch (Exception e) {
             r = Response.serverError().entity(e.toString());
         }

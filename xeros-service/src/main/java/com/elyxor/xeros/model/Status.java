@@ -10,7 +10,7 @@ public class Status {
 	public Status() {}
 
 	private Integer id;
-    private Integer machineId;
+    private Machine machine;
 	private String daiIdentifier;
 	private Timestamp timestamp;
     private Integer statusCode;
@@ -27,13 +27,14 @@ public class Status {
         this.id = id;
     }
 
-    @Column(name = "machine_id")
-    public Integer getMachineId() {
-        return machineId;
+    @ManyToOne()
+    @JoinColumn(name = "machine_id", referencedColumnName = "machine_id")
+    public Machine getMachine() {
+        return machine;
     }
 
-    public void setMachineId(Integer machineId) {
-        this.machineId = machineId;
+    public void setMachine(Machine machine) {
+        this.machine = machine;
     }
 
     @Column(name = "dai_identifier")
