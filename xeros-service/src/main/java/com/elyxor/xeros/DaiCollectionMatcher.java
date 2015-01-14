@@ -124,17 +124,24 @@ public class DaiCollectionMatcher {
 
     private String checkCollectionException(DaiMeterCollection collectionData) {
         String result = "";
+        Float waterVariance = 0f;
+        Float timeVariance = 0f;
+        Float waterMin = 0f;
 
-        Float waterVariance = Float.valueOf(staticValueRepository.findByName("water_variance").getValue());
-        Float timeVariance = Float.valueOf(staticValueRepository.findByName("time_variance").getValue());
-        Float waterMin = Float.valueOf(staticValueRepository.findByName("water_minimum").getValue());
+        try {
+            waterVariance = Float.valueOf(staticValueRepository.findByName("water_variance").getValue());
+            timeVariance = Float.valueOf(staticValueRepository.findByName("time_variance").getValue());
+            waterMin = Float.valueOf(staticValueRepository.findByName("water_minimum").getValue());
+        } catch (NullPointerException ex) {
+            logger.warn("unable to find variance value", ex.getMessage());
+        }
 
         DaiMeterActual actual = collectionData.getDaiMeterActual();
         Machine machine = collectionData.getMachine();
         Float waterMeterRate = machine.getWaterMeterRate();
-        Float coldDiff;
-        Float hotDiff;
-        Float timeDiff;
+        Float coldDiff = 0f;
+        Float hotDiff = 0f;
+        Float timeDiff = 0f;
         Float coldWater = actual.getColdWater() * waterMeterRate;
         Float hotWater = actual.getHotWater() * waterMeterRate;
         Float runTime = (float) actual.getRunTime() / 60;
@@ -147,9 +154,11 @@ public class DaiCollectionMatcher {
         }
         else {
             LocalStaticValue lsv = lsvRepository.findByClassification(collectionData.getCollectionClassificationMap().getClassification());
-            coldDiff = calculatePercentageDiff(lsv.getColdWater(), coldWater);
-            hotDiff = calculatePercentageDiff(lsv.getHotWater(), hotWater);
-            timeDiff = calculatePercentageDiff((float) lsv.getRunTime(), runTime);
+            if (lsv != null) {
+                coldDiff = calculatePercentageDiff(lsv.getColdWater(), coldWater);
+                hotDiff = calculatePercentageDiff(lsv.getHotWater(), hotWater);
+                timeDiff = calculatePercentageDiff((float) lsv.getRunTime(), runTime);
+            }
         }
         if (coldDiff > waterVariance)
             result += EXCEPTION_CW_HIGH;
@@ -170,7 +179,8 @@ public class DaiCollectionMatcher {
 
     private Float calculatePercentageDiff(Float benchmarkValue, Float actualValue) {
         Float change = actualValue - benchmarkValue;
-        Float diff = change / benchmarkValue;
+        Float sum = actualValue + benchmarkValue;
+        Float diff = change / (sum / 2);
         return diff;
     }
 

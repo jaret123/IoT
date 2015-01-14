@@ -57,24 +57,6 @@ public class DaiStatus {
 		return false;
 	}
 
-	public String pingStatus() {
-		long startTime = System.currentTimeMillis();
-		Iterable<ActiveDai> daiList = activeDaiRepository.findAll();
-		String output = "list of offline DAQs: ";
-		for (ActiveDai dai : daiList) {
-			if (dai.getLastPing() != null) {
-				if ((System.currentTimeMillis() - dai.getLastPing().getTime()) > 3600000)
-					output += dai.getDaiIdentifier()+", last ping at: " + dai.getLastPing()+"\n";
-			}
-		}
-		if (!output.equals("list of offline DAQs: "))
-			return output;
-		else {
-			output = "<pingdom_http_custom_check>\n\t<status>OK</status>\n\t<response_time>"
-					+(System.currentTimeMillis()-startTime)+"</response_time>\n</pingdom_http_custom_check>";
-			return output;
-		}
-	}
     public boolean receiveMachineStatus(String daiIdentifier, byte xerosStatus, byte stdStatus) {
         List<Machine> stdMachines = machineRepository.findByDaiDaiIdentifierAndMachineIdentifier(daiIdentifier, "Std");
         List<Machine> xerosMachines = machineRepository.findByDaiDaiIdentifierAndMachineIdentifier(daiIdentifier, "Xeros");
@@ -91,22 +73,6 @@ public class DaiStatus {
             return true;
         }
         return false;
-    }
-
-    public List<Status> getStatus(List<Integer> machineIdList) {
-        List<Status> statusList = new ArrayList<Status>();
-        for (Integer id : machineIdList) {
-            statusList.add(statusRepository.findByMachineId(id));
-        }
-        return statusList;
-    }
-
-    public List<Status> getStatusHistory(List<Integer> machineIdList){
-        List<Status> statusList = new ArrayList<Status>();
-        for (Integer id : machineIdList) {
-            statusList.addAll(statusRepository.findHistoryByMachineIdWithLimit(id, 100));
-        }
-        return statusList;
     }
 
     public List<Status> getStatusGaps(List<Machine> machineList){
@@ -169,10 +135,6 @@ public class DaiStatus {
             k++;
             i++;
         }
-
-//        for (Status status : statusList) {
-//            output += "Machine ID: " + status.getMachineId() + ", DAI Identifier: " + status.getDaiIdentifier() + ", Timestamp:" + status.getTimestamp().toString() + "\n";
-//        }
         if (sheet != null) {
             for (int j=0; j<sheet.getRow(0).getPhysicalNumberOfCells(); j++) {
                 sheet.autoSizeColumn(j);
@@ -182,164 +144,41 @@ public class DaiStatus {
 
     }
 
-    private void initializeStatusGapSheet(HSSFSheet sheet) {
-        HSSFRow header = sheet.createRow(0);
-        CellStyle style = sheet.getWorkbook().createCellStyle();
-        HSSFFont font = sheet.getWorkbook().createFont();
-        font.setBoldweight(Font.BOLDWEIGHT_BOLD);
-        style.setBorderBottom(CellStyle.BORDER_MEDIUM);
-        style.setFont(font);
+    public File getLastLog() {
+        HSSFWorkbook workbook = new HSSFWorkbook();
+        HSSFSheet sheet = null;
+        int i = 1;
 
-        header.createCell(0).setCellValue("Company Name");
-        header.createCell(1).setCellValue("Location Name");
-        header.createCell(2).setCellValue("Machine Name");
-        header.createCell(3).setCellValue("Disconnected");
-        header.createCell(4).setCellValue("Reconnected");
-        header.createCell(5).setCellValue("Gap Length");
+        for (Machine machine : machineRepository.findAll()) {
+            Integer machineId = machine.getId();
+            Cycle cycle = cycleRepository.findLastCycleByMachine(machineId);
+            if (cycle != null && cycle.getReadingTimestamp().before(getTimestampForLastLog())) {
+                if (sheet == null) {
+                    sheet = workbook.createSheet(getCurrentDateAndTime());
+                    initializeLogSheet(sheet);
+                }
+                HSSFRow row = sheet.createRow(i);
+                String company = machine.getLocation().getCompany().getName();
+                String location = machine.getLocation().getName();
+                String machineName = machine.getName();
+                String lastLog = cycle.getReadingTimestamp().toString();
 
-        for (int i=0; i<6; i++) {
-            header.getCell(i).setCellStyle(style);
-        }
-    }
-
-    //    @Scheduled(cron = "* * */2 * * *")
-    public void checkStatusTime() {
-        List<Integer> machineIds = machineRepository.findAllMachineIds();
-        List<Status> statusList = getStatus(machineIds);
-
-        for (Status status : statusList) {
-            if (status != null && status.getTimestamp().before(getTimestampForIdleInterval())) {
-                Machine machine =  status.getMachine();
-                createStatus(status.getDaiIdentifier(), machine, -2);
+                row.createCell(0).setCellValue(company);
+                row.createCell(1).setCellValue(location);
+                row.createCell(2).setCellValue(machineName);
+                row.createCell(3).setCellValue(lastLog);
+                i++;
             }
         }
-    }
-
-    public File getCycleReports(UriInfo info) {
-        String from = info.getPathParameters().getFirst("fromDate");
-        String to = info.getPathParameters().getFirst("toDate");
-        String exception = info.getPathParameters().getFirst("exception");
-        String machine = info.getPathParameters().getFirst("machine");
-        String company = info.getPathParameters().getFirst("company");
-        String location = info.getPathParameters().getFirst("location");
-
-        if (to == null) {
-            to = from;
+        if (sheet != null) {
+            for (int j=0; j<sheet.getRow(0).getPhysicalNumberOfCells(); j++) {
+                sheet.autoSizeColumn(j);
+            }
         }
-        if (exception == null) {
-            exception = 0 + "";
-        }
-        if (machine != null) {
-            return getCycleReportsForMachine(from, to, exception, machine);
-        }
-//        else if (company != null) {
-////            return getCycleReportsForCompany(from, to, exception, company);
-//        }
-//        else if (location != null) {
-////            return getCycleReportsForLocation(from, to, exception, location);
-//        }
-        else {
-            return getCycleReports(from, to, Integer.parseInt(exception));
-        }
+
+        return writeFile(workbook);
     }
 
-    public File getCycleReportsForMachine(String startDate, String endDate, String exceptionType, String machineId) {
-//        return getCycleReports(, startDate, endDate, Integer.parseInt(exceptionType));
-        return new File("file");
-    }
-
-    public File getCycleReports(String date) {
-
-        return getCycleReports(date, date, 0);
-//        Iterable<MachineMapping> machineList = machineMappingRepository.findAll();
-//
-//        PreparedStatement statement = null;
-//        ResultSet rs = null;
-//        HSSFWorkbook workbook = new HSSFWorkbook();
-//        FileOutputStream out = null;
-//        File file = null;
-//        HSSFSheet sheet = workbook.createSheet();
-//        for (MachineMapping machineMapping : machineList) {
-//            try {
-//                Connection connection = appConfig.dataSource().getConnection();
-//                statement = connection.prepareStatement(QUERY_SIMPLE_CYCLE);
-//                statement.setDate(1, Date.valueOf(date));
-//                statement.setInt(2, machineMapping.getDaiId());
-//                rs = statement.executeQuery();
-//                while (rs != null && rs.next()) {
-//                    if (rs.first()) {
-//                        sheet = workbook.createSheet(rs.getString(INDEX_MACHINE) + " " + rs.getString(INDEX_DATE));
-//                        HSSFRow rowHeader = sheet.createRow(0);
-//                        rowHeader.createCell(0).setCellValue("Company Name");
-//                        rowHeader.createCell(1).setCellValue("Location Name");
-//                        rowHeader.createCell(2).setCellValue("Machine Name");
-//                        rowHeader.createCell(3).setCellValue("Classification Name");
-//                        rowHeader.createCell(4).setCellValue("Reading Date");
-//                        rowHeader.createCell(5).setCellValue("Cycle Start Time");
-//                        rowHeader.createCell(6).setCellValue("Cycle End Time");
-//                        rowHeader.createCell(7).setCellValue("Water Sewer");
-//                        rowHeader.createCell(8).setCellValue("Hot Water");
-//                        rowHeader.createCell(9).setCellValue("Therms");
-//                        rowHeader.createCell(10).setCellValue("Run Time");
-//                    }
-//                    HSSFRow row = sheet.createRow(rs.getRow());
-//                    row.createCell(0).setCellValue(rs.getString(INDEX_COMPANY));
-//                    row.createCell(1).setCellValue(rs.getString(INDEX_LOCATION));
-//                    row.createCell(2).setCellValue(rs.getString(INDEX_MACHINE));
-//                    row.createCell(3).setCellValue(rs.getString(INDEX_CLASSIFICATION));
-//                    row.createCell(4).setCellValue(rs.getString(INDEX_DATE));
-//                    row.createCell(5).setCellValue(rs.getString(INDEX_START));
-//                    row.createCell(6).setCellValue(rs.getString(INDEX_END));
-//                    row.createCell(10).setCellValue(Double.valueOf(rs.getString(INDEX_RUN_TIME)));
-//
-//                    List<Cycle> ekCycles = cycleRepository.findCyclesForCycleTime(machineMapping.getEkId(), rs.getTimestamp(INDEX_START), rs.getTimestamp(INDEX_END));
-//                    if (ekCycles.size() > 0) {
-//                        Float coldWater = 0f;
-//                        Float hotWater = 0f;
-//                        Float therms = 0f;
-//                        for (Cycle cycle : ekCycles) {
-//                            coldWater += cycle.getColdWaterVolume();
-//                            hotWater += cycle.getHotWaterVolume();
-//                            therms += cycle.getTherms();
-//                        }
-//                        row.createCell(7).setCellValue(coldWater);
-//                        row.createCell(8).setCellValue(hotWater);
-//                        row.createCell(9).setCellValue(therms);
-//                    }
-//                    else {
-//                        row.createCell(7).setCellValue(Double.valueOf(rs.getString(INDEX_WATER_SEWER)));
-//                        row.createCell(8).setCellValue(Double.valueOf(rs.getString(INDEX_WATER_HOT)));
-//                        row.createCell(9).setCellValue(Double.valueOf(rs.getString(INDEX_THERMS)));
-//                    }
-//                }
-//                rs.close();
-//                for (int j=0; j < 10; j++) {
-//                    sheet.autoSizeColumn(j);
-//                }
-//                statement.close();
-//                connection.close();
-//            } catch (SQLException sqle) {
-//            //handle exception
-//            } catch (Exception e) {
-//                //handle exception
-//            }
-//
-//        }
-//        try {
-//            file = new File("output.xls");
-//            out = new FileOutputStream(file);
-//            workbook.write(out);
-//            return file;
-//        } catch (FileNotFoundException fnfe) {
-//            //handle
-//        } catch (IOException ioe) {
-//            //handle
-//        }
-//        return file;
-    }
-    public File getCycleReports(String startDate, String endDate, Integer exceptionType) {
-        return getCycleReports(machineMappingRepository.findAll(), startDate, endDate, exceptionType);
-    }
     public File getCycleReports(Iterable<MachineMapping> machineList, String startDate, String endDate, Integer exceptionType) {
         HSSFWorkbook workbook = new HSSFWorkbook();
         FileOutputStream out = null;
@@ -421,6 +260,59 @@ public class DaiStatus {
         }
         return file;
     }
+    public File getCycleReports(UriInfo info) {
+        String from = info.getPathParameters().getFirst("fromDate");
+        String to = info.getPathParameters().getFirst("toDate");
+        String exception = info.getPathParameters().getFirst("exception");
+        String machine = info.getPathParameters().getFirst("machine");
+        String company = info.getPathParameters().getFirst("company");
+        String location = info.getPathParameters().getFirst("location");
+
+        if (to == null) {
+            to = from;
+        }
+        if (exception == null) {
+            exception = 0 + "";
+        }
+        if (machine != null) {
+            return getCycleReportsForMachine(from, to, exception, machine);
+        }
+        else {
+            return getCycleReports(from, to, Integer.parseInt(exception));
+        }
+    }
+
+    public File getCycleReportsForMachine(String startDate, String endDate, String exceptionType, String machineId) {
+        List<Machine> machineList = new ArrayList<Machine>();
+        int exception;
+        if (!machineId.isEmpty()) {
+            machineList.add(machineRepository.findById(Integer.parseInt(machineId)));
+        }
+        if (exceptionType.isEmpty()) {
+            exception = 0;
+        }
+        exception = Integer.parseInt(exceptionType);
+        return getCycleReports(machineList, startDate, endDate, exception);
+    }
+    public File getCycleReports(String date) {
+        return getCycleReports(date, date, 0);
+    }
+    public File getCycleReports(String startDate, String endDate, Integer exceptionType) {
+        return getCycleReports(machineMappingRepository.findAll(), startDate, endDate, exceptionType);
+    }
+
+    //    @Scheduled(cron = "* * */2 * * *")
+    public void checkStatusTime() {
+        List<Integer> machineIds = machineRepository.findAllMachineIds();
+        List<Status> statusList = getStatus(machineIds);
+
+        for (Status status : statusList) {
+            if (status != null && status.getTimestamp().before(getTimestampForIdleInterval())) {
+                Machine machine =  status.getMachine();
+                createStatus(status.getDaiIdentifier(), machine, -2);
+            }
+        }
+    }
 
     private List<Cycle> processException(String startDate, String endDate, Machine machine, Integer exceptionType) {
         List<Cycle> result = new ArrayList<Cycle>();
@@ -471,106 +363,19 @@ public class DaiStatus {
         return result;
     }
 
-    private void initializeSheet(HSSFSheet sheet) {
-        HSSFRow rowHeader = sheet.createRow(0);
-        rowHeader.createCell(0).setCellValue("Company Name");
-        rowHeader.createCell(1).setCellValue("Location Name");
-        rowHeader.createCell(2).setCellValue("Machine Name");
-        rowHeader.createCell(3).setCellValue("Classification Name");
-        rowHeader.createCell(4).setCellValue("Reading Date");
-        rowHeader.createCell(5).setCellValue("Cycle Start Time");
-        rowHeader.createCell(6).setCellValue("Cycle End Time");
-        rowHeader.createCell(7).setCellValue("Water Sewer");
-        rowHeader.createCell(8).setCellValue("Hot Water");
-        rowHeader.createCell(9).setCellValue("Therms");
-        rowHeader.createCell(10).setCellValue("Run Time");
-    }
-
-    private Timestamp getTimestampForIdleInterval() {
-        Calendar c = Calendar.getInstance();
-        c.add(Calendar.HOUR, -4);
-        return new Timestamp(c.getTimeInMillis());
-    }
-
-    private Timestamp getTimestampForLastLog() {
-        Calendar c = Calendar.getInstance();
-        c.add(Calendar.HOUR, -24);
-        return new Timestamp(c.getTimeInMillis());
-    }
-
-    private String getCurrentDateAndTime() {
-        Calendar c = Calendar.getInstance();
-        SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH.mm.ss z");
-
-        return sdf.format(c.getTime());
-    }
-
-    public File getLastLog() {
-        HSSFWorkbook workbook = new HSSFWorkbook();
-        HSSFSheet sheet = null;
-        int i = 1;
-
-        for (Machine machine : machineRepository.findAll()) {
-            Integer machineId = machine.getId();
-            Cycle cycle = cycleRepository.findLastCycleByMachine(machineId);
-            if (cycle != null && cycle.getReadingTimestamp().before(getTimestampForLastLog())) {
-                if (sheet == null) {
-                    sheet = workbook.createSheet(getCurrentDateAndTime());
-                    initializeLogSheet(sheet);
-                }
-                HSSFRow row = sheet.createRow(i);
-                String company = machine.getLocation().getCompany().getName();
-                String location = machine.getLocation().getName();
-                String machineName = machine.getName();
-                String lastLog = cycle.getReadingTimestamp().toString();
-
-                row.createCell(0).setCellValue(company);
-                row.createCell(1).setCellValue(location);
-                row.createCell(2).setCellValue(machineName);
-                row.createCell(3).setCellValue(lastLog);
-                i++;
-            }
+    public List<Status> getStatus(List<Integer> machineIdList) {
+        List<Status> statusList = new ArrayList<Status>();
+        for (Integer id : machineIdList) {
+            statusList.add(statusRepository.findByMachineId(id));
         }
-        if (sheet != null) {
-            for (int j=0; j<sheet.getRow(0).getPhysicalNumberOfCells(); j++) {
-                sheet.autoSizeColumn(j);
-            }
-        }
-
-        return writeFile(workbook);
+        return statusList;
     }
-
-    private File writeFile(HSSFWorkbook workbook) {
-        File file = new File("output.xls");
-        try {
-            FileOutputStream out = new FileOutputStream(file);
-            workbook.write(out);
-            out.close();
-        } catch (FileNotFoundException e) {
-            //handle
-        } catch (IOException ex) {
-            //handle
+    public List<Status> getStatusHistory(List<Integer> machineIdList){
+        List<Status> statusList = new ArrayList<Status>();
+        for (Integer id : machineIdList) {
+            statusList.addAll(statusRepository.findHistoryByMachineIdWithLimit(id, 100));
         }
-        return file;
-    }
-
-    private void initializeLogSheet(HSSFSheet sheet) {
-        HSSFRow header = sheet.createRow(0);
-        CellStyle style = sheet.getWorkbook().createCellStyle();
-        HSSFFont font = sheet.getWorkbook().createFont();
-        font.setBoldweight(Font.BOLDWEIGHT_BOLD);
-
-        style.setBorderBottom(CellStyle.BORDER_MEDIUM);
-        style.setFont(font);
-
-        header.createCell(0).setCellValue("Company Name");
-        header.createCell(1).setCellValue("Location Name");
-        header.createCell(2).setCellValue("Machine Name");
-        header.createCell(3).setCellValue("Last Cycle");
-
-        for (int i = 0; i < 4; i++) {
-            header.getCell(i).setCellStyle(style);
-        }
+        return statusList;
     }
 
     private Status createStatus(String daiIdentifier, Machine machine, int statusCode) {
@@ -592,53 +397,105 @@ public class DaiStatus {
         return status;
     }
 
-    private final int INDEX_COMPANY = 1;
-    private final int INDEX_LOCATION = 2;
-    private final int INDEX_MACHINE = 3;
-    private final int INDEX_CLASSIFICATION = 4;
-    private final int INDEX_DATE = 5;
-    private final int INDEX_START = 6;
-    private final int INDEX_END = 7;
-    private final int INDEX_WATER_SEWER = 8;
-    private final int INDEX_WATER_HOT = 9;
-    private final int INDEX_THERMS = 10;
-    private final int INDEX_RUN_TIME = 11;
+    public String pingStatus() {
+        long startTime = System.currentTimeMillis();
+        Iterable<ActiveDai> daiList = activeDaiRepository.findAll();
+        String output = "list of offline DAQs: ";
+        for (ActiveDai dai : daiList) {
+            if (dai.getLastPing() != null) {
+                if ((System.currentTimeMillis() - dai.getLastPing().getTime()) > 3600000)
+                    output += dai.getDaiIdentifier()+", last ping at: " + dai.getLastPing()+"\n";
+            }
+        }
+        if (!output.equals("list of offline DAQs: "))
+            return output;
+        else {
+            output = "<pingdom_http_custom_check>\n\t<status>OK</status>\n\t<response_time>"
+                    +(System.currentTimeMillis()-startTime)+"</response_time>\n</pingdom_http_custom_check>";
+            return output;
+        }
+    }
 
-    private final int[] MACHINE_ID_LIST = {8, 9, 10, 11};
-    private final String QUERY_SIMPLE_CYCLE =
-            "select company.name as 'Company Name'," +
-            "loc.location_name as 'Location Name'," +
-            "m.machine_name as 'Machine Name'," +
-            "class.name as 'Classification Name'," +
-            "date(c.reading_timestamp) as 'Reading Date'," +
-            "c.reading_timestamp - INTERVAL c.cycle_time_run_time MINUTE as 'Cycle Start Time'," +
-            "c.reading_timestamp as 'Cycle End Time'," +
-            "c.cycle_cold_water_volume as 'Water Sewer'," +
-            "c.cycle_hot_water_volume as 'Hot Water'," +
-            "c.cycle_therms as 'Therms'," +
-            "c.cycle_time_run_time as 'Run Time' " +
-            "from " +
-            "xeros_cycle as c " +
-            "LEFT JOIN xeros_machine as m " +
-            "on c.machine_id = m.machine_id " +
-            "LEFT JOIN xeros_classification as class " +
-            "on c.classification_id = class.classification_id " +
-            "LEFT JOIN xeros_location as loc " +
-            "on c.location_id = loc.location_id " +
-            "LEFT JOIN xeros_company as company " +
-            "on loc.company_id = company.company_id " +
-            "WHERE " +
-            "dai_meter_actual_id in (" +
-            "select " +
-            "dai_meter_actual_id " +
-            "from " +
-            "xeros_dai_meter_collection " +
-            "WHERE " +
-            "date(c.reading_timestamp) = ? " +
-            "AND m.machine_id = ? " +
-            "AND company.name not like 'White Rose' " +
-            "AND company.name not like 'Xeros'" +
-            ") " +
-            "ORDER BY dai_meter_actual_id;";
+    private void initializeLogSheet(HSSFSheet sheet) {
+        HSSFRow header = sheet.createRow(0);
+        CellStyle style = sheet.getWorkbook().createCellStyle();
+        HSSFFont font = sheet.getWorkbook().createFont();
+        font.setBoldweight(Font.BOLDWEIGHT_BOLD);
 
+        style.setBorderBottom(CellStyle.BORDER_MEDIUM);
+        style.setFont(font);
+
+        header.createCell(0).setCellValue("Company Name");
+        header.createCell(1).setCellValue("Location Name");
+        header.createCell(2).setCellValue("Machine Name");
+        header.createCell(3).setCellValue("Last Cycle");
+
+        for (int i = 0; i < 4; i++) {
+            header.getCell(i).setCellStyle(style);
+        }
+    }
+    private void initializeSheet(HSSFSheet sheet) {
+        HSSFRow rowHeader = sheet.createRow(0);
+        rowHeader.createCell(0).setCellValue("Company Name");
+        rowHeader.createCell(1).setCellValue("Location Name");
+        rowHeader.createCell(2).setCellValue("Machine Name");
+        rowHeader.createCell(3).setCellValue("Classification Name");
+        rowHeader.createCell(4).setCellValue("Reading Date");
+        rowHeader.createCell(5).setCellValue("Cycle Start Time");
+        rowHeader.createCell(6).setCellValue("Cycle End Time");
+        rowHeader.createCell(7).setCellValue("Water Sewer");
+        rowHeader.createCell(8).setCellValue("Hot Water");
+        rowHeader.createCell(9).setCellValue("Therms");
+        rowHeader.createCell(10).setCellValue("Run Time");
+    }
+    private void initializeStatusGapSheet(HSSFSheet sheet) {
+        HSSFRow header = sheet.createRow(0);
+        CellStyle style = sheet.getWorkbook().createCellStyle();
+        HSSFFont font = sheet.getWorkbook().createFont();
+        font.setBoldweight(Font.BOLDWEIGHT_BOLD);
+        style.setBorderBottom(CellStyle.BORDER_MEDIUM);
+        style.setFont(font);
+
+        header.createCell(0).setCellValue("Company Name");
+        header.createCell(1).setCellValue("Location Name");
+        header.createCell(2).setCellValue("Machine Name");
+        header.createCell(3).setCellValue("Disconnected");
+        header.createCell(4).setCellValue("Reconnected");
+        header.createCell(5).setCellValue("Gap Length");
+
+        for (int i=0; i<6; i++) {
+            header.getCell(i).setCellStyle(style);
+        }
+    }
+
+    private File writeFile(HSSFWorkbook workbook) {
+        File file = new File("output.xls");
+        try {
+            FileOutputStream out = new FileOutputStream(file);
+            workbook.write(out);
+            out.close();
+        } catch (FileNotFoundException e) {
+            //handle
+        } catch (IOException ex) {
+            //handle
+        }
+        return file;
+    }
+    private Timestamp getTimestampForLastLog() {
+        Calendar c = Calendar.getInstance();
+        c.add(Calendar.HOUR, -24);
+        return new Timestamp(c.getTimeInMillis());
+    }
+    private Timestamp getTimestampForIdleInterval() {
+        Calendar c = Calendar.getInstance();
+        c.add(Calendar.HOUR, -4);
+        return new Timestamp(c.getTimeInMillis());
+    }
+    private String getCurrentDateAndTime() {
+        Calendar c = Calendar.getInstance();
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH.mm.ss z");
+
+        return sdf.format(c.getTime());
+    }
 }
+

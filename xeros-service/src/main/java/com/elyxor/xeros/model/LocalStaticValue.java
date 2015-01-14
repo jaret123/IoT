@@ -26,7 +26,7 @@ public class LocalStaticValue {
 	}
 
 	@OneToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "classification_id", referencedColumnName = "classification_id")
+    @JoinColumn(name = "classification", referencedColumnName = "classification_id")
 	public Classification getClassification() {
 		return classification;
 	}

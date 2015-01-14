@@ -71,7 +71,7 @@ public interface RSService {
     Response getStatusGaps();
 
     @GET
-    @Path("/report/")
+    @Path("/report/query")
     @Produces("application/vnd.ms-excel")
     Response getSimpleCycleReport(@Context UriInfo info);
 
