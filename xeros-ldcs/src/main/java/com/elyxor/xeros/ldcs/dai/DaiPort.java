@@ -1,5 +1,15 @@
 package com.elyxor.xeros.ldcs.dai;
 
+import com.elyxor.xeros.ldcs.HttpFileUploader;
+import com.elyxor.xeros.ldcs.util.FileLogWriter;
+import com.elyxor.xeros.ldcs.util.LogWriterInterface;
+import com.elyxor.xeros.ldcs.util.SerialReader;
+import jssc.SerialPort;
+import jssc.SerialPortException;
+import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -7,18 +17,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-
-import org.apache.commons.io.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import jssc.SerialPort;
-import jssc.SerialPortException;
-
-import com.elyxor.xeros.ldcs.HttpFileUploader;
-import com.elyxor.xeros.ldcs.util.FileLogWriter;
-import com.elyxor.xeros.ldcs.util.LogWriterInterface;
-import com.elyxor.xeros.ldcs.util.SerialReader;
 
 public class DaiPort implements DaiPortInterface {
 
@@ -39,6 +37,8 @@ public class DaiPort implements DaiPortInterface {
     private long meterDiff2;
 
     private boolean logSent;
+    boolean meterClearProcessed = false;
+
 
     public DaiPort (SerialPort port, int num, LogWriterInterface logWriter, String prefix) {
 		this.serialPort = port;
@@ -82,6 +82,7 @@ public class DaiPort implements DaiPortInterface {
 			result = this.serialPort.readString();
 			Thread.sleep(4000); //let the DAQ timeout to avoid setting a new id accidentally
 			this.serialPort.addEventListener(new SerialReader(this));
+            logger.info("read dai id: "+result);
 		}
 		catch (Exception e) {
 			logger.warn("Couldn't read dai id", e);
@@ -95,6 +96,7 @@ public class DaiPort implements DaiPortInterface {
 			this.serialPort.writeString("0 19\n");
 			Thread.sleep(1000);
 			this.serialPort.readString(); //clear buffer, DAQ writes old daiId
+            logger.info("setting new id: " + id);
 			this.serialPort.writeString(id+"\n");
 			Thread.sleep(1000);
 			result = this.serialPort.readString();
@@ -249,13 +251,17 @@ public class DaiPort implements DaiPortInterface {
         meterDiff2 += meter2;
         try {
             String time = getSystemTime();
-            if (time.startsWith("24 : 00 : 0") || time.startsWith("24 : 00 : 1")) {
+            if (time.startsWith("00") && !meterClearProcessed) {
                 serialPort.writeString("0 113\n");
                 Thread.sleep(500);
                 serialPort.writeString("0 113\n");
                 Thread.sleep(500);
                 serialPort.writeString("0 113\n");
                 Thread.sleep(500);
+                meterClearProcessed = true;
+            }
+            if (time.startsWith("01")) {
+                meterClearProcessed = false;
             }
             Files.delete(this.getWaterMeterLogWriter().getFile().toPath());
         } catch (Exception e) {

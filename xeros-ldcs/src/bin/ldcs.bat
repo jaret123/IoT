@@ -23,7 +23,7 @@ set _WRAPPER_BASE=wrapper
 rem The directory where the Wrapper binary (.exe) file is located, this can be
 rem either a absolute or relative path. If the path contains any special characters, 
 rem please make sure to quote the variable. 
-set _WRAPPER_DIR=
+set _WRAPPER_DIR=../bin/wrapper.exe
 
 rem The name and location of the Wrapper configuration file.   This will be used
 rem  if the user does not specify a configuration file as the first parameter to
