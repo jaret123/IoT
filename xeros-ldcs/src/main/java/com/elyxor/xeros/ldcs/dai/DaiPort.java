@@ -74,23 +74,24 @@ public class DaiPort implements DaiPortInterface {
 		return result;
 	}
 	public String getRemoteDaiId() {
-		String result = "";
-		try {
-			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0\n");
-            Thread.sleep(50);
-            logger.info(this.serialPort.readString());
-            this.serialPort.writeString("19\n");
-			Thread.sleep(1000);
-			result = this.serialPort.readString();
-			Thread.sleep(4000); //let the DAQ timeout to avoid setting a new id accidentally
-			this.serialPort.addEventListener(new SerialReader(this));
-            logger.info("read dai id: "+result);
-		}
-		catch (Exception e) {
-			logger.warn("Couldn't read dai id", e);
-		}
-		return result;
+        return parseDaqId(this.getConfig());
+//		String result = "";
+//		try {
+//			this.serialPort.removeEventListener();
+//			this.serialPort.writeString("0\n");
+//            Thread.sleep(50);
+//            logger.info(this.serialPort.readString());
+//            this.serialPort.writeString("19\n");
+//			Thread.sleep(1000);
+//			result = this.serialPort.readString();
+//			Thread.sleep(4000); //let the DAQ timeout to avoid setting a new id accidentally
+//			this.serialPort.addEventListener(new SerialReader(this));
+//            logger.info("read dai id: "+result);
+//		}
+//		catch (Exception e) {
+//			logger.warn("Couldn't read dai id", e);
+//		}
+//		return result;
 	}
 	public String setRemoteDaiId(int id) {
 		String result = "";
@@ -587,5 +588,20 @@ public class DaiPort implements DaiPortInterface {
             }
         }
         return activeStates;
+    }
+
+    private String parseDaqId(String buffer) {
+        String daqId = "-1";
+        if (buffer == null || buffer.equals(""))
+            return daqId;
+
+        String[] lines = buffer.split("\n");
+        for (String line : lines) {
+            if (line.startsWith("\rDAI")) {
+                String[] lineData = line.split(" ");
+                daqId = lineData[3];
+            }
+        }
+        return daqId;
     }
 }
