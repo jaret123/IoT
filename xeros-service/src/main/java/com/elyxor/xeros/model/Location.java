@@ -1,6 +1,7 @@
 package com.elyxor.xeros.model;
 
 import javax.persistence.*;
+import java.util.Collection;
 
 @Entity
 @Table(name = "xeros_location")
@@ -12,6 +13,7 @@ public class Location {
 	private int id;
     private Company company;
     private String name;
+    private Collection<Machine> machines;
 
 	@Id
 	@Column(name = "location_id", columnDefinition = "INT unsigned", updatable=false, insertable=false)
@@ -31,4 +33,9 @@ public class Location {
     @Column(name = "location_name")
     public String getName() {return this.name;}
     public void setName(String name) {this.name = name;}
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "location")
+    public Collection<Machine> getMachines() {return machines;}
+
+    public void setMachines(Collection<Machine> machines) {this.machines = machines;}
 }

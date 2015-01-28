@@ -23,5 +23,15 @@ public interface CycleRepository extends CrudRepository<Cycle, Integer> {
 
     public List<Cycle> findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionLike(Integer id, Timestamp start, Timestamp end, String string);
 
+    @Query(value = "SELECT * FROM xeros_cycle as c LEFT JOIN xeros_dai_meter_actual as ac on c.dai_meter_actual_id = ac.dai_meter_actual_id where c.machine_id = :id AND c.reading_timestamp >= :start AND c.reading_timestamp <= :end AND (ac.exception LIKE :exception OR ac.exception IS NULL) ", nativeQuery = true)
+    public List<Cycle> findByMachineIdAndReadingTimestampBetweenAndExceptionLikeOrNull(@Param("id")Integer id, @Param("start")Timestamp start, @Param("end")Timestamp end, @Param("exception")String exception);
+
+    public List<Cycle> findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionLikeOrDaiMeterActualExceptionIsNull(Integer id, Timestamp start, Timestamp end, String string);
+
+    public List<Cycle> findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionIsNull(Integer id, Timestamp start, Timestamp end);
+
     public List<Cycle> findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionNotLike(Integer id, Timestamp start, Timestamp end, String string);
+
+    @Query(value = "SELECT * FROM xeros_cycle as c LEFT JOIN xeros_dai_meter_actual as ac on c.dai_meter_actual_id = ac.dai_meter_actual_id where c.machine_id = :machineId AND c.reading_timestamp >= :start AND c.reading_timestamp <= :end AND ac.exception REGEXP :exception", nativeQuery = true)
+    public List<Cycle> findByDateMachineAndRegex(@Param("machineId") Integer id, @Param("start") Timestamp start, @Param("end") Timestamp end, @Param("exception") String exception);
 }

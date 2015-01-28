@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.UriInfo;
@@ -172,21 +173,25 @@ public class RSServiceImpl implements RSService {
     @Override
     public Response getSimpleCycleReport(UriInfo info) {
         ResponseBuilder r = Response.ok();
-        String machine = info.getPathParameters().getFirst("machine");
-        String company = info.getPathParameters().getFirst("company");
-        String location = info.getPathParameters().getFirst("location");
+        String machine = info.getQueryParameters().getFirst("machine");
+        String company = info.getQueryParameters().getFirst("company");
+        String location = info.getQueryParameters().getFirst("location");
         if (machine != null && company != null) {
-            return Response.serverError().entity("cannot use machine and company together").build();
+            return Response.ok("Cannot use machine and company together", MediaType.TEXT_PLAIN).build();
         }
         else if (machine != null && location != null) {
-            return Response.serverError().entity("cannot use machine and location together").build();
+            return Response.ok("Cannot use machine and location together", MediaType.TEXT_PLAIN).build();
         }
         else if (company != null && location != null) {
-            return Response.serverError().entity("cannot use company and location together").build();
+            return Response.ok("Cannot use company and location together", MediaType.TEXT_PLAIN).build();
         }
         else {
             try {
-                r.entity(daiStatus.getCycleReports(info)).header("Content-Disposition", "attachment; filename=cycleReport.xls");
+                File result = daiStatus.getCycleReports(info);
+                if (result == null) {
+                    return Response.ok("No records found for this query.", MediaType.TEXT_PLAIN).build();
+                }
+                else r = r.entity(result).header("Content-Disposition", "attachment; filename=cycleReport.xls");
             } catch (Exception e) {
                 r = Response.serverError().entity(e.toString());
             }
