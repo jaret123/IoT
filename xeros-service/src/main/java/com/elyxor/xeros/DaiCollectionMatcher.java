@@ -189,6 +189,7 @@ public class DaiCollectionMatcher {
 			daia.setColdWater(new Float(calculateColdWater(collectionData)).intValue());
 			daia.setHotWater(new Float(calculateHotWater(collectionData)).intValue());
 			daia.setTimestamp(collectionData.getDaiCollectionTime());
+            daia.setOlsonTimezoneId(collectionData.getOlsonTimezoneId());
 			daiMeterActualRepository.save(daia);
 		} else {
 			throw new Exception( String.format("no active dai found for [dai:%1s, machine: %2s]", collectionData.getDaiIdentifier(), collectionData.getMachine() ));
