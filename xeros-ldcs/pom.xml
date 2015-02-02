@@ -110,7 +110,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <format>1.0.{0,date,yyyy-MM-dd}.{1,number}</format>
+                    <format>1.0.{0,date,yyyy-MM-dd}.{1,number}.OLD</format>
                     <items>
                         <item>timestamp</item>
                         <item>buildNumber</item>

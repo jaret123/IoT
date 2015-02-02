@@ -97,7 +97,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
             if (waterOnly == 1||waterOnly==3) {
                 daiPort.initWaterRequest();
             }
-            if (daiId == null) {
+            if (daiId == null || daiId.equals("-1")) {
                 daiPort.closePort();
                 return false;
             }
