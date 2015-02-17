@@ -18,8 +18,8 @@ public class DaiMeterActual {
 	private Integer runTime;
 	private Machine machine;
     private String exception;
-	
-	
+    private Classification expectedClassification;
+
     @Id
     @Column(name = "dai_meter_actual_id", columnDefinition = "INT unsigned")
     @GeneratedValue(strategy=GenerationType.AUTO)    
@@ -49,7 +49,7 @@ public class DaiMeterActual {
 	public void setActiveDai(ActiveDai activeDai) {
 		this.activeDai = activeDai;
 	}
-	
+
 	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classification_id", referencedColumnName = "classification_id")	
 	public Classification getClassification() {
@@ -101,7 +101,11 @@ public class DaiMeterActual {
     public String getException() { return this.exception;}
     public void setException(String exception) {this.exception = exception;}
 
-	
+	@ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "expected_classification", referencedColumnName = "classification_id")
+    public Classification getExpectedClassification() {return expectedClassification;}
+
+    public void setExpectedClassification(Classification expectedClassification) {this.expectedClassification = expectedClassification;}
 
 	
 }

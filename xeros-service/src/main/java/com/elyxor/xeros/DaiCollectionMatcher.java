@@ -112,6 +112,7 @@ public class DaiCollectionMatcher {
 					if (ccm!=null) {
 						collectionData.setCollectionClassificationMap(ccm);
 						collectionData.setDaiMeterActual(createDaiMeterActual(collectionData));
+
 						daiMeterCollectionRepo.save(collectionData);
 					}
 				}
@@ -172,7 +173,7 @@ public class DaiCollectionMatcher {
             result += EXCEPTION_TIME_HIGH;
         if (timeDiff < -timeVariance)
             result += EXCEPTION_TIME_LOW;
-        if (coldWater <= waterMin && hotWater <= waterMin)
+        if (coldWater + hotWater <= waterMin)
             result += EXCEPTION_WATER_MIN;
         return result;
     }
@@ -180,8 +181,10 @@ public class DaiCollectionMatcher {
     private Float calculatePercentageDiff(Float benchmarkValue, Float actualValue) {
         Float change = actualValue - benchmarkValue;
         Float sum = actualValue + benchmarkValue;
-        Float diff = change / (sum / 2);
-        return diff;
+        if (sum == 0f) {
+            return 0f;
+        }
+        return change / (sum / 2);
     }
 
     private Float calculateRunTime(DaiMeterCollection c) {
@@ -258,6 +261,11 @@ public class DaiCollectionMatcher {
 			daia.setColdWater(new Float(calculateColdWater(collectionData)).intValue());
 			daia.setHotWater(new Float(calculateHotWater(collectionData)).intValue());
 			daia.setTimestamp(collectionData.getDaiCollectionTime());
+
+            if (m.getManufacturer().equals("Xeros")) {
+                daia.setExpectedClassification(calculateExpectedClassification(collectionData.getCollectionDetails()));
+            }
+
 			daiMeterActualRepository.save(daia);
 		} else {
 			throw new Exception( String.format("no active dai found for [dai:%1s, machine: %2s]", collectionData.getDaiIdentifier(), collectionData.getMachine() ));
@@ -265,7 +273,20 @@ public class DaiCollectionMatcher {
 		return daia;
 	}
 
-	private CollectionClassificationMap findMatches(DaiMeterCollection collectionData, Iterable<CollectionClassificationMap> existingCollections) {
+    private Classification calculateExpectedClassification(Collection<DaiMeterCollectionDetail> collectionDetails) {
+        for (DaiMeterCollectionDetail detail : collectionDetails) {
+            if (detail.getMeterType().equals("SENSOR_2")) {
+                int dur = (int) Math.floor((double) detail.getDuration());
+                if (!(dur % 2 == 0)) {
+                    dur -= 1;
+                }
+                return classificationRepository.findOne(dur);
+            }
+        }
+        return null;
+    }
+
+    private CollectionClassificationMap findMatches(DaiMeterCollection collectionData, Iterable<CollectionClassificationMap> existingCollections) {
 		CollectionClassificationMap matchedMap = null;
 		Machine collectionMachine = collectionData.getMachine();
 		List<CollectionClassificationMapDetail> normalizedDetails = normalizeCollectionDetails(collectionData, collectionMachine);

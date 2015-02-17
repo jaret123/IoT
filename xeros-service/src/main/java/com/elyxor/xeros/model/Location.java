@@ -25,7 +25,7 @@ public class Location {
 		this.id = id;
 	}
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "company_id", referencedColumnName = "company_id")
     public Company getCompany() {return company;}
     public void setCompany(Company company) {this.company = company;}
@@ -34,7 +34,7 @@ public class Location {
     public String getName() {return this.name;}
     public void setName(String name) {this.name = name;}
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "location")
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "location")
     public Collection<Machine> getMachines() {return machines;}
 
     public void setMachines(Collection<Machine> machines) {this.machines = machines;}

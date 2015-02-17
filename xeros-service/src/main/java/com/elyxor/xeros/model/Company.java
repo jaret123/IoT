@@ -27,7 +27,7 @@ public class Company {
     public String getName() {return name;}
     public void setName(String name) {this.name = name;}
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "company")
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "company")
     public Collection<Location> getLocations() {return locations;}
 
     public void setLocations(Collection<Location> locations) {this.locations = locations;}

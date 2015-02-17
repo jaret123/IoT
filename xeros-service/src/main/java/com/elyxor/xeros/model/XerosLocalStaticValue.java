@@ -25,7 +25,7 @@ public class XerosLocalStaticValue {
 		this.id = id;
 	}
 
-	@OneToOne(fetch = FetchType.EAGER)
+	@OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classification_id", referencedColumnName = "classification_id")
 	public Classification getClassification() {
 		return classification;

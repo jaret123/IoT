@@ -59,6 +59,7 @@ public interface RSService {
 
     @POST
     @Path("/history/")
+    @Produces("application/json")
     Response getStatusHistory(List<Integer> machineIdList);
 
     @POST
@@ -66,7 +67,7 @@ public interface RSService {
     Response getStatusGaps(List<Machine> machineList);
 
     @GET
-    @Path("/statusgaps/")
+    @Path("/status_gaps/")
     @Produces("application/vnd.ms-excel")
     Response getStatusGaps();
 
@@ -76,7 +77,7 @@ public interface RSService {
     Response getSimpleCycleReport(@Context UriInfo info);
 
     @GET
-    @Path("/lastLog")
+    @Path("/last_log")
     @Produces("application/vnd.ms-excel")
     Response getLastLog();
 

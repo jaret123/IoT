@@ -14,17 +14,17 @@ public class DaiMeterCollection {
     private String machineIdentifier;
     private String locationIdentifier;
     private String daiIdentifier;
-    
+
     private String olsonTimezoneId;
     private Timestamp daiCollectionTime;
     private Timestamp fileCreateTime;
     private Timestamp fileUploadTime;
-        
+
     private Machine machine;
     private CollectionClassificationMap collectionClassificationMap;
     private Collection<DaiMeterCollectionDetail> collectionDetails;
     private DaiMeterActual daiMeterActual;
-    
+
     private float earliestValue;
     private Integer exception;
 
@@ -56,7 +56,7 @@ public class DaiMeterCollection {
 	public void setDaiCollectionTime(Timestamp daiCollectionTime) {
 		this.daiCollectionTime = daiCollectionTime;
 	}
-	
+
 	@Column(name="file_upload_timestamp")
 	public Timestamp getFileUploadTime() {
 		return fileUploadTime;
@@ -112,7 +112,7 @@ public class DaiMeterCollection {
 		this.daiIdentifier = daiIdentifier;
 	}
 
-	@OneToOne(fetch = FetchType.EAGER)
+	@OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dai_meter_actual_id", referencedColumnName = "dai_meter_actual_id")
 	public DaiMeterActual getDaiMeterActual() {
 		return daiMeterActual;

@@ -89,7 +89,7 @@ public class Machine {
 		this.fuel_type = fuel_type;
 	}
 
-	@ManyToOne(fetch = FetchType.LAZY)
+	@ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "location_id", referencedColumnName = "location_id")
 	public Location getLocation() {
 		return location;
@@ -135,14 +135,6 @@ public class Machine {
 
 	public void setSensorStartTimeVariance(Integer sensorStartTimeVariance) {
 		this.sensorStartTimeVariance = sensorStartTimeVariance;
-	}
-
-	public void setSteam(Integer steam) {
-		this.steam = steam;
-	}
-
-	public void setFuel_type(Integer fuel_type) {
-		this.fuel_type = fuel_type;
 	}
 
 	@Column(name="machine_identifier", length=255)
