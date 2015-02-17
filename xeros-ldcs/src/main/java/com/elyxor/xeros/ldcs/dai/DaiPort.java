@@ -180,15 +180,22 @@ public class DaiPort implements DaiPortInterface {
     private long[] parseMetersFromResponse(String response) {
         long[] result = new long[2];
         if (response == null) return result;
+        logger.info("response: " + response);
         String[] lineData = response.split("\n");
+        logger.info("lineData Length: "+lineData.length);
         if (lineData.length > 5) {
             for (String line : lineData) {
+                logger.info("line" + line);
                 if (line.startsWith("WM 0")) {
                     String[] lineSplit = line.split(",");
+                    logger.info("lineSplit Length:" + lineSplit.length);
+                    logger.info("lineSplit[3]: " + lineSplit[3]);
                     result[0] = Long.parseLong(lineSplit[3].trim());
                 }
                 if (line.startsWith("WM 1")) {
                     String[] lineSplit = line.split(",");
+                    logger.info("lineSplit Length:" + lineSplit.length);
+                    logger.info("lineSplit[3]: " + lineSplit[3]);
                     result[1] = Long.parseLong(lineSplit[3].trim());
                 }
             }
@@ -197,6 +204,8 @@ public class DaiPort implements DaiPortInterface {
         else {
             for (int i = 0; i < 2; i++) {
                 String[] lineSplit = lineData[i + 1].split(",");
+                logger.info("lineSplit Length:" + lineSplit.length);
+                logger.info("lineSplit[3]: " + lineSplit[3]);
                 result[i] = Long.parseLong(lineSplit[3].trim());
             }
         }
@@ -251,9 +260,12 @@ public class DaiPort implements DaiPortInterface {
         long[] result = null;
         long[] prevMeters = this.parsePrevMetersFromFile();
         long[] currentMeters = this.parseMetersFromResponse(buffer);
+        logger.info("Captured log file, meter1: "+currentMeters[0]+", meter2: "+currentMeters[1]);
 
         long meter1 = currentMeters[0] - prevMeters[0];
         long meter2 = currentMeters[1] - prevMeters[1];
+
+        logger.info("Water Diff: meter1: "+meter1+", meter2: "+meter2);
 
         if (meter1 == 0 && meter2 == 0) {
             if (!logSent) {
@@ -270,7 +282,7 @@ public class DaiPort implements DaiPortInterface {
         meterDiff2 += meter2;
         try {
             String time = getSystemTime();
-            if (time.startsWith("00") && !meterClearProcessed) {
+            if (time.startsWith("24") && !meterClearProcessed) {
                 this.serialPort.writeString("0\n");
                 Thread.sleep(50);
                 logger.info(this.serialPort.readString());
@@ -286,6 +298,7 @@ public class DaiPort implements DaiPortInterface {
                 logger.info(this.serialPort.readString());
                 serialPort.writeString("113\n");
                 Thread.sleep(500);
+                logger.info("cleared water logs");
                 meterClearProcessed = true;
             }
             if (time.startsWith("01")) {
