@@ -462,13 +462,18 @@ public class DaiStatus {
                     row.createCell(4).setCellValue(readingDate);
                     row.createCell(5).setCellValue(cycleStartTime);
                     row.createCell(6).setCellValue(cycleEndTime);
-                    row.createCell(10).setCellValue(formatDecimal(cycle.getRunTime()));
-                    row.createCell(11).setCellValue(exception);
-                    row.createCell(12).setCellValue(describeExceptions(exception));
+                    row.createCell(11).setCellValue(formatDecimal(cycle.getRunTime()));
+                    row.createCell(12).setCellValue(exception);
+                    row.createCell(13).setCellValue(describeExceptions(exception));
 
-                    row.createCell(7).setCellValue(formatDecimal(cycle.getColdWaterVolume()));
-                    row.createCell(8).setCellValue(formatDecimal(cycle.getHotWaterVolume()));
-                    row.createCell(9).setCellValue(formatDecimal(cycle.getTherms()));
+                    Float total = cycle.getColdWaterVolume();
+                    Float hot = cycle.getHotWaterVolume();
+                    Float cold = total - hot;
+
+                    row.createCell(7).setCellValue(formatDecimal(total));
+                    row.createCell(8).setCellValue(formatDecimal(cold));
+                    row.createCell(9).setCellValue(formatDecimal(hot));
+                    row.createCell(10).setCellValue(formatDecimal(cycle.getTherms()));
                 }
             }
             if (sheet != null) {
