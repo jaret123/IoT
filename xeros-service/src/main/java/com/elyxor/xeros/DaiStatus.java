@@ -583,13 +583,13 @@ public class DaiStatus {
                             coldWater += ekCycle.getColdWaterVolume();
                             hotWater += ekCycle.getHotWaterVolume();
                         }
-                        total = coldWater + hotWater;
+                        total = coldWater;
                         row.createCell(3).setCellValue(total);
                     }
                     else {
                         Float cold = cycle.getColdWaterVolume()!=null?cycle.getColdWaterVolume():0f;
                         Float hot = cycle.getHotWaterVolume()!=null?cycle.getHotWaterVolume():0f;
-                        total = hot + cold;
+                        total = cold;
                         row.createCell(3).setCellValue(formatDecimal(total));
                     }
                     float variance = comparison - total;
