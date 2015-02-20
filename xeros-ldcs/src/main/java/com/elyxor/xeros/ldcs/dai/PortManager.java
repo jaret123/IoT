@@ -128,8 +128,9 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		if (!portList.isEmpty()) {
 			for (Entry<String,DaiPortInterface> entry : portList.entrySet()) {
                 if (waterOnly == 2)
-                    result.add(entry.getKey() + ", " + ((WaterMeterPortInterface)entry.getValue()).getWaterMeterId());
-				result.add(entry.getKey() + ", " + daiPrefix + entry.getValue().getDaiNum());
+                    result.add(entry.getKey() + ", " + daiPrefix + ((WaterMeterPortInterface)entry.getValue()).getWaterMeterId());
+                else
+				    result.add(entry.getKey() + ", " + daiPrefix + entry.getValue().getDaiNum());
 			}
 		}
 		return result;

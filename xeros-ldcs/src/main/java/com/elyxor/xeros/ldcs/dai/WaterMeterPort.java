@@ -51,9 +51,20 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 	
 	final static byte[] requestBytes = {(byte)0x2f,(byte)0x3f,(byte)0x30,(byte)0x30,(byte)0x30,
 			(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,
-			(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x21,(byte)0x0d,(byte)0x0a}; 
-	
-	public WaterMeterPort(SerialPort sp, int num, LogWriterInterface lwi, String prefix, String waterMeterId) {
+			(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x21,(byte)0x0d,(byte)0x0a};
+
+    final static byte[] passwordBytes = {(byte)0x01,(byte)0x50,(byte)0x31,(byte)0x02,(byte)0x28,
+            (byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,(byte)0x30,
+            (byte)0x29,(byte)0x03,(byte)0x32,(byte)0x44};
+
+    final static byte[] timeBytes = {(byte)0x01,(byte)0x57,(byte)0x31,(byte)0x02,(byte)0x30,
+            (byte)0x30,(byte)0x36,(byte)0x30,(byte)0x28,(byte)0x31,(byte)0x35,(byte)0x30,(byte)0x32,
+            (byte)0x31,(byte)0x36,(byte)0x30,(byte)0x32,(byte)0x31,(byte)0x34,(byte)0x35,(byte)0x39,
+            (byte)0x31,(byte)0x32,(byte)0x29,(byte)0x03,(byte)0x15,(byte)0x5E};
+
+    final static byte[] closeBytes = {(byte)0x01,(byte)0x42,(byte)0x30,(byte)0x03,(byte)0x75};
+
+    public WaterMeterPort(SerialPort sp, int num, LogWriterInterface lwi, String prefix, String waterMeterId) {
 		this.serialPort = sp;
 		this.daiNum = num;
 		this.logWriter = lwi;
@@ -65,7 +76,7 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		boolean result;
 		try {
 			result = this.serialPort.openPort();
-			this.serialPort.setParams(9600, 8, 1, 0);
+			this.serialPort.setParams(9600, 7, 1, 2);
 		} catch (Exception ex) {
 			logger.warn("Could not open port", ex);
 			result = false;
@@ -360,7 +371,42 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 		return null;
 	}
 	public String setClock() {
-		return null;
+        byte[] request = this.createRequestString(this.parseStringToByteArray(this.getWaterMeterId()));
+        SerialPort port = this.getSerialPort();
+        byte[] buffer = null;
+        String output = "";
+        try {
+            port.writeBytes(request);
+            Thread.sleep(200);
+            buffer = port.readBytes(responseLength);
+            output = new String(buffer, "UTF-8");
+            logger.info(output);
+            Thread.sleep(80);
+            port.writeBytes(passwordBytes);
+            Thread.sleep(200);
+            output = port.readHexString();
+            logger.info(output);
+            Thread.sleep(80);
+
+            port.writeBytes(timeBytes);
+            Thread.sleep(200);
+            output = port.readHexString();
+            logger.info(output);
+
+            Thread.sleep(80);
+            port.writeBytes(closeBytes);
+            Thread.sleep(80);
+            port.writeBytes(request);
+            Thread.sleep(200);
+            buffer = port.readBytes(responseLength);
+            output = buffer!=null?new String(buffer, "UTF-8"):"";
+            logger.info(output);
+        } catch (Exception e) {
+            String msg = "couldn't complete send request";
+            logger.warn(msg, e);
+            return msg + e;
+        }
+        return output;
 	}
 	public String sendStdRequest() {
 		return null;
