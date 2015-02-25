@@ -173,6 +173,12 @@ public class DaiPort implements DaiPortInterface {
             } catch (Exception e) {
                 logger.warn("unable to complete water request for parsing", e);
             }
+            try {
+                Files.delete(this.getWaterMeterLogWriter().getFile().toPath());
+            } catch (Exception e) {
+                String msg = "could not delete, water meter log file not found";
+                logger.warn(msg,e);
+            }
             this.storePrevMeters(meters);
         }
         return Arrays.toString(meters);
@@ -188,7 +194,7 @@ public class DaiPort implements DaiPortInterface {
             logger.info("line" + line);
 
             //Cold water, WM 0 for Xeros and WM 2 for Non-Xeros
-            if (line.startsWith("WM 0") || line.startsWith("WM 2")) {
+            if (line.contains("WM 0") || line.contains("WM 2")) {
                 String[] lineSplit = line.split(",");
                 logger.info("lineSplit Length:" + lineSplit.length);
                 logger.info("lineSplit[3]: " + lineSplit[3]);
@@ -196,7 +202,7 @@ public class DaiPort implements DaiPortInterface {
             }
 
             //Hot water, WM1 for Xeros and WM 3 for Non-Xeros
-            if (line.startsWith("WM 1") || line.startsWith("WM 3")) {
+            if (line.contains("WM 1") || line.contains("WM 3")) {
                 String[] lineSplit = line.split(",");
                 logger.info("lineSplit Length:" + lineSplit.length);
                 logger.info("lineSplit[3]: " + lineSplit[3]);
@@ -220,9 +226,11 @@ public class DaiPort implements DaiPortInterface {
                 result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
                 Thread.sleep(500);
             }
+
+            //ensure command timeout is cleared before moving on
+            Thread.sleep(4000);
             if (result!=null && result.length() > 40) break;
             result = "";
-            Thread.sleep(4000);
             retry++;
         }
         logger.info("water request", "retry: " + retry + " result: " + result);
@@ -276,8 +284,16 @@ public class DaiPort implements DaiPortInterface {
                 logSent = true;
 
                 currentMeters = new long[]{0, 0};
-
                 clearWaterMeters();
+
+                try {
+                    Files.delete(this.getWaterMeterLogWriter().getFile().toPath());
+                } catch (Exception e) {
+                    String msg = "water meter log file not found";
+                    logger.warn(msg,e);
+                }
+
+                this.storePrevMeters(currentMeters);
 
                 return result;
             }
@@ -297,26 +313,26 @@ public class DaiPort implements DaiPortInterface {
     }
 
     private void clearWaterMeters() {
-        try {
-            this.serialPort.writeString("0\n");
-            Thread.sleep(50);
-            logger.info(this.serialPort.readString());
-            serialPort.writeString("113\n");
-            Thread.sleep(500);
-            this.serialPort.writeString("0\n");
-            Thread.sleep(50);
-            logger.info(this.serialPort.readString());
-            serialPort.writeString("113\n");
-            Thread.sleep(500);
-            this.serialPort.writeString("0\n");
-            Thread.sleep(50);
-            logger.info(this.serialPort.readString());
-            serialPort.writeString("113\n");
-            Thread.sleep(500);
-            logger.info("cleared water logs");
-        } catch (Exception e) {
-            String msg = "Failed to clear water meters";
-            logger.warn(msg, e);
+        int retry = 0;
+        while (retry < 3) {
+            try {
+                this.serialPort.writeString("0\n");
+                Thread.sleep(50);
+                logger.info(this.serialPort.readString());
+                serialPort.writeString("113\n");
+                Thread.sleep(5000);
+                if (!this.serialPort.readString().contains("No Command")) {
+                    logger.info("cleared water logs");
+                    break;
+                }
+                retry++;
+            } catch (Exception e) {
+                String msg = "Failed to clear water meters";
+                logger.warn(msg, e);
+            }
+        }
+        if (retry >= 3) {
+            logger.warn("failed to clear water logs");
         }
     }
 

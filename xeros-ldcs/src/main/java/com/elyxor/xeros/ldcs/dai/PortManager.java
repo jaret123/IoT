@@ -94,13 +94,16 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
                 }
                 retryCounter++;
 			}
-            if (waterOnly == 1||waterOnly==3) {
-                daiPort.initWaterRequest();
-            }
             if (daiId == null || daiId.equals("-1")) {
                 daiPort.closePort();
                 return false;
             }
+
+            if (waterOnly == 1||waterOnly==3) {
+                logger.info("init request");
+                daiPort.initWaterRequest();
+            }
+
             daiPort.setLogWriter(new FileLogWriter(path, daiPrefix+daiPort.getDaiNum()+"Log.txt"));
 			portList.put(portName, daiPort);
 			return true;
