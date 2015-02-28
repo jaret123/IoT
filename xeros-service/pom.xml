@@ -182,15 +182,13 @@
 						<taskdef name="sshexec" classname="org.apache.tools.ant.taskdefs.optional.ssh.SSHExec" classpathref="maven.plugin.classpath" />
 						<taskdef name="scp"     classname="org.apache.tools.ant.taskdefs.optional.ssh.Scp" classpathref="maven.plugin.classpath" />
 						<taskdef resource="net/sf/antcontrib/antlib.xml" classpathref="maven.plugin.classpath" />
-						<for list="${remote.hostnames}" delimiter=";" param="hostname">
-							<sequential>
-								<sshexec username="${remote.username}" host="@{hostname}" keyfile="${remote.keyfile}" passphrase="" usepty="true" trust="true" command="sudo service ${remote.tcinstance} stop" failonerror="false" />
-								<sshexec username="${remote.username}" host="@{hostname}" keyfile="${remote.keyfile}" passphrase="" usepty="true" trust="true" command="sudo rm -rf ${remote.tchome}/webapps/${tc.context}*" />
-								<scp     keyfile="${remote.keyfile}" passphrase="" trust="true" file="${project.build.directory}/${project.build.finalName}.war" todir="${remote.username}@@@{hostname}:~/${tc.context}.war"/>
-								<sshexec username="${remote.username}" host="@{hostname}" keyfile="${remote.keyfile}" passphrase="" usepty="true" trust="true" command="sudo cp ~/${tc.context}.war ${remote.tchome}/webapps" />
-								<sshexec username="${remote.username}" host="@{hostname}" keyfile="${remote.keyfile}" passphrase="" usepty="true" trust="true" command="sudo service ${remote.tcinstance} start" />
-							</sequential>
-						</for>
+					  <scp     keyfile="${remote.keyfile}" passphrase="" trust="true" file="${project.build.directory}/${project.build.finalName}.war" todir="${remote.username}@@@{hostname}:~/${tc.context}.war"/>
+						<sshexec username="${remote.username}" host="@{hostname}" keyfile="${remote.keyfile}" passphrase="" usepty="true" trust="true" command="
+							sudo service ${remote.tcinstance} stop &amp;&amp;
+							sudo rm -rf ${remote.tchome}/webapps/${tc.context}* &amp;&amp;
+							sudo cp ~/${tc.context}.war ${remote.tchome}/webapps &amp;&amp;
+							sudo service ${remote.tcinstance} start
+						" />
 					</tasks>
 				</configuration>
 			</plugin>
