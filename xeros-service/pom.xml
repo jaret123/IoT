@@ -183,7 +183,7 @@
 						<taskdef name="scp"     classname="org.apache.tools.ant.taskdefs.optional.ssh.Scp" classpathref="maven.plugin.classpath" />
 						<taskdef resource="net/sf/antcontrib/antlib.xml" classpathref="maven.plugin.classpath" />
 					  <scp     keyfile="${remote.keyfile}" passphrase="" trust="true" file="${project.build.directory}/${project.build.finalName}.war" todir="${remote.username}@${remote.hostname}:~/${tc.context}.war"/>
-						<sshexec username="${remote.username}" host="${hostname}" keyfile="${remote.keyfile}" passphrase="" usepty="true" trust="true" command="
+						<sshexec username="${remote.username}" host="${remote.hostname}" keyfile="${remote.keyfile}" passphrase="" usepty="true" trust="true" command="
 							sudo service ${remote.tcinstance} stop &amp;&amp;
 							sudo rm -rf ${remote.tchome}/webapps/${tc.context}* &amp;&amp;
 							sudo cp ~/${tc.context}.war ${remote.tchome}/webapps &amp;&amp;
