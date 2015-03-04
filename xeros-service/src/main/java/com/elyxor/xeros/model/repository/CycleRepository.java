@@ -38,4 +38,9 @@ public interface CycleRepository extends CrudRepository<Cycle, Integer> {
 
     @Query(value = "SELECT * FROM xeros_cycle where dai_meter_actual_id in :actuals order by reading_timestamp desc", nativeQuery = true)
     public List<Cycle> findByDaiMeterActualIn(@Param("actuals") Collection<DaiMeterActual> actuals);
+
+    @Query(value = "SELECT * FROM xeros_cycle where dai_meter_actual_id in :actuals and classification_id regexp :classification order by reading_timestamp desc", nativeQuery = true)
+    public List<Cycle> findByDaiMeterActualInAndClassificationRegexp(@Param("actuals") Collection<DaiMeterActual> actuals, @Param("classification") String classification);
+    @Query(value = "SELECT * FROM xeros_cycle where dai_meter_actual_id in :actuals and (classification_id regexp :classification OR classification_id is null) order by reading_timestamp desc", nativeQuery = true)
+    public List<Cycle> findByDaiMeterActualInAndClassificationRegexpOrNull(@Param("actuals") Collection<DaiMeterActual> actuals, @Param("classification") String classification);
 }

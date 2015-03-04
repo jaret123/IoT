@@ -7,7 +7,6 @@ import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -17,10 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Query;
-import javax.sql.DataSource;
 import javax.ws.rs.core.UriInfo;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -36,7 +31,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 
-@Transactional
+@Transactional(readOnly = true)
 @Service
 public class DaiStatus {
 	@Autowired ActiveDaiRepository activeDaiRepository;
@@ -51,23 +46,27 @@ public class DaiStatus {
     @Autowired CompanyRepository companyRepository;
     @Autowired LocalStaticValueRepository lsvRepository;
     @Autowired XerosLocalStaticValueRepository xlsvRepository;
+    @Autowired StaticValueRepository staticValueRepository;
+    @Autowired LocationProfileRepository locationProfileRepository;
 
     private static Logger logger = LoggerFactory.getLogger(DaiStatus.class);
-
 
     private static final DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd");
     private static final DateTimeFormatter dateAndTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter timeFormatter = DateTimeFormat.forPattern("HH:mm:ss");
     private static final DecimalFormat decimalFormat = new DecimalFormat("#.##");
+    private static final DecimalFormat percentageFormat = new DecimalFormat("#.#%");
     private DateTime lastCheck = null; //used to determine row separator for compare report
     private static Map<String, FormulaVariance> formulaVarianceList = new LinkedHashMap<String, FormulaVariance>();
 
     public class FormulaVariance {
         float varianceTotal;
+        float manufacturerVarianceTotal;
         int dayCount;
 
-        public FormulaVariance(float varianceTotal, int dayCount) {
+        public FormulaVariance(float varianceTotal, float manufacturerVarianceTotal, int dayCount) {
             this.varianceTotal = varianceTotal;
+            this.manufacturerVarianceTotal = manufacturerVarianceTotal;
             this.dayCount = dayCount;
         }
 
@@ -76,6 +75,12 @@ public class DaiStatus {
         }
         public void setVarianceTotal(float varianceTotal) {
             this.varianceTotal = varianceTotal;
+        }
+        public float getManufacturerVarianceTotal() {
+            return manufacturerVarianceTotal;
+        }
+        public void setManufacturerVarianceTotal(float manufacturerVarianceTotal) {
+            this.manufacturerVarianceTotal = manufacturerVarianceTotal;
         }
         public int getDayCount() {
             return dayCount;
@@ -112,16 +117,18 @@ public class DaiStatus {
         String output = "";
         HSSFWorkbook workbook = new HSSFWorkbook();
         HSSFSheet sheet = workbook.createSheet(getCurrentDateAndTime());
-        initializeStatusGapSheet(sheet);
+        initializeStatusGapSheet(sheet, getHeaderStyle(workbook));
         int k = 1;
+
         for (int i = 0; i < statusList.size() - 1; i++) {
             Status current = statusList.get(i);
             Status prev = statusList.get(i+1);
             HSSFRow row = sheet.createRow(k);
+            Machine m = machineRepository.findById(current.getMachineId());
 
-            String company = current.getMachine().getLocation().getCompany().getName();
-            String location = current.getMachine().getLocation().getName();
-            String machine = current.getMachine().getName();
+            String company = m.getLocation().getCompany().getName();
+            String location = m.getLocation().getName();
+            String machine = m.getName();
             String disconnected = prev.getTimestamp().toString();
             String reconnected = current.getTimestamp().toString();
 
@@ -154,23 +161,35 @@ public class DaiStatus {
     public List<Status> calculateStatusGaps(List<Machine> machineList){
         List<Status> statusList = new ArrayList<Status>();
         List<Status> result = new ArrayList<Status>();
+
+        long interval = 0;
+        try {
+            interval = 60 * Long.valueOf(staticValueRepository.findByName("offline_interval").getValue());
+        } catch (NullPointerException e) {
+            String msg = "unable to convert interval to long, no offline_interval in db?";
+            logger.warn(msg, e);
+            return result;
+        }
+
         if (machineList.size() == 0) {
             machineList = (ArrayList<Machine>) machineRepository.findAll();
         }
         for (Machine machine : machineList) {
-            statusList.addAll(statusRepository.findByMachineOrderByTimestampDesc(machine));
+            statusList = statusRepository.findByMachineIdOrderByTimestampDesc(machine.getId());
             for (int i = 0; i < statusList.size() - 1; i++) {
                 Status current = statusList.get(i);
                 Status prev = statusList.get(i + 1);
                 long currentLong = calculateTimeLong(current);
                 long prevLong = calculateTimeLong(prev);
                 long diff = currentLong - prevLong;
-                if (diff > 3600) {
+                if (diff > interval) {
                     result.add(statusList.get(i));
                     result.add(statusList.get(i+1));
                 }
             }
             statusList.clear();
+            statusList = null;
+            System.gc();
         }
         return result;
     }
@@ -179,13 +198,22 @@ public class DaiStatus {
         HSSFSheet sheet = null;
         int i = 1;
 
+        CellStyle redStyle = getRedHighlightStyle(workbook);
+        CellStyle yellowStyle = getVarianceHighlightStyle(workbook);
+        CellStyle headerStyle = getHeaderStyle(workbook);
+        Timestamp lastLogRed = getTimestampForLastLogRedInterval();
+        Timestamp lastLogYellow = getTimestampForLastLogYellowInterval();
+        Timestamp heartbeatRed = getTimestampForHeartbeatRedInterval();
+        Timestamp heartbeatYellow = getTimestampForHeartbeatYellowInterval();
+
         for (Machine machine : machineRepository.findAll()) {
             Integer machineId = machine.getId();
             Cycle cycle = cycleRepository.findLastCycleByMachine(machineId);
-            if (cycle != null && cycle.getReadingTimestamp().before(getTimestampForLastLog())) {
+            Status status = statusRepository.findByMachineId(machineId);
+            if (cycle != null) {
                 if (sheet == null) {
                     sheet = workbook.createSheet(getCurrentDateAndTime());
-                    initializeLogSheet(sheet);
+                    initializeLogSheet(sheet, headerStyle);
                 }
                 HSSFRow row = sheet.createRow(i);
                 String company = machine.getLocation().getCompany().getName();
@@ -197,6 +225,22 @@ public class DaiStatus {
                 row.createCell(1).setCellValue(location);
                 row.createCell(2).setCellValue(machineName);
                 row.createCell(3).setCellValue(lastLog);
+                if (cycle.getReadingTimestamp().before(lastLogRed)) {
+                    row.getCell(3).setCellStyle(redStyle);
+                }
+                else if (cycle.getReadingTimestamp().before(lastLogYellow)) {
+                    row.getCell(3).setCellStyle(yellowStyle);
+                }
+                if (status != null) {
+                    String statusTime = status.getTimestamp().toString();
+                    row.createCell(4).setCellValue(statusTime);
+                    if (status.getTimestamp().before(heartbeatRed)) {
+                        row.getCell(4).setCellStyle(redStyle);
+                    }
+                    else if (status.getTimestamp().before(heartbeatYellow)) {
+                        row.getCell(4).setCellStyle(yellowStyle);
+                    }
+                }
                 i++;
             }
         }
@@ -216,8 +260,12 @@ public class DaiStatus {
         String company = info.getQueryParameters().getFirst("company");
         String location = info.getQueryParameters().getFirst("location");
         String type = info.getQueryParameters().getFirst("type");
+        String unknown = info.getQueryParameters().getFirst("unknown");
+        String manufacturer = info.getQueryParameters().getFirst("manufacturer");
 
         Integer exceptionId = 0;
+        Integer unknownId = 0;
+        boolean useManufacturer = manufacturer != null && manufacturer.equals("1");
 
         if (to == null) {
             to = from;
@@ -225,89 +273,83 @@ public class DaiStatus {
         if (exception != null) {
             exceptionId = Integer.parseInt(exception);
         }
+        if (unknown != null) {
+            unknownId = Integer.parseInt(unknown);
+        }
         if (type != null && type.equals("compare")){
             if (company != null) {
                 Integer companyId = Integer.parseInt(company);
-                return getCompareReportsForCompany(from, to, exceptionId, companyId);
+                Iterable<Location> locations = (companyRepository.findOne(companyId)).getLocations();
+                List<Machine> machineList = new ArrayList<Machine>();
+                for (Location locationItem : locations) {
+                    machineList.addAll(locationItem.getMachines());
+                }
+                return createCompareReports(machineList, from, to, exceptionId, unknownId, useManufacturer);
             }
             else if (location != null) {
                 Integer locationId = Integer.parseInt(location);
-                return getCompareReportsForLocation(from, to, exceptionId, locationId);
+                Location locationItem = locationRepository.findOne(locationId);
+                Iterable<Machine> machineList = locationItem.getMachines();
+                return createCompareReports(machineList, from, to, exceptionId, unknownId, useManufacturer);
             }
             else if (machine != null) {
                 Integer machineId = Integer.parseInt(machine);
-                return getCompareReportsForMachine(from, to, exceptionId, machineId);
+                List<Machine> machineList = new ArrayList<Machine>();
+                machineList.add(machineRepository.findOne(machineId));
+                return createCompareReports(machineList, from, to, exceptionId, unknownId, useManufacturer);
             }
             else {
-                return getCompareReports(from, to, exceptionId);
+                return createCompareReports(machineRepository.findAll(), from, to, exceptionId, unknownId, useManufacturer);
             }
         }
         if (type != null && type.equals("ek")) {
             if (company != null) {
                 Integer companyId = Integer.parseInt(company);
-                return getEkCycleReportsForCompany(from, to, exceptionId, companyId);
+                return getEkCycleReportsForCompany(from, to, exceptionId, companyId, unknownId);
             }
             else if (location != null) {
                 Integer locationId = Integer.parseInt(location);
-                return getEkCycleReportsForLocation(from, to, exceptionId, locationId);
+                return getEkCycleReportsForLocation(from, to, exceptionId, locationId, unknownId);
             }
             else if (machine != null) {
                 Integer machineId = Integer.parseInt(machine);
-                return getEkCycleReportsForMachine(from, to, exceptionId, machineId);
+                return getEkCycleReportsForMachine(from, to, exceptionId, machineId, unknownId);
             }
             else {
-                return getEkCycleReports(from, to, exceptionId);
+                return getEkCycleReports(from, to, exceptionId, unknownId);
             }
         }
         else {
             if (company != null) {
                 Integer companyId = Integer.parseInt(company);
-                return getCycleReportsForCompany(from, to, exceptionId, companyId);
+                return getCycleReportsForCompany(from, to, exceptionId, companyId, unknownId);
             }
             else if (location != null) {
                 Integer locationId = Integer.parseInt(location);
-                return getCycleReportsForLocation(from, to, exceptionId, locationId);
+                return getCycleReportsForLocation(from, to, exceptionId, locationId, unknownId);
             }
             else if (machine != null) {
                 Integer machineId = Integer.parseInt(machine);
-                return getCycleReportsForMachine(from, to, exceptionId, machineId);
+                return getCycleReportsForMachine(from, to, exceptionId, machineId, unknownId);
             }
             else {
-                return getCycleReports(from, to, exceptionId);
+                return getCycleReports(from, to, exceptionId, unknownId);
             }
         }
     }
 
-    private File getCompareReportsForMachine(String from, String to, Integer exceptionId, Integer machineId) {
-        List<Machine> machineList = new ArrayList<Machine>();
-        machineList.add(machineRepository.findOne(machineId));
-        return createCompareReports(machineList, from, to, exceptionId);
-    }
-    private File getCompareReportsForCompany(String from, String to, Integer exceptionId, Integer companyId) {
-        Iterable<Location> locations = (companyRepository.findOne(companyId)).getLocations();
-        List<Machine> machineList = new ArrayList<Machine>();
-        for (Location location : locations) {
-            machineList.addAll(location.getMachines());
-        }
-        return createCompareReports(machineList, from, to, exceptionId);
-    }
-    private File getCompareReportsForLocation(String from, String to, Integer exceptionId, Integer locationId) {
-        Location location = locationRepository.findOne(locationId);
-        Iterable<Machine> machineList = location.getMachines();
-        return createCompareReports(machineList, from, to, exceptionId);
-    }
-    private File getCompareReports(String from, String to, Integer exceptionId) {
-        return createCompareReports(machineRepository.findAll(), from, to, exceptionId);
-    }
-
-    public File createEkCycleReports(Iterable<MachineMapping> machineList, String startDate, String endDate, Integer exceptionType) {
-        SXSSFWorkbook workbook = new SXSSFWorkbook(100);
-        workbook.setCompressTempFiles(true);
+    public File createEkCycleReports(Iterable<MachineMapping> machineList, String startDate, String endDate, Integer exceptionType, Integer unknownId) {
+        HSSFWorkbook workbook = new HSSFWorkbook();
         Sheet sheet = null;
+
+        CellStyle headerStyle = getHeaderStyle(workbook);
+        CellStyle underlineStyle = getUnderlineStyle(workbook);
+        CellStyle moneyStyle = getMoneyStyle(workbook);
+        CellStyle highlightStyle = getVarianceHighlightStyle(workbook);
 
         for (MachineMapping machineMapping : machineList) {
             Machine machine = machineRepository.findById(machineMapping.getDaiId());
-            List<Cycle> cycleList = processException(startDate, endDate, machine, exceptionType);
+            List<Cycle> cycleList = processException(startDate, endDate, machine, exceptionType, unknownId);
             Location location;
             Company company;
 
@@ -331,7 +373,7 @@ public class DaiStatus {
                             logger.warn("Could not create sheet: ", e.getMessage());
                             break;
                         }
-                        initializeSheet(sheet);
+                        initializeSheet(sheet, headerStyle);
                     }
 
                     DateTime readingDateTime = new DateTime(cycle.getReadingTimestamp());
@@ -404,34 +446,43 @@ public class DaiStatus {
         }
         return writeFile(workbook, "ekCycleReport.xls");
     }
-    public File createCycleReports(Iterable<Machine> machineList, String startDate, String endDate, Integer exceptionType) {
+    public File createCycleReports(Iterable<Machine> machineList, String startDate, String endDate, Integer exceptionType, Integer unknownId) {
         HSSFWorkbook workbook = new HSSFWorkbook();
         FileOutputStream out = null;
         File file = null;
         HSSFSheet sheet = null;
 
+        CellStyle headerStyle = getHeaderStyle(workbook);
+        CellStyle underlineStyle = getUnderlineStyle(workbook);
+        CellStyle moneyStyle = getMoneyStyle(workbook);
+        CellStyle highlightStyle = getVarianceHighlightStyle(workbook);
+
         for (Machine machine : machineList) {
-            List<Cycle> cycleList = processException(startDate, endDate, machine, exceptionType);
-            if (cycleList != null) {
-                Location location;
-                Company company;
 
-                String locationName = "";
-                String companyName = "";
-                String machineName = machine.getName();
+            Location location;
+            Company company;
 
-                if ((location = machine.getLocation()) != null) {
-                    locationName = location.getName();
-                    if ((company = location.getCompany()) != null) {
-                        companyName = company.getName();
-                    }
+            String locationName = "";
+            String companyName = "";
+            String machineName = machine.getName();
+
+            if ((location = machine.getLocation()) != null) {
+                locationName = location.getName();
+                if ((company = location.getCompany()) != null) {
+                    companyName = company.getName();
                 }
+            }
+
+            List<Cycle> cycleList = processException(startDate, endDate, machine, exceptionType, unknownId);
+
+            if (cycleList != null) {
 
                 for (int i = 0; i < cycleList.size(); i++) {
                     Cycle cycle = cycleList.get(i);
                     if (sheet == null) {
-                        sheet = workbook.createSheet(companyName.substring(0,3) + " - " + locationName.substring(0,3) + " - " + machineName);
-                        initializeSheet(sheet);
+                        String sheetName = companyName.substring(0,3) + " - " + locationName.substring(0,3) + " - " + machineName;
+                        sheet = workbook.createSheet(sheetName);
+                        initializeSheet(sheet, headerStyle);
                     }
 
                     DateTime readingDateTime = new DateTime(cycle.getReadingTimestamp());
@@ -453,7 +504,6 @@ public class DaiStatus {
                         exception = actual.getException();
                     }
 
-
                     HSSFRow row = sheet.createRow(i+1);
                     row.createCell(1).setCellValue(locationName);
                     row.createCell(0).setCellValue(companyName);
@@ -466,8 +516,8 @@ public class DaiStatus {
                     row.createCell(12).setCellValue(exception);
                     row.createCell(13).setCellValue(describeExceptions(exception));
 
-                    Float total = cycle.getColdWaterVolume();
-                    Float hot = cycle.getHotWaterVolume();
+                    Float total = cycle.getColdWaterVolume()!=null?cycle.getColdWaterVolume():0f;
+                    Float hot = cycle.getHotWaterVolume()!=null?cycle.getHotWaterVolume():0f;
                     Float cold = total - hot;
 
                     row.createCell(7).setCellValue(formatDecimal(total));
@@ -500,48 +550,71 @@ public class DaiStatus {
 //        }
 //        return file;
     }
-    public File createCompareReports(Iterable<Machine> machines, String start, String end, Integer exceptionId) {
+    public File createCompareReports(Iterable<Machine> machines, String start, String end, Integer exceptionId, Integer unknownId, boolean manufacturer) {
         HSSFWorkbook workbook = new HSSFWorkbook();
         HSSFSheet sheet = null;
         MachineMapping machineMapping = null;
         Integer ekId = 0;
-
-        HSSFSheet summarySheet = workbook.createSheet("Summary");
-        initializeSummarySheet(summarySheet);
 
         CellStyle headerStyle = getHeaderStyle(workbook);
         CellStyle underlineStyle = getUnderlineStyle(workbook);
         CellStyle moneyStyle = getMoneyStyle(workbook);
         CellStyle highlightStyle = getVarianceHighlightStyle(workbook);
 
+        HSSFSheet summarySheet = workbook.createSheet("Summary");
+        if (manufacturer) {
+            initializeSummarySheetManufacturer(summarySheet, headerStyle);
+        }
+        else {
+            initializeSummarySheet(summarySheet, headerStyle);
+        }
+
         for (Machine machine : machines) {
             if ((machineMapping = machineMappingRepository.findOne(machine.getId())) != null) {
                 ekId = machineMapping.getEkId();
             }
 
-            List<Cycle> cycleList = processException(start, end, machine, exceptionId);
+            Location location;
+            Company company;
+
+            String locationName = "";
+            String companyName = "";
+            String machineName = machine.getName();
+
+            if ((location = machine.getLocation()) != null) {
+                locationName = location.getName();
+                if ((company = location.getCompany()) != null) {
+                    companyName = company.getName();
+                }
+            }
+
+            List<Cycle> cycleList = processException(start, end, machine, exceptionId, unknownId);
             if (cycleList != null) {
-                Location location = machine.getLocation();
-                String companyName = location.getCompany().getName();
-                String machineName = machine.getName();
-                String locationName = location.getName();
+
+                LocationProfile profile = locationProfileRepository.findOne(location.getId());
+                float costPerGallon = profile!=null?profile.getCostPerGallon():0f;
 
                 HSSFRow machineNameRow = summarySheet.createRow(summarySheet.getLastRowNum()+1);
                 machineNameRow.createCell(0).setCellValue(locationName);
                 machineNameRow.createCell(1).setCellValue(machineName);
                 for (Cell cell : machineNameRow)
                     cell.setCellStyle(headerStyle);
-
-                float varianceTotal = 0;
+                float varianceTotal = 0f;
+                float manufacturerVarianceTotal = 0f;
 
                 for (Cycle cycle: cycleList) {
                     if (sheet == null) {
                         sheet = workbook.createSheet(companyName.substring(0,3) + " - " + locationName.substring(0,3) + " - " + machineName);
-                        initializeCompareSheet(sheet);
+
+                        if (manufacturer) {
+                            initializeCompareSheetManufacturer(sheet, headerStyle);
+                        }
+                        else {
+                            initializeCompareSheet(sheet, headerStyle);
+                        }
                         for (int j=0; j < sheet.getRow(0).getLastCellNum(); j++) {
                                 sheet.autoSizeColumn(j);
                         }
-
                     }
 
                     DateTime readingDateTime = new DateTime(cycle.getReadingTimestamp());
@@ -551,29 +624,71 @@ public class DaiStatus {
                     String cycleEndTime = readingDateTime.toString(dateAndTimeFormatter);
                     String cycleStartTime = startTime.toString(timeFormatter);
 
-                    String classification = cycle.getClassification().getName();
+                    Classification classification = cycle.getClassification();
+                    String classificationName = classification!=null?classification.getName():"";
 
                     Float total = 0f;
                     Float comparison = getComparisonValue(cycle);
+                    Float manufacturerComparison = 0f;
+
+                    if (manufacturer) {
+                        manufacturerComparison = getManufacturerComparisonValue(cycle);
+                    }
 
                     HSSFRow row = sheet.createRow(sheet.getLastRowNum()+1);
 
                     if (checkDailySeperator(row, readingDateTime, underlineStyle)) {
                         for (int k=0; k < 7; k++)
                             row.createCell(k);
-                        row.createCell(7).setCellValue(varianceTotal);
-                        row.createCell(8).setCellValue(varianceTotal*365);
-                        row.createCell(9).setCellValue(formatDecimal((float)(varianceTotal*365/12)));
-                        row.createCell(10).setCellValue(formatDecimal((float)(varianceTotal*365/12*.00897)));
-                        row.getCell(10).setCellStyle(moneyStyle);
+
+                        double variance = formatDecimal(varianceTotal);
+                        double yearlyVariance = formatDecimal((float)(varianceTotal*365));
+                        double monthlyVariance = formatDecimal((float)(varianceTotal*365/12));
+                        double monthlySavings = formatDecimal((float)(varianceTotal*365/12*costPerGallon));
+
+                        if (manufacturer) {
+                            double manVariance = formatDecimal(manufacturerVarianceTotal);
+                            double manYearly = formatDecimal((float)(manufacturerVarianceTotal*365));
+                            double manMonthly = formatDecimal((float)(manufacturerVarianceTotal*365/12));
+                            double manSavings = formatDecimal((float)(manufacturerVarianceTotal*365/12*costPerGallon));
+
+                            row.createCell(10).setCellValue(variance);
+                            row.createCell(11).setCellValue(yearlyVariance);
+                            row.createCell(12).setCellValue(monthlyVariance);
+                            row.createCell(13).setCellValue(monthlySavings);
+                            row.getCell(13).setCellStyle(moneyStyle);
+
+                            row.createCell(14).setCellValue(manVariance);
+                            row.createCell(15).setCellValue(manYearly);
+                            row.createCell(16).setCellValue(manMonthly);
+                            row.createCell(17).setCellValue(manSavings);
+                            row.getCell(17).setCellStyle(moneyStyle);
+                            manufacturerVarianceTotal = 0f;
+                        }
+                        else {
+
+                            row.createCell(7).setCellValue(variance);
+                            row.createCell(8).setCellValue(yearlyVariance);
+                            row.createCell(9).setCellValue(monthlyVariance);
+                            row.createCell(10).setCellValue(monthlySavings);
+                            row.getCell(10).setCellStyle(moneyStyle);
+                        }
                         varianceTotal = 0f;
                         row = sheet.createRow(sheet.getLastRowNum()+1);
                     }
 
                     row.createCell(0).setCellValue(readingDate);
-                    row.createCell(1).setCellValue(classification);
+                    row.createCell(1).setCellValue(classificationName);
                     row.createCell(2).setCellValue(cycleStartTime);
                     row.createCell(4).setCellValue(comparison);
+
+                    if (manufacturer) {
+                        row.createCell(8).setCellValue(manufacturerComparison);
+                    }
+
+                    if (manufacturer) {
+                        row.createCell(5).setCellValue(manufacturerComparison);
+                    }
 
                     if (machineMapping != null) {
                         List<Cycle> ekCycles = cycleRepository.findCyclesForCycleTime(machineMapping.getEkId(), new Timestamp(startTime.getMillis()), cycle.getReadingTimestamp());
@@ -593,25 +708,48 @@ public class DaiStatus {
                         row.createCell(3).setCellValue(formatDecimal(total));
                     }
                     float variance = comparison - total;
+                    float manufacturerVariance = 0f;
                     varianceTotal += variance;
-                    row.createCell(5).setCellValue(formatDecimal(variance));
-
-                    FormulaVariance formulaVariance = findFormulaVariance(classification);
+                    if (manufacturer) {
+                        manufacturerVariance = manufacturerComparison - total;
+                        manufacturerVarianceTotal += manufacturerVariance;
+                        row.createCell(6).setCellValue(formatDecimal(variance));
+                    }
+                    else {
+                        row.createCell(5).setCellValue(formatDecimal(variance));
+                    }
+                    FormulaVariance formulaVariance = findFormulaVariance(classificationName);
                     if (formulaVariance == null) {
-                        formulaVariance = new FormulaVariance(variance, 1);
+                        formulaVariance = new FormulaVariance(variance, manufacturerVariance, 1);
                     }
                     else {
                         formulaVariance.setDayCount(formulaVariance.getDayCount()+1);
                         formulaVariance.setVarianceTotal(formulaVariance.getVarianceTotal()+variance);
+                        formulaVariance.setManufacturerVarianceTotal(formulaVariance.getManufacturerVarianceTotal() + manufacturerVariance);
                     }
-                    formulaVarianceList.put(classification, formulaVariance);
+                    formulaVarianceList.put(classificationName, formulaVariance);
 
                     Float percentageDiff = calculatePercentageDiff(comparison, total);
-                    row.createCell(6).setCellValue(percentageDiff);
 
-                    if (Math.abs(percentageDiff) > .05f) {
-                        row.getCell(5).setCellStyle(highlightStyle);
-                        row.getCell(6).setCellStyle(highlightStyle);
+                    if (manufacturer) {
+                        Float manPercentageDiff = calculatePercentageDiff(manufacturerComparison, total);
+                        row.createCell(7).setCellValue(formatPercentage(percentageDiff));
+                        row.createCell(9).setCellValue(formatPercentage(manPercentageDiff));
+                        if (Math.abs(manPercentageDiff) > .05f) {
+                            row.getCell(8).setCellStyle(highlightStyle);
+                            row.getCell(9).setCellStyle(highlightStyle);
+                        }
+                        if (Math.abs(percentageDiff) > .05f) {
+                            row.getCell(6).setCellStyle(highlightStyle);
+                            row.getCell(7).setCellStyle(highlightStyle);
+                        }
+                    }
+                    else {
+                        row.createCell(6).setCellValue(formatPercentage(percentageDiff));
+                        if (Math.abs(percentageDiff) > .05f) {
+                            row.getCell(5).setCellStyle(highlightStyle);
+                            row.getCell(6).setCellStyle(highlightStyle);
+                        }
                     }
                 }
                 for (Entry<String, FormulaVariance> entry : formulaVarianceList.entrySet()) {
@@ -623,7 +761,7 @@ public class DaiStatus {
                     double averageVariance = formatDecimal(total / days);
                     double yearlyVariance = formatDecimal((float)(averageVariance*365));
                     double monthlyVariance = formatDecimal((float)(averageVariance*365/12));
-                    double monthlySavings = formatDecimal((float)(averageVariance*365/12*.00879));
+                    double monthlySavings = formatDecimal((float)(averageVariance*365/12*costPerGallon));
 
                     row.createCell(0).setCellValue(entry.getKey());
                     row.createCell(1).setCellValue(averageVariance);
@@ -631,6 +769,20 @@ public class DaiStatus {
                     row.createCell(3).setCellValue(monthlyVariance);
                     row.createCell(4).setCellValue(monthlySavings);
                     row.getCell(4).setCellStyle(moneyStyle);
+
+                    if (manufacturer) {
+                        Float manTotal = variance.getManufacturerVarianceTotal();
+                        double manAverageVar = formatDecimal(manTotal / days);
+                        double manYearVar = formatDecimal((float)(manAverageVar*365));
+                        double manMonthVar = formatDecimal((float)(manAverageVar*365/12));
+                        double manSavings = formatDecimal((float)(manAverageVar*365/12*costPerGallon));
+
+                        row.createCell(5).setCellValue(manAverageVar);
+                        row.createCell(6).setCellValue(manYearVar);
+                        row.createCell(7).setCellValue(manMonthVar);
+                        row.createCell(8).setCellValue(manSavings);
+                        row.getCell(8).setCellStyle(moneyStyle);
+                    }
                 }
             }
             sheet = null;
@@ -649,6 +801,7 @@ public class DaiStatus {
 
         return writeFile(workbook, "compareReport.xls");
     }
+
 
     private CellStyle getMoneyStyle(HSSFWorkbook workbook) {
         CellStyle style = workbook.createCellStyle();
@@ -697,8 +850,10 @@ public class DaiStatus {
             machine = cycle.getMachine();
             classification = cycle.getClassification();
 
+            if (classification == null) return result;
+
             if (machine.getManufacturer().equalsIgnoreCase("xeros")) {
-                xlsv = xlsvRepository.findByClassification(classification);
+                xlsv = xlsvRepository.findByClassification(classification.getId());
                 if (xlsv != null) {
                     cold = xlsv.getColdWater();
                     hot = xlsv.getHotWater();
@@ -706,10 +861,44 @@ public class DaiStatus {
                 }
             }
             else {
-                lsv = lsvRepository.findByClassification(classification);
+                lsv = lsvRepository.findByClassification(classification.getId());
                 if (lsv != null) {
                     cold = lsv.getColdWater();
                     hot = lsv.getHotWater();
+                    result = cold + hot;
+                }
+            }
+        }
+        return result;
+    }
+    private Float getManufacturerComparisonValue(Cycle cycle) {
+        Machine machine;
+        Classification classification;
+        XerosLocalStaticValue xlsv = null;
+        LocalStaticValue lsv = null;
+        Float cold;
+        Float hot;
+        Float result = 0f;
+
+        if (cycle != null) {
+            machine = cycle.getMachine();
+            classification = cycle.getClassification();
+
+            if (classification == null) return result;
+
+            if (machine.getManufacturer().equalsIgnoreCase("xeros")) {
+                xlsv = xlsvRepository.findByClassification(classification.getId());
+                if (xlsv != null) {
+                    cold = xlsv.getManufacturerColdWater()!=null?xlsv.getManufacturerColdWater():0f;
+                    hot = xlsv.getManufacturerHotWater()!=null?xlsv.getManufacturerHotWater():0f;
+                    result = cold + hot;
+                }
+            }
+            else {
+                lsv = lsvRepository.findByClassification(classification.getId());
+                if (lsv != null) {
+                    cold = lsv.getManufacturerColdWater()!=null?lsv.getManufacturerColdWater():0f;
+                    hot = lsv.getManufacturerHotWater()!=null?lsv.getManufacturerHotWater():0f;
                     result = cold + hot;
                 }
             }
@@ -721,6 +910,19 @@ public class DaiStatus {
         double result = 0;
         if (runTime != null) {
             result = Double.valueOf(decimalFormat.format(runTime));
+        }
+        return result;
+    }
+    private String formatPercentage(Float percent) {
+        String result = "";
+        if (percent != null) {
+            if (percent > 1) {
+                percent = 1f;
+            }
+            else if (percent < -1) {
+                percent = -1f;
+            }
+            result = percentageFormat.format(percent);
         }
         return result;
     }
@@ -766,46 +968,47 @@ public class DaiStatus {
         return buff.toString();
     }
 
-    private File getCycleReports(String startDate, String endDate, Integer exceptionType) {
+    private File getCycleReports(String startDate, String endDate, Integer exceptionType, Integer unknownId) {
         Iterable<Machine> machineList = machineRepository.findAll();
-        return createCycleReports(machineList, startDate, endDate, exceptionType);
+        return createCycleReports(machineList, startDate, endDate, exceptionType, unknownId);
     }
-    private File getCycleReportsForMachine(String from, String to, Integer exception, Integer machine) {
+    private File getCycleReportsForMachine(String from, String to, Integer exception, Integer machine, Integer unknownId) {
         List<Machine> machineList = new ArrayList<Machine>();
         machineList.add(machineRepository.findOne(machine));
-        return createCycleReports(machineList, from, to, exception);
+        return createCycleReports(machineList, from, to, exception, unknownId);
     }
-    private File getCycleReportsForLocation(String fromDate, String toDate, Integer exceptionId, Integer locationId) {
+    private File getCycleReportsForLocation(String fromDate, String toDate, Integer exceptionId, Integer locationId, Integer unknownId) {
         Location location = locationRepository.findOne(locationId);
         Iterable<Machine> machineList = location.getMachines();
-        return createCycleReports(machineList, fromDate, toDate, exceptionId);
+        return createCycleReports(machineList, fromDate, toDate, exceptionId, unknownId);
     }
-    private File getCycleReportsForCompany(String fromDate, String toDate, Integer exceptionId, Integer companyId) {
-        Iterable<Location> locations = (companyRepository.findOne(companyId)).getLocations();
+    private File getCycleReportsForCompany(String fromDate, String toDate, Integer exceptionId, Integer companyId, Integer unknownId) {
+        Company company = companyRepository.findOne(companyId);
+        Iterable<Location> locations =company.getLocations();
         List<Machine> machineList = new ArrayList<Machine>();
         for (Location location : locations) {
             machineList.addAll(location.getMachines());
         }
-        return createCycleReports(machineList, fromDate, toDate, exceptionId);
+        return createCycleReports(machineList, fromDate, toDate, exceptionId, unknownId);
     }
 
-    private File getEkCycleReports(String startDate, String endDate, Integer exceptionType) {
-        return createEkCycleReports(machineMappingRepository.findAll(), startDate, endDate, exceptionType);
+    private File getEkCycleReports(String startDate, String endDate, Integer exceptionType, Integer unknownId) {
+        return createEkCycleReports(machineMappingRepository.findAll(), startDate, endDate, exceptionType, unknownId);
     }
-    private File getEkCycleReportsForMachine(String fromDate, String toDate, Integer exception, Integer machineId) {
+    private File getEkCycleReportsForMachine(String fromDate, String toDate, Integer exception, Integer machineId, Integer unknownId) {
         Iterable<MachineMapping> machineList = machineMappingRepository.findByDaiId(machineId);
-        return createEkCycleReports(machineList, fromDate, toDate, exception);
+        return createEkCycleReports(machineList, fromDate, toDate, exception, unknownId);
     }
-    private File getEkCycleReportsForLocation(String fromDate, String toDate, Integer exception, Integer locationId) {
+    private File getEkCycleReportsForLocation(String fromDate, String toDate, Integer exception, Integer locationId, Integer unknownId) {
         Location location = locationRepository.findOne(locationId);
         Iterable<Machine> machineList = location.getMachines();
         List<MachineMapping> mappingList = new ArrayList<MachineMapping>();
         for (Machine machine : machineList) {
             mappingList.add(machineMappingRepository.findOne(machine.getId()));
         }
-        return createEkCycleReports(mappingList, fromDate, toDate, exception);
+        return createEkCycleReports(mappingList, fromDate, toDate, exception, unknownId);
     }
-    private File getEkCycleReportsForCompany(String fromDate, String toDate, Integer exception, Integer companyId) {
+    private File getEkCycleReportsForCompany(String fromDate, String toDate, Integer exception, Integer companyId, Integer unknownId) {
         Iterable<Location> locations = (companyRepository.findOne(companyId)).getLocations();
         List<MachineMapping> mappingList = new ArrayList<MachineMapping>();
         for (Location location : locations) {
@@ -814,10 +1017,10 @@ public class DaiStatus {
                 mappingList.add(machineMappingRepository.findOne(machine.getId()));
             }
         }
-        return createEkCycleReports(mappingList, fromDate, toDate, exception);
+        return createEkCycleReports(mappingList, fromDate, toDate, exception, unknownId);
     }
 
-    private List<Cycle> processException(String startDate, String endDate, Machine machine, Integer exceptionType) {
+    private List<Cycle> processException(String startDate, String endDate, Machine machine, Integer exceptionType, Integer unknownId) {
         List<Cycle> result = new ArrayList<Cycle>();
         if (startDate == null) {
             startDate = "2000-01-01";
@@ -828,112 +1031,115 @@ public class DaiStatus {
         Timestamp start = Timestamp.valueOf(startDate + " " + "00:00:00");
         Timestamp end = Timestamp.valueOf(endDate + " " + "23:59:59");
         Integer id = machine.getId();
+        String unknown = "";
+        Collection<DaiMeterActual> actuals = null;
 
-        DataSource source = null;
-        EntityManagerFactory factory = null;
-        try {
-            source = appConfig.dataSource();
-        } catch (Exception e) {
-            logger.warn("failed to get data source", e.getMessage());
-        }
-        if (source != null) {
-            factory = appConfig.entityManagerFactory(source, appConfig.jpaVendorAdapter()).getObject();
-        }
-        Query query = null;
-        if (factory != null) {
-            EntityManager em = factory.createEntityManager();
-            query = em.createNamedQuery("Cycle.findWithNoException");
-        }
 
-        if (query != null) {
-            switch (exceptionType) {
+        switch (exceptionType) {
+            //Returns Cycles with no exceptions, or "null" exceptions (haven't been processed)
+            case 0: {
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionLikeOrNull(id, start, end, "");
+                break;
+            }
+            case 1: {
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[1]");
+                break;
+            }
+            case 2: {
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[2]");
+                break;
+            }
+            case 3: {
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[3]");
+                break;
+            }
+            case 4: {
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[4]");
+                break;
+            }
+            case 5: {
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[5]");
+                break;
+            }
+            case 6: {
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[6]");
+                break;
+            }
+            case 7: {
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[7]");
+                break;
+            }
+            case -1: {
+                //returns all types of cycles, with or without exceptions, or unprocessed
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetween(id, start, end);
+                break;
+            }
+            case -2: {
+                //returns only cycles with exceptions
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[0-9]");
+                break;
+            }
+            case 10: {
+                //returns only cycles with cold water exceptions
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[12]");
+                break;
+            }
+            case 20: {
+                //all hot water
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[34]");
+                break;
+            }
+            case 30: {
+                //all runtime
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[56]");
+                break;
+            }
+            case 40: {
+                //all low water
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[24]");
+                break;
+            }
+            case 50: {
+                //all high water
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[13]");
+                break;
+            }
+            case 60: {
+                //all water
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionRegexp(id, start, end, "[1234]");
+                break;
+            }
+            case 100: {
+                //null exceptions
+                actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionIsNull(id, start, end);
+            }
+        }
+        if (actuals != null && !actuals.isEmpty()) {
+            switch (unknownId) {
                 case 0: {
-                    Collection<DaiMeterActual> actuals = meterActualRepository.findByMachineIdAndReadingTimestampBetweenAndExceptionLikeOrNull(id, start, end, "");
-                    if (!actuals.isEmpty()) {
-                        result = cycleRepository.findByDaiMeterActualIn(actuals);
-                    }
-                    //no exceptions
-//                    query.setParameter("id", id);
-//                    query.setParameter("start", start);
-//                    query.setParameter("end", end);
-//                    query.setParameter("exception", "");
-//                    result = (List<Cycle>) query.getResultList();
+                    //all cycles
+                    result = cycleRepository.findByDaiMeterActualIn(actuals);
                     break;
                 }
                 case 1: {
-                    result = cycleRepository.findByDateMachineAndRegex(id, start, end, "[1]");
+                    //no unknowns
+                    unknown = "^[^1]";
+                    result = cycleRepository.findByDaiMeterActualInAndClassificationRegexp(actuals, unknown);
                     break;
                 }
                 case 2: {
-                    result = cycleRepository.findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionLike(id, start, end, "%2%");
+                    //only unknowns
+                    unknown = "^1$";
+                    result = cycleRepository.findByDaiMeterActualInAndClassificationRegexp(actuals, unknown);
                     break;
                 }
-                case 3: {
-                    result = cycleRepository.findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionLike(id, start, end, "%3%");
+                default: {
+                    result = cycleRepository.findByDaiMeterActualIn(actuals);
                     break;
-                }
-                case 4: {
-                    result = cycleRepository.findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionLike(id, start, end, "%4%");
-                    break;
-                }
-                case 5: {
-                    result = cycleRepository.findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionLike(id, start, end, "%5%");
-                    break;
-                }
-                case 6: {
-                    result = cycleRepository.findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionLike(id, start, end, "%6%");
-                    break;
-                }
-                case 7: {
-                    result = cycleRepository.findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionLike(id, start, end, "%7%");
-                    break;
-                }
-                case -1: {
-                    //exceptions and non-exceptions
-                    result = cycleRepository.findByMachineIdAndReadingTimestampBetween(id, start, end);
-                    break;
-                }
-                case -2: {
-                    //all exceptions
-                    result = cycleRepository.findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionNotLike(id, start, end, "");
-                    break;
-                }
-                case 10: {
-                    //all cold water
-                    result = cycleRepository.findByDateMachineAndRegex(id, start, end, "[12]");
-                    break;
-                }
-                case 20: {
-                    //all hot water
-                    result = cycleRepository.findByDateMachineAndRegex(id, start, end, "[34]");
-                    break;
-                }
-                case 30: {
-                    //all runtime
-                    result = cycleRepository.findByDateMachineAndRegex(id, start, end, "[56]");
-                    break;
-                }
-                case 40: {
-                    //all low water
-                    result = cycleRepository.findByDateMachineAndRegex(id, start, end, "[24]");
-                    break;
-                }
-                case 50: {
-                    //all high water
-                    result = cycleRepository.findByDateMachineAndRegex(id, start, end, "[13]");
-                    break;
-                }
-                case 60: {
-                    //all water
-                    result = cycleRepository.findByDateMachineAndRegex(id, start, end, "[1234]");
-                    break;
-                }
-                case 100: {
-                    //null exceptions
-                    result = cycleRepository.findByMachineIdAndReadingTimestampBetweenAndDaiMeterActualExceptionIsNull(id, start, end);
                 }
             }
         }
+
         return result;
     }
 
@@ -944,17 +1150,18 @@ public class DaiStatus {
 
         for (Status status : statusList) {
             if (status != null && status.getTimestamp().before(getTimestampForIdleInterval())) {
-                Machine machine =  status.getMachine();
+                Machine machine =  machineRepository.findById(status.getMachineId());
                 createStatus(status.getDaiIdentifier(), machine, -2);
             }
         }
     }
 
-    private Status createStatus(String daiIdentifier, Machine machine, int statusCode) {
+    @Transactional
+    public Status createStatus(String daiIdentifier, Machine machine, int statusCode) {
         String message = "";
         Status status = new Status();
         status.setDaiIdentifier(daiIdentifier);
-        status.setMachine(machine);
+        status.setMachineId(machine.getId());
         status.setStatusCode(statusCode);
         status.setTimestamp(new Timestamp(System.currentTimeMillis()));
 
@@ -969,25 +1176,20 @@ public class DaiStatus {
         return status;
     }
 
-    private void initializeLogSheet(HSSFSheet sheet) {
+    private void initializeLogSheet(HSSFSheet sheet, CellStyle style) {
         HSSFRow header = sheet.createRow(0);
-//        CellStyle style = sheet.getWorkbook().createCellStyle();
-//        HSSFFont font = sheet.getWorkbook().createFont();
-//        font.setBoldweight(Font.BOLDWEIGHT_BOLD);
-//
-//        style.setBorderBottom(CellStyle.BORDER_MEDIUM);
-//        style.setFont(font);
 
         header.createCell(0).setCellValue("Company Name");
         header.createCell(1).setCellValue("Location Name");
         header.createCell(2).setCellValue("Machine Name");
         header.createCell(3).setCellValue("Last Cycle");
+        header.createCell(4).setCellValue("Last Status");
 
         for (int i = 0; i < header.getLastCellNum(); i++) {
-            header.getCell(i).setCellStyle(getHeaderStyle(sheet.getWorkbook()));
+            header.getCell(i).setCellStyle(style);
         }
     }
-    private void initializeSheet(Sheet sheet) {
+    private void initializeSheet(Sheet sheet, CellStyle style) {
         Row rowHeader = sheet.createRow(0);
 
         rowHeader.createCell(0).setCellValue("Company Name");
@@ -1006,13 +1208,13 @@ public class DaiStatus {
         rowHeader.createCell(13).setCellValue("Exception Description");
 
         for (Cell cell: rowHeader) {
-            cell.setCellStyle(getHeaderStyle((sheet.getWorkbook())));
+            cell.setCellStyle(style);
         }
         for (int j=0; j < sheet.getRow(sheet.getLastRowNum()).getLastCellNum(); j++) {
             sheet.autoSizeColumn(j);
         }
     }
-    private void initializeStatusGapSheet(HSSFSheet sheet) {
+    private void initializeStatusGapSheet(HSSFSheet sheet, CellStyle style) {
         HSSFRow header = sheet.createRow(0);
 //        CellStyle style = sheet.getWorkbook().createCellStyle();
 //        HSSFFont font = sheet.getWorkbook().createFont();
@@ -1028,10 +1230,10 @@ public class DaiStatus {
         header.createCell(5).setCellValue("Gap Length");
 
         for (int i=0; i<header.getLastCellNum(); i++) {
-            header.getCell(i).setCellStyle(getHeaderStyle(sheet.getWorkbook()));
+            header.getCell(i).setCellStyle(style);
         }
     }
-    private void initializeCompareSheet(HSSFSheet sheet) {
+    private void initializeCompareSheet(HSSFSheet sheet, CellStyle style) {
         HSSFRow header = sheet.createRow(0);
 
         header.createCell(0).setCellValue("Date");
@@ -1047,10 +1249,36 @@ public class DaiStatus {
         header.createCell(10).setCellValue("Monthly Savings Not Captured");
 
         for (Cell cell : header) {
-            cell.setCellStyle(getHeaderStyle(sheet.getWorkbook()));
+            cell.setCellStyle(style);
         }
     }
-    private void initializeSummarySheet(HSSFSheet sheet) {
+    private void initializeCompareSheetManufacturer(HSSFSheet sheet, CellStyle style) {
+        HSSFRow header = sheet.createRow(0);
+
+        header.createCell(0).setCellValue("Date");
+        header.createCell(1).setCellValue("Formula");
+        header.createCell(2).setCellValue("Start Time");
+        header.createCell(3).setCellValue("Total Water");
+        header.createCell(4).setCellValue("Expected Water");
+        header.createCell(5).setCellValue("Manufacturer Expected Water");
+        header.createCell(6).setCellValue("Variance");
+        header.createCell(7).setCellValue("Percentage Variance");
+        header.createCell(8).setCellValue("Manufacturer Variance");
+        header.createCell(9).setCellValue("Percentage Manufacturer Variance");
+        header.createCell(10).setCellValue("Daily Variance");
+        header.createCell(11).setCellValue("Yearly Variance");
+        header.createCell(12).setCellValue("Monthly Variance");
+        header.createCell(13).setCellValue("Monthly Savings Not Captured");
+        header.createCell(14).setCellValue("Manufacturer Daily Variance");
+        header.createCell(15).setCellValue("Manufacturer Yearly Variance");
+        header.createCell(16).setCellValue("Manufacturer Monthly Variance");
+        header.createCell(17).setCellValue("Manufacturer Monthly Savings Not Captured");
+
+        for (Cell cell : header) {
+            cell.setCellStyle(style);
+        }
+    }
+    private void initializeSummarySheet(HSSFSheet sheet, CellStyle style) {
         HSSFRow header = sheet.createRow(0);
 
         header.createCell(0).setCellValue("Formula");
@@ -1060,9 +1288,28 @@ public class DaiStatus {
         header.createCell(4).setCellValue("Average Monthly Savings Not Tracked");
 
         for (int i=0; i<header.getLastCellNum(); i++) {
-            header.getCell(i).setCellStyle(getHeaderStyle(sheet.getWorkbook()));
+            header.getCell(i).setCellStyle(style);
         }
     }
+    private void initializeSummarySheetManufacturer(HSSFSheet sheet, CellStyle style) {
+        HSSFRow header = sheet.createRow(0);
+
+        header.createCell(0).setCellValue("Formula");
+        header.createCell(1).setCellValue("Average Variance Per Day");
+        header.createCell(2).setCellValue("Average Variance Per Year");
+        header.createCell(3).setCellValue("Average Variance Per Month");
+        header.createCell(4).setCellValue("Average Monthly Savings Not Tracked");
+        header.createCell(5).setCellValue("Average Manufacturer Variance Per Day");
+        header.createCell(6).setCellValue("Average Manufacturer Variance Per Year");
+        header.createCell(7).setCellValue("Average Manufacturer Variance Per Month");
+        header.createCell(8).setCellValue("Average Manufacturer Monthly Savings Not Tracked");
+
+        for (int i=0; i<header.getLastCellNum(); i++) {
+            header.getCell(i).setCellStyle(style);
+        }
+
+    }
+
 
     private CellStyle getHeaderStyle(Workbook workbook) {
         CellStyle style = workbook.createCellStyle();
@@ -1080,6 +1327,12 @@ public class DaiStatus {
     private CellStyle getVarianceHighlightStyle(HSSFWorkbook workbook) {
         CellStyle style = workbook.createCellStyle();
         style.setFillForegroundColor(HSSFColor.LIGHT_YELLOW.index);
+        style.setFillPattern(CellStyle.SOLID_FOREGROUND);
+        return style;
+    }
+    private CellStyle getRedHighlightStyle(HSSFWorkbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setFillForegroundColor(HSSFColor.RED.index);
         style.setFillPattern(CellStyle.SOLID_FOREGROUND);
         return style;
     }
@@ -1117,9 +1370,52 @@ public class DaiStatus {
     private long calculateTimeLong(Status status) {
         return ((ChronoLocalDateTime)status.getTimestamp().toLocalDateTime()).toEpochSecond(ZoneOffset.UTC);
     }
-    private Timestamp getTimestampForLastLog() {
+    private Timestamp getTimestampForLastLogRedInterval() {
         Calendar c = Calendar.getInstance();
-        c.add(Calendar.HOUR, -24);
+        int interval = 0;
+        try {
+            interval = Integer.parseInt(staticValueRepository.findByName("last_log_red").getValue());
+        } catch (NumberFormatException e) {
+            String msg = "unable to convert interval to int, no last_log_red interval in db?";
+            logger.warn(msg, e);
+        }
+        c.add(Calendar.HOUR, -interval);
+        return new Timestamp(c.getTimeInMillis());
+    }
+    private Timestamp getTimestampForLastLogYellowInterval() {
+        Calendar c = Calendar.getInstance();
+        int interval = 0;
+        try {
+            interval = Integer.parseInt(staticValueRepository.findByName("last_log_yellow").getValue());
+        } catch (NumberFormatException e) {
+            String msg = "unable to convert interval to int, no last_log_red interval in db?";
+            logger.warn(msg, e);
+        }
+        c.add(Calendar.HOUR, -interval);
+        return new Timestamp(c.getTimeInMillis());
+    }
+    private Timestamp getTimestampForHeartbeatRedInterval() {
+        Calendar c = Calendar.getInstance();
+        int interval = 0;
+        try {
+            interval = Integer.parseInt(staticValueRepository.findByName("heartbeat_red").getValue());
+        } catch (NumberFormatException e) {
+            String msg = "unable to convert interval to int, no heartbeat_red interval in db?";
+            logger.warn(msg, e);
+        }
+        c.add(Calendar.MINUTE, -interval);
+        return new Timestamp(c.getTimeInMillis());
+    }
+    private Timestamp getTimestampForHeartbeatYellowInterval() {
+        Calendar c = Calendar.getInstance();
+        int interval = 0;
+        try {
+            interval = Integer.parseInt(staticValueRepository.findByName("heartbeat_yellow").getValue());
+        } catch (NumberFormatException e) {
+            String msg = "unable to convert interval to int, no heartbeat_red interval in db?";
+            logger.warn(msg, e);
+        }
+        c.add(Calendar.MINUTE, -interval);
         return new Timestamp(c.getTimeInMillis());
     }
     private Timestamp getTimestampForIdleInterval() {
@@ -1187,7 +1483,7 @@ public class DaiStatus {
         return false;
     }
     public File getCycleReports(String date) {
-        return getCycleReports(date, date, 0);
+        return getCycleReports(date, date, 0, 0);
     }
 
 }

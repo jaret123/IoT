@@ -34,7 +34,7 @@ public class Location {
     public String getName() {return this.name;}
     public void setName(String name) {this.name = name;}
 
-    @OneToMany(fetch = FetchType.EAGER, mappedBy = "location")
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "location")
     public Collection<Machine> getMachines() {return machines;}
 
     public void setMachines(Collection<Machine> machines) {this.machines = machines;}

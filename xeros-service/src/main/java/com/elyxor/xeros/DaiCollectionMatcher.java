@@ -147,14 +147,24 @@ public class DaiCollectionMatcher {
         Float hotWater = actual.getHotWater() * waterMeterRate;
         Float runTime = (float) actual.getRunTime() / 60;
 
+        CollectionClassificationMap ccm;
+        Classification classification;
+        int classId = 0;
+
+        if ((ccm = collectionData.getCollectionClassificationMap()) != null) {
+            if ((classification = ccm.getClassification()) != null) {
+                classId = classification.getId();
+            }
+        }
+
         if (collectionData.getMachine().getManufacturer().equalsIgnoreCase("xeros")) {
-            XerosLocalStaticValue xlsv = xlsvRepository.findByClassification(collectionData.getCollectionClassificationMap().getClassification());
+            XerosLocalStaticValue xlsv = xlsvRepository.findByClassification(classId);
             coldDiff = calculatePercentageDiff(xlsv.getColdWater(), coldWater);
             hotDiff = calculatePercentageDiff(xlsv.getHotWater(), hotWater);
             timeDiff = calculatePercentageDiff((float) xlsv.getRunTime(), runTime);
         }
         else {
-            LocalStaticValue lsv = lsvRepository.findByClassification(collectionData.getCollectionClassificationMap().getClassification());
+            LocalStaticValue lsv = lsvRepository.findByClassification(classId);
             if (lsv != null) {
                 coldDiff = calculatePercentageDiff(lsv.getColdWater(), coldWater);
                 hotDiff = calculatePercentageDiff(lsv.getHotWater(), hotWater);
@@ -273,14 +283,14 @@ public class DaiCollectionMatcher {
 		return daia;
 	}
 
-    private Classification calculateExpectedClassification(Collection<DaiMeterCollectionDetail> collectionDetails) {
+    private Integer calculateExpectedClassification(Collection<DaiMeterCollectionDetail> collectionDetails) {
         for (DaiMeterCollectionDetail detail : collectionDetails) {
             if (detail.getMeterType().equals("SENSOR_2")) {
                 int dur = (int) Math.floor((double) detail.getDuration());
                 if (!(dur % 2 == 0)) {
                     dur -= 1;
                 }
-                return classificationRepository.findOne(dur);
+                return dur;
             }
         }
         return null;

@@ -1,6 +1,5 @@
 package com.elyxor.xeros.model.repository;
 
-import com.elyxor.xeros.model.Machine;
 import com.elyxor.xeros.model.Status;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -11,14 +10,14 @@ import java.util.List;
 
 @Repository
 public interface StatusRepository extends CrudRepository<Status, Integer> {
-    @Query(value = "SELECT * FROM xeros_status WHERE machine_id = :machineId ORDER BY time_stamp desc LIMIT 1", nativeQuery = true)
+    @Query(value = "SELECT * FROM xeros_status WHERE machine_id = :machineId ORDER BY status_id desc LIMIT 1", nativeQuery = true)
     public Status findByMachineId(@Param("machineId") int machineId);
 
     @Query(value = "SELECT * FROM xeros_status WHERE machine_id = :machineId ORDER BY time_stamp desc LIMIT :limit", nativeQuery = true)
     public List<Status> findHistoryByMachineIdWithLimit(@Param("machineId") int machineId, @Param("limit") int limit);
 
     @Query(value = "SELECT * FROM xeros_status WHERE machine_id = :machineId ORDER BY time_stamp desc", nativeQuery = true)
-    public List<Status> findHistoryByMachine(@Param("machine") Machine machine);
+    public List<Status> findHistoryByMachine(@Param("machine") int machineId);
 
-    public List<Status> findByMachineOrderByTimestampDesc(Machine machine);
+    @Query public List<Status> findByMachineIdOrderByTimestampDesc(int machineId);
 }

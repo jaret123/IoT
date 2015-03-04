@@ -18,7 +18,7 @@ public class DaiMeterActual {
 	private Integer runTime;
 	private Machine machine;
     private String exception;
-    private Classification expectedClassification;
+    private Integer expectedClassification;
 
     @Id
     @Column(name = "dai_meter_actual_id", columnDefinition = "INT unsigned")
@@ -101,11 +101,10 @@ public class DaiMeterActual {
     public String getException() { return this.exception;}
     public void setException(String exception) {this.exception = exception;}
 
-	@ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "expected_classification", referencedColumnName = "classification_id")
-    public Classification getExpectedClassification() {return expectedClassification;}
+    @Column(name = "expected_classification")
+    public Integer getExpectedClassification() {return expectedClassification;}
 
-    public void setExpectedClassification(Classification expectedClassification) {this.expectedClassification = expectedClassification;}
+    public void setExpectedClassification(Integer expectedClassification) {this.expectedClassification = expectedClassification;}
 
 	
 }

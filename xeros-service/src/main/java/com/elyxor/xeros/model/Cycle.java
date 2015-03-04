@@ -88,7 +88,7 @@ public class Cycle {
 		this.runTime = runTime;
 	}
 
-    @OneToOne(fetch = FetchType.EAGER)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dai_meter_actual_id", referencedColumnName = "dai_meter_actual_id")
     public DaiMeterActual getDaiMeterActual() {
         return daiMeterActual;
@@ -98,7 +98,7 @@ public class Cycle {
         this.daiMeterActual = daiMeterActual;
     }
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "location_id", referencedColumnName = "location_id")
     public Location getLocation() {
         return location;
@@ -108,7 +108,7 @@ public class Cycle {
         this.location = location;
     }
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "machine_id", referencedColumnName = "machine_id")
     public Machine getMachine() {
         return machine;
@@ -118,7 +118,7 @@ public class Cycle {
         this.machine = machine;
     }
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classification_id", referencedColumnName = "classification_id")
     public Classification getClassification() {
         return classification;

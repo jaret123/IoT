@@ -9,10 +9,13 @@ public class XerosLocalStaticValue {
 	public XerosLocalStaticValue() {}
 	
 	private int id;
-	private Classification classification;
+	private Integer classification;
     private Float coldWater;
     private Float hotWater;
     private Integer runTime;
+    private Float manufacturerColdWater;
+    private Float manufacturerHotWater;
+    private Integer manufacturerRunTime;
 
     @Id
     @Column(name = "xeros_local_static_value_id", columnDefinition = "INT unsigned")
@@ -25,13 +28,12 @@ public class XerosLocalStaticValue {
 		this.id = id;
 	}
 
-	@OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "classification_id", referencedColumnName = "classification_id")
-	public Classification getClassification() {
+	@Column(name = "classification_id")
+	public Integer getClassification() {
 		return classification;
 	}
 
-	public void setClassification(Classification classification) {
+	public void setClassification(Integer classification) {
 		this.classification = classification;
 	}
 
@@ -56,4 +58,32 @@ public class XerosLocalStaticValue {
     @Column(name = "run_time")
     public Integer getRunTime() {return runTime;}
     public void setRunTime(Integer runTime) {this.runTime = runTime;}
+
+    @Column(name = "manufacturer_cold_water")
+    public Float getManufacturerColdWater() {
+        return manufacturerColdWater;
+    }
+
+    public void setManufacturerColdWater(Float manufacturerColdWater) {
+        this.manufacturerColdWater = manufacturerColdWater;
+    }
+
+    @Column(name = "manufacturer_hot_water")
+    public Float getManufacturerHotWater() {
+        return manufacturerHotWater;
+    }
+
+    public void setManufacturerHotWater(Float manufacturerHotWater) {
+        this.manufacturerHotWater = manufacturerHotWater;
+    }
+
+    @Column(name = "manufacturer_run_time")
+    public Integer getManufacturerRunTime() {
+        return manufacturerRunTime;
+    }
+
+    public void setManufacturerRunTime(Integer manufacturerRunTime) {
+        this.manufacturerRunTime = manufacturerRunTime;
+    }
+
 }
