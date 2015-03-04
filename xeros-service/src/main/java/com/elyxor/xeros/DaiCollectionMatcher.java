@@ -112,7 +112,6 @@ public class DaiCollectionMatcher {
 					if (ccm!=null) {
 						collectionData.setCollectionClassificationMap(ccm);
 						collectionData.setDaiMeterActual(createDaiMeterActual(collectionData));
-
 						daiMeterCollectionRepo.save(collectionData);
 					}
 				}
@@ -233,6 +232,7 @@ public class DaiCollectionMatcher {
 		}
 		return new Float(0);
 	}
+	
 
 	private Float calculateHotWater(DaiMeterCollection c) {
 		Machine m = c.getMachine();
@@ -257,6 +257,7 @@ public class DaiCollectionMatcher {
 		return new Float(0);
 	}
 
+	
 	public DaiMeterActual createDaiMeterActual(DaiMeterCollection collectionData) throws Exception {
 		// TODO : tons of checking for valid matches 
 		DaiMeterActual daia = null;
@@ -271,11 +272,7 @@ public class DaiCollectionMatcher {
 			daia.setColdWater(new Float(calculateColdWater(collectionData)).intValue());
 			daia.setHotWater(new Float(calculateHotWater(collectionData)).intValue());
 			daia.setTimestamp(collectionData.getDaiCollectionTime());
-
-            if (m.getManufacturer().equals("Xeros")) {
-                daia.setExpectedClassification(calculateExpectedClassification(collectionData.getCollectionDetails()));
-            }
-
+            daia.setOlsonTimezoneId(collectionData.getOlsonTimezoneId());
 			daiMeterActualRepository.save(daia);
 		} else {
 			throw new Exception( String.format("no active dai found for [dai:%1s, machine: %2s]", collectionData.getDaiIdentifier(), collectionData.getMachine() ));
@@ -387,6 +384,7 @@ public class DaiCollectionMatcher {
 		return normalizedDetails;		
 	}
 
+	
 	public CollectionClassificationMap createCollectionClassificationMap(int collectionId, int classificationId) throws Exception {
 		DaiMeterCollection dmc = this.daiMeterCollectionRepo.findOne(collectionId);
 		if ( dmc.getMachine()==null ) {
