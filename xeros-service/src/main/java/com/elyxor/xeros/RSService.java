@@ -1,7 +1,11 @@
 package com.elyxor.xeros;
 
+import com.elyxor.xeros.model.Machine;
+
 import javax.ws.rs.*;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
@@ -55,13 +59,35 @@ public interface RSService {
 
     @POST
     @Path("/history/")
+    @Produces("application/json")
     Response getStatusHistory(List<Integer> machineIdList);
 
     @POST
     @Path("/statusgaps/")
-    Response getStatusGaps(List<Integer> machineIdList);
+    Response getStatusGaps(List<Machine> machineList);
 
     @GET
-    @Path("/statusgaps/")
+    @Path("/status_gaps/")
+    @Produces("application/vnd.ms-excel")
     Response getStatusGaps();
+
+    @GET
+    @Path("/report/query")
+    @Produces("application/vnd.ms-excel")
+    Response getSimpleCycleReport(@Context UriInfo info);
+
+    @GET
+    @Path("/last_log")
+    @Produces("application/vnd.ms-excel")
+    Response getLastLog();
+
+//    @GET
+//    @Path("/cycle/{startDate}/{endDate}")
+//    @Produces("application/vnd.ms-excel")
+//    Response getSimpleCycleReport(@PathParam("startDate") String startDate, @PathParam("endDate") String endDate);
+//
+//    @GET
+//    @Path("/cycle/{startDate}/{endDate}/{exceptionType}")
+//    @Produces("application/vnd.ms-excel")
+//    Response getSimpleCycleReport(@PathParam("startDate") String startDate, @PathParam("endDate") String endDate, @PathParam("exceptionType") Integer exceptionType);
 }
