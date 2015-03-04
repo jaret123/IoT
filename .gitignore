@@ -3,5 +3,9 @@ SimpleServlet/build/
 builds/
 target/
 /xeros-ldcs/logs
+<<<<<<< HEAD
 /.idea
 /xeros-service/src/main/resources/local.properties
+=======
+.idea/
+>>>>>>> cf526e5... gitignore fix
