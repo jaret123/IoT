@@ -3,5 +3,4 @@ SimpleServlet/build/
 builds/
 target/
 /xeros-ldcs/logs
-/.idea
-/xeros-service/src/main/resources/local.properties
+.idea/

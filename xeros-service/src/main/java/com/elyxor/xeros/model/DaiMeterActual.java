@@ -17,6 +17,9 @@ public class DaiMeterActual {
 	private Float coldWater;
 	private Integer runTime;
 	private Machine machine;
+    private String exception;
+    private Integer expectedClassification;
+
     private String olsonTimezoneId;
 	
 	
@@ -98,6 +101,9 @@ public class DaiMeterActual {
 		this.machine = machine;
 	}
 
+    @Column(name = "exception")
+    public String getException() { return this.exception;}
+    public void setException(String exception) {this.exception = exception;}
     @Column(name = "olson_timezone_id", length=64)
     public String getOlsonTimezoneId() {
         return olsonTimezoneId;
@@ -107,7 +113,10 @@ public class DaiMeterActual {
         this.olsonTimezoneId = olsonTimezoneId;
     }
 
-	
+    @Column(name = "expected_classification")
+    public Integer getExpectedClassification() {return expectedClassification;}
+
+    public void setExpectedClassification(Integer expectedClassification) {this.expectedClassification = expectedClassification;}
 
 	
 }

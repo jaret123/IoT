@@ -1,7 +1,6 @@
 package com.elyxor.xeros;
 
-import javax.sql.DataSource;
-
+import com.mchange.v2.c3p0.ComboPooledDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -18,7 +17,7 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-import com.mchange.v2.c3p0.ComboPooledDataSource;
+import javax.sql.DataSource;
 
 @Configuration
 @EnableTransactionManagement
