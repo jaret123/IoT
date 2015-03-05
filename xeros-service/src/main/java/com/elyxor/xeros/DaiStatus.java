@@ -1014,7 +1014,9 @@ public class DaiStatus {
         for (Location location : locations) {
             Iterable<Machine> machineList = location.getMachines();
             for (Machine machine : machineList) {
-                mappingList.add(machineMappingRepository.findOne(machine.getId()));
+                if (machineMappingRepository.findOne(machine.getId()) != null) {
+                    mappingList.add(machineMappingRepository.findOne(machine.getId()));
+                }
             }
         }
         return createEkCycleReports(mappingList, fromDate, toDate, exception, unknownId);
@@ -1375,9 +1377,13 @@ public class DaiStatus {
     }
     private Timestamp getTimestampForLastLogRedInterval() {
         Calendar c = Calendar.getInstance();
-        int interval = 0;
+        //default is 72 hours
+        int interval = 72;
         try {
-            interval = Integer.parseInt(staticValueRepository.findByName("last_log_red").getValue());
+            StaticValue staticValue = staticValueRepository.findByName("last_log_red");
+            if (staticValue != null) {
+                interval = Integer.parseInt(staticValue.getValue());
+            }
         } catch (NumberFormatException e) {
             String msg = "unable to convert interval to int, no last_log_red interval in db?";
             logger.warn(msg, e);
@@ -1387,9 +1393,13 @@ public class DaiStatus {
     }
     private Timestamp getTimestampForLastLogYellowInterval() {
         Calendar c = Calendar.getInstance();
-        int interval = 0;
+        //default is 36 hours
+        int interval = 36;
         try {
-            interval = Integer.parseInt(staticValueRepository.findByName("last_log_yellow").getValue());
+            StaticValue staticValue = staticValueRepository.findByName("last_log_yellow");
+            if (staticValue != null) {
+                interval = Integer.parseInt(staticValue.getValue());
+            }
         } catch (NumberFormatException e) {
             String msg = "unable to convert interval to int, no last_log_red interval in db?";
             logger.warn(msg, e);
@@ -1399,9 +1409,13 @@ public class DaiStatus {
     }
     private Timestamp getTimestampForHeartbeatRedInterval() {
         Calendar c = Calendar.getInstance();
-        int interval = 0;
+        //default is 120 minutes
+        int interval = 120;
         try {
-            interval = Integer.parseInt(staticValueRepository.findByName("heartbeat_red").getValue());
+            StaticValue staticValue = staticValueRepository.findByName("heartbeat_red");
+            if (staticValue != null) {
+                interval = Integer.parseInt(staticValue.getValue());
+            }
         } catch (NumberFormatException e) {
             String msg = "unable to convert interval to int, no heartbeat_red interval in db?";
             logger.warn(msg, e);
@@ -1411,9 +1425,13 @@ public class DaiStatus {
     }
     private Timestamp getTimestampForHeartbeatYellowInterval() {
         Calendar c = Calendar.getInstance();
-        int interval = 0;
+        //default is 30 minutes
+        int interval = 30;
         try {
-            interval = Integer.parseInt(staticValueRepository.findByName("heartbeat_yellow").getValue());
+            StaticValue staticValue = staticValueRepository.findByName("heartbeat_yellow");
+            if (staticValue != null) {
+                interval = Integer.parseInt(staticValue.getValue());
+            }
         } catch (NumberFormatException e) {
             String msg = "unable to convert interval to int, no heartbeat_red interval in db?";
             logger.warn(msg, e);
