@@ -1,20 +1,8 @@
 package com.elyxor.xeros.model;
 
+import javax.persistence.*;
 import java.sql.Timestamp;
 import java.util.Collection;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
 
 @Entity
 @Table(name = "xeros_dai_meter_collection")
@@ -26,18 +14,19 @@ public class DaiMeterCollection {
     private String machineIdentifier;
     private String locationIdentifier;
     private String daiIdentifier;
-    
+
     private String olsonTimezoneId;
     private Timestamp daiCollectionTime;
     private Timestamp fileCreateTime;
     private Timestamp fileUploadTime;
-        
+
     private Machine machine;
     private CollectionClassificationMap collectionClassificationMap;
     private Collection<DaiMeterCollectionDetail> collectionDetails;
     private DaiMeterActual daiMeterActual;
-    
+
     private float earliestValue;
+    private Integer exception;
 
     @Id
     @Column(columnDefinition = "INT unsigned")
@@ -67,7 +56,7 @@ public class DaiMeterCollection {
 	public void setDaiCollectionTime(Timestamp daiCollectionTime) {
 		this.daiCollectionTime = daiCollectionTime;
 	}
-	
+
 	@Column(name="file_upload_timestamp")
 	public Timestamp getFileUploadTime() {
 		return fileUploadTime;
@@ -123,7 +112,7 @@ public class DaiMeterCollection {
 		this.daiIdentifier = daiIdentifier;
 	}
 
-	@OneToOne(fetch = FetchType.EAGER)
+	@OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dai_meter_actual_id", referencedColumnName = "dai_meter_actual_id")
 	public DaiMeterActual getDaiMeterActual() {
 		return daiMeterActual;
@@ -152,8 +141,9 @@ public class DaiMeterCollection {
 	public void setCollectionDetails(Collection<DaiMeterCollectionDetail> collectionDetails) {
 		this.collectionDetails = collectionDetails;
 	}
+    @Column(name = "earliestValue")
 	public float getEarliestValue() {
-		return earliestValue;
+		return this.earliestValue;
 	}
 	public void setEarliestValue(float value) {
 		this.earliestValue = value;
