@@ -8,6 +8,8 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.*;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalDateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
@@ -24,8 +26,6 @@ import java.io.IOException;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.time.ZoneOffset;
-import java.time.chrono.ChronoLocalDateTime;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
@@ -1368,7 +1368,10 @@ public class DaiStatus {
     }
 
     private long calculateTimeLong(Status status) {
-        return ((ChronoLocalDateTime)status.getTimestamp().toLocalDateTime()).toEpochSecond(ZoneOffset.UTC);
+        LocalDateTime ldt = new LocalDateTime(status.getTimestamp().getTime());
+        DateTime time = ldt.toDateTime(DateTimeZone.UTC);
+        return time.getMillis() / 1000;
+//        return ((ChronoLocalDateTime)status.getTimestamp().toLocalDateTime()).toEpochSecond(ZoneOffset.UTC);
     }
     private Timestamp getTimestampForLastLogRedInterval() {
         Calendar c = Calendar.getInstance();
