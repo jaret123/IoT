@@ -114,7 +114,8 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		if (daiPort != null) {
 			if (daiPort.closePort()) {
 				portList.remove(daiPort.getSerialPort().getPortName());
-				nextDaiNum = daiPort.getDaiNum(); 
+				nextDaiNum = daiPort.getDaiNum();
+                return true;
 			}
 			// port close failed
 			return false;
