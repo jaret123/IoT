@@ -6,6 +6,7 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 @Repository
@@ -20,4 +21,11 @@ public interface StatusRepository extends CrudRepository<Status, Integer> {
     public List<Status> findHistoryByMachine(@Param("machine") int machineId);
 
     @Query public List<Status> findByMachineIdOrderByTimestampDesc(int machineId);
+
+    @Query public List<Status> findByMachineIdOrderByIdDesc(int machineId);
+
+    @Query(value = "SELECT * FROM xeros_status order by status_id desc", nativeQuery = true) public List<Status> findByOrderByIdDesc();
+
+    @Query(value = "SELECT * FROM xeros_status where machine_id = :machine AND time_stamp >= :start AND time_stamp <= :end order by status_id desc", nativeQuery = true)
+    public List<Status> findByMachineIdAndReadingTimestampBetween(@Param("machine")Integer machine, @Param("start")Timestamp start, @Param("end")Timestamp end);
 }

@@ -8,6 +8,6 @@ import java.util.List;
 
 @Repository
 public interface MachineMappingRepository extends CrudRepository<MachineMapping, Integer> {
-    public List<MachineMapping> findByDaiId(Integer daiId);
-    public List<MachineMapping> findByEkId(Integer ekId);
+    public MachineMapping findByDaiId(Integer daiId);
+    public MachineMapping findByEkId(Integer ekId);
 }

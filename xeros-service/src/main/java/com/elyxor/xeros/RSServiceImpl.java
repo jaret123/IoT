@@ -2,7 +2,6 @@ package com.elyxor.xeros;
 
 import com.elyxor.xeros.model.CollectionClassificationMap;
 import com.elyxor.xeros.model.DaiMeterCollection;
-import com.elyxor.xeros.model.Machine;
 import com.elyxor.xeros.model.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -151,22 +150,18 @@ public class RSServiceImpl implements RSService {
     }
 
     @Override
-    public Response getStatusGaps(List<Machine> machineList) {
-        ResponseBuilder r = Response.ok();
-        try {
-            List<Status> statusList = daiStatus.calculateStatusGaps(machineList);
-            r.entity(statusList);
-        } catch (Exception e) {
-            r = Response.serverError().entity(e.toString());
+    public Response getStatusGaps(UriInfo info) {
+        String from = info.getQueryParameters().getFirst("fromDate");
+        String to = info.getQueryParameters().getFirst("toDate");
+
+        if (from == null && to == null) {
+            return Response.ok("Must enter at least fromDate", MediaType.TEXT_PLAIN).build();
         }
-        return r.build();
-    }
-    @Override
-    public Response getStatusGaps() {
         ResponseBuilder r = Response.ok();
         try {
-            r.entity(daiStatus.getStatusGaps()).header("Content-Disposition", "attachment; filename=statusgaps.xls");
+            r.entity(daiStatus.getStatusGaps(info)).header("Content-Disposition", "attachment; filename=statusgaps.xls");
         } catch (Exception e) {
+            StackTraceElement[] elements = e.getStackTrace();
             r = Response.serverError().entity(e.toString());
         }
         return r.build();

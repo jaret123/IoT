@@ -7,6 +7,10 @@ import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.*;
+import org.hibernate.Query;
+import org.hibernate.ScrollMode;
+import org.hibernate.ScrollableResults;
+import org.hibernate.Session;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDateTime;
@@ -18,6 +22,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.PersistenceContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -48,6 +55,8 @@ public class DaiStatus {
     @Autowired XerosLocalStaticValueRepository xlsvRepository;
     @Autowired StaticValueRepository staticValueRepository;
     @Autowired LocationProfileRepository locationProfileRepository;
+
+    @PersistenceContext private EntityManager em;
 
     private static Logger logger = LoggerFactory.getLogger(DaiStatus.class);
 
@@ -112,8 +121,19 @@ public class DaiStatus {
         }
         return false;
     }
-    public File getStatusGaps() {
-        List<Status> statusList = calculateStatusGaps(new ArrayList<Machine>());
+    public File getStatusGaps(UriInfo info) {
+        String startDate = info.getQueryParameters().getFirst("fromDate");
+        String endDate = info.getQueryParameters().getFirst("toDate");
+
+        if (endDate == null) {
+            endDate = startDate;
+        }
+
+        List<Cycle> result = new ArrayList<Cycle>();
+        Timestamp start = Timestamp.valueOf(startDate + " " + "00:00:00");
+        Timestamp end = Timestamp.valueOf(endDate + " " + "23:59:59");
+
+        List<Status> statusList = calculateStatusGaps(new ArrayList<Machine>(), start, end);
         String output = "";
         HSSFWorkbook workbook = new HSSFWorkbook();
         HSSFSheet sheet = workbook.createSheet(getCurrentDateAndTime());
@@ -158,13 +178,17 @@ public class DaiStatus {
 
     }
 
-    public List<Status> calculateStatusGaps(List<Machine> machineList){
+    public List<Status> calculateStatusGaps(List<Machine> machineList, Timestamp start, Timestamp end){
         List<Status> statusList = new ArrayList<Status>();
         List<Status> result = new ArrayList<Status>();
 
         long interval = 0;
         try {
-            interval = 60 * Long.valueOf(staticValueRepository.findByName("offline_interval").getValue());
+            StaticValue staticValue = staticValueRepository.findByName("offline_interval");
+            if (staticValue != null) {
+                String intervalString = staticValue.getValue();
+                interval = 60 * Long.parseLong(intervalString);
+            }
         } catch (NullPointerException e) {
             String msg = "unable to convert interval to long, no offline_interval in db?";
             logger.warn(msg, e);
@@ -175,21 +199,59 @@ public class DaiStatus {
             machineList = (ArrayList<Machine>) machineRepository.findAll();
         }
         for (Machine machine : machineList) {
-            statusList = statusRepository.findByMachineIdOrderByTimestampDesc(machine.getId());
-            for (int i = 0; i < statusList.size() - 1; i++) {
-                Status current = statusList.get(i);
-                Status prev = statusList.get(i + 1);
-                long currentLong = calculateTimeLong(current);
-                long prevLong = calculateTimeLong(prev);
+        EntityManagerFactory factory = null;
+        Session session = null;
+        Query query = null;
+        ScrollableResults results = null;
+//        try {
+//            factory = (EntityManagerFactory) appConfig.entityManagerFactory(appConfig.dataSource(), appConfig.jpaVendorAdapter());
+//        } catch (Exception e) {
+//            logger.warn(e.getMessage());
+//        }
+
+        if (em != null) {
+             session = em.unwrap(Session.class);
+        }
+
+        if (session != null) {
+            query = session.createQuery("SELECT id, machineId, timestamp FROM Status WHERE machine_id = :id AND time_stamp >= :start AND time_stamp <= :end");
+        }
+        if (query != null) {
+            query.setParameter("start", start);
+            query.setParameter("end", end);
+            query.setParameter("id", machine.getId());
+            query.setReadOnly(true);
+            query.setFetchSize(2);
+            results = query.scroll(ScrollMode.FORWARD_ONLY);
+        }
+
+//        statusList = statusRepository.findByMachineIdAndReadingTimestampBetween(machine.getId(), start, end);
+//            for (int i = 0; i < statusList.size() - 1; i++) {
+            while (results != null && results.next()) {
+                String currentString = (String) results.get(2);
+                Timestamp current = Timestamp.valueOf(currentString);
+                Integer currentId = (Integer) results.get(0);
+                String prevString = null;
+                Integer prevId = 0;
+                if (!results.next()) {
+                    break;
+                }
+                prevString = (String) results.get(2);
+                Timestamp prev = Timestamp.valueOf(prevString);
+                prevId = (Integer) results.get(0);
+//                Status current = statusList.get(i);
+//                Status prev = statusList.get(i+1);
+                long currentLong = calculateTimestampTimeLong(current);
+                long prevLong = calculateTimestampTimeLong(prev);
                 long diff = currentLong - prevLong;
                 if (diff > interval) {
-                    result.add(statusList.get(i));
-                    result.add(statusList.get(i+1));
+                    result.add(statusRepository.findOne(currentId));
+                    result.add(statusRepository.findOne(prevId));
                 }
             }
-            statusList.clear();
-            statusList = null;
-            System.gc();
+//            statusList.clear();
+//            statusList = null;
+//            System.gc();
         }
         return result;
     }
@@ -305,18 +367,30 @@ public class DaiStatus {
         if (type != null && type.equals("ek")) {
             if (company != null) {
                 Integer companyId = Integer.parseInt(company);
-                return getEkCycleReportsForCompany(from, to, exceptionId, companyId, unknownId);
+                Iterable<Location> locations = (companyRepository.findOne(companyId)).getLocations();
+                List<Machine> machines = new ArrayList<Machine>();
+                for (Location locationItem : locations) {
+                    Iterable<Machine> machineList = locationItem.getMachines();
+                    for (Machine machineItem : machineList) {
+                        machines.add(machineItem);
+                    }
+                }
+                return createEkCycleReports(machines, from, to, exceptionId, unknownId);
             }
             else if (location != null) {
                 Integer locationId = Integer.parseInt(location);
-                return getEkCycleReportsForLocation(from, to, exceptionId, locationId, unknownId);
+                Location locationItem = locationRepository.findOne(locationId);
+                Iterable<Machine> machineList = locationItem.getMachines();
+                return createEkCycleReports(machineList, from, to, exceptionId, unknownId);
             }
             else if (machine != null) {
                 Integer machineId = Integer.parseInt(machine);
-                return getEkCycleReportsForMachine(from, to, exceptionId, machineId, unknownId);
+                List<Machine> machineList = new ArrayList<Machine>();
+                machineList.add(machineRepository.findById(machineId));
+                return createEkCycleReports(machineList, from, to, exceptionId, unknownId);
             }
             else {
-                return getEkCycleReports(from, to, exceptionId, unknownId);
+                return createEkCycleReports(machineRepository.findAll(), from, to, exceptionId, unknownId);
             }
         }
         else {
@@ -338,7 +412,7 @@ public class DaiStatus {
         }
     }
 
-    public File createEkCycleReports(Iterable<MachineMapping> machineList, String startDate, String endDate, Integer exceptionType, Integer unknownId) {
+    public File createEkCycleReports(Iterable<Machine> machineList, String startDate, String endDate, Integer exceptionType, Integer unknownId) {
         HSSFWorkbook workbook = new HSSFWorkbook();
         Sheet sheet = null;
 
@@ -347,8 +421,7 @@ public class DaiStatus {
         CellStyle moneyStyle = getMoneyStyle(workbook);
         CellStyle highlightStyle = getVarianceHighlightStyle(workbook);
 
-        for (MachineMapping machineMapping : machineList) {
-            Machine machine = machineRepository.findById(machineMapping.getDaiId());
+        for (Machine machine : machineList) {
             List<Cycle> cycleList = processException(startDate, endDate, machine, exceptionType, unknownId);
             Location location;
             Company company;
@@ -356,6 +429,12 @@ public class DaiStatus {
             String locationName = "";
             String companyName = "";
             String machineName = machine.getName();
+            MachineMapping machineMapping;
+            Integer ekId = 0;
+
+            if ((machineMapping = machineMappingRepository.findByDaiId(machine.getId())) != null) {
+                ekId = machineMapping.getEkId();
+            }
 
             if ((location = machine.getLocation()) != null) {
                 locationName = location.getName();
@@ -363,6 +442,7 @@ public class DaiStatus {
                     companyName = company.getName();
                 }
             }
+
             if (cycleList != null) {
                 for (int i = 0; i < cycleList.size(); i++) {
                     Cycle cycle = cycleList.get(i);
@@ -373,7 +453,7 @@ public class DaiStatus {
                             logger.warn("Could not create sheet: ", e.getMessage());
                             break;
                         }
-                        initializeSheet(sheet, headerStyle);
+                        initializeEkSheet(sheet, headerStyle);
                     }
 
                     DateTime readingDateTime = new DateTime(cycle.getReadingTimestamp());
@@ -409,7 +489,7 @@ public class DaiStatus {
                     row.createCell(13).setCellValue(describeExceptions(exception));
 
 
-                    List<Cycle> ekCycles = cycleRepository.findCyclesForCycleTime(machineMapping.getEkId(), new Timestamp(startTime.getMillis()), cycle.getReadingTimestamp());
+                    List<Cycle> ekCycles = cycleRepository.findCyclesForCycleTime(ekId, new Timestamp(startTime.getMillis()), cycle.getReadingTimestamp());
                     if (ekCycles.size() > 0) {
                         Float coldWater = 0f;
                         Float hotWater = 0f;
@@ -427,6 +507,7 @@ public class DaiStatus {
                         row.createCell(8).setCellValue(formatDecimal(coldWater - hotWater));
                         row.createCell(9).setCellValue(formatDecimal(hotWater));
                         row.createCell(10).setCellValue(formatDecimal(therms));
+                        row.createCell(14).setCellValue("X");
                     }
                     else {
                         Float total = cycle.getColdWaterVolume()!=null?cycle.getColdWaterVolume():0;
@@ -537,18 +618,6 @@ public class DaiStatus {
             return null;
         }
         return writeFile(workbook, "cycleReports.xls");
-//        try {
-//            file = new File("output.xls");
-//            out = new FileOutputStream(file);
-//            workbook.write(out);
-//            out.close();
-//            return file;
-//        } catch (FileNotFoundException fnfe) {
-//            //handle
-//        } catch (IOException ioe) {
-//            //handle
-//        }
-//        return file;
     }
     public File createCompareReports(Iterable<Machine> machines, String start, String end, Integer exceptionId, Integer unknownId, boolean manufacturer) {
         HSSFWorkbook workbook = new HSSFWorkbook();
@@ -802,7 +871,6 @@ public class DaiStatus {
         return writeFile(workbook, "compareReport.xls");
     }
 
-
     private CellStyle getMoneyStyle(HSSFWorkbook workbook) {
         CellStyle style = workbook.createCellStyle();
         style.setDataFormat((short)7);
@@ -992,36 +1060,6 @@ public class DaiStatus {
         return createCycleReports(machineList, fromDate, toDate, exceptionId, unknownId);
     }
 
-    private File getEkCycleReports(String startDate, String endDate, Integer exceptionType, Integer unknownId) {
-        return createEkCycleReports(machineMappingRepository.findAll(), startDate, endDate, exceptionType, unknownId);
-    }
-    private File getEkCycleReportsForMachine(String fromDate, String toDate, Integer exception, Integer machineId, Integer unknownId) {
-        Iterable<MachineMapping> machineList = machineMappingRepository.findByDaiId(machineId);
-        return createEkCycleReports(machineList, fromDate, toDate, exception, unknownId);
-    }
-    private File getEkCycleReportsForLocation(String fromDate, String toDate, Integer exception, Integer locationId, Integer unknownId) {
-        Location location = locationRepository.findOne(locationId);
-        Iterable<Machine> machineList = location.getMachines();
-        List<MachineMapping> mappingList = new ArrayList<MachineMapping>();
-        for (Machine machine : machineList) {
-            mappingList.add(machineMappingRepository.findOne(machine.getId()));
-        }
-        return createEkCycleReports(mappingList, fromDate, toDate, exception, unknownId);
-    }
-    private File getEkCycleReportsForCompany(String fromDate, String toDate, Integer exception, Integer companyId, Integer unknownId) {
-        Iterable<Location> locations = (companyRepository.findOne(companyId)).getLocations();
-        List<MachineMapping> mappingList = new ArrayList<MachineMapping>();
-        for (Location location : locations) {
-            Iterable<Machine> machineList = location.getMachines();
-            for (Machine machine : machineList) {
-                if (machineMappingRepository.findOne(machine.getId()) != null) {
-                    mappingList.add(machineMappingRepository.findOne(machine.getId()));
-                }
-            }
-        }
-        return createEkCycleReports(mappingList, fromDate, toDate, exception, unknownId);
-    }
-
     private List<Cycle> processException(String startDate, String endDate, Machine machine, Integer exceptionType, Integer unknownId) {
         List<Cycle> result = new ArrayList<Cycle>();
         if (startDate == null) {
@@ -1146,7 +1184,7 @@ public class DaiStatus {
     }
 
     //    @Scheduled(cron = "* * */2 * * *")
-    public void checkStatusTime() {
+    public void checkStatusTime()  {
         List<Integer> machineIds = machineRepository.findAllMachineIds();
         List<Status> statusList = getStatus(machineIds);
 
@@ -1208,6 +1246,32 @@ public class DaiStatus {
         rowHeader.createCell(11).setCellValue("Run Time");
         rowHeader.createCell(12).setCellValue("Exception Codes");
         rowHeader.createCell(13).setCellValue("Exception Description");
+
+        for (Cell cell: rowHeader) {
+            cell.setCellStyle(style);
+        }
+        for (int j=0; j < sheet.getRow(sheet.getLastRowNum()).getLastCellNum(); j++) {
+            sheet.autoSizeColumn(j);
+        }
+    }
+    private void initializeEkSheet(Sheet sheet, CellStyle style) {
+        Row rowHeader = sheet.createRow(0);
+
+        rowHeader.createCell(0).setCellValue("Company Name");
+        rowHeader.createCell(1).setCellValue("Location Name");
+        rowHeader.createCell(2).setCellValue("Machine Name");
+        rowHeader.createCell(3).setCellValue("Classification Name");
+        rowHeader.createCell(4).setCellValue("Reading Date");
+        rowHeader.createCell(5).setCellValue("Cycle Start Time");
+        rowHeader.createCell(6).setCellValue("Cycle End Time");
+        rowHeader.createCell(7).setCellValue("Total Water");
+        rowHeader.createCell(8).setCellValue("Cold Water");
+        rowHeader.createCell(9).setCellValue("Hot Water");
+        rowHeader.createCell(10).setCellValue("Therms");
+        rowHeader.createCell(11).setCellValue("Run Time");
+        rowHeader.createCell(12).setCellValue("Exception Codes");
+        rowHeader.createCell(13).setCellValue("Exception Description");
+        rowHeader.createCell(14).setCellValue("EK Records");
 
         for (Cell cell: rowHeader) {
             cell.setCellStyle(style);
@@ -1375,6 +1439,13 @@ public class DaiStatus {
         return time.getMillis() / 1000;
 //        return ((ChronoLocalDateTime)status.getTimestamp().toLocalDateTime()).toEpochSecond(ZoneOffset.UTC);
     }
+    private long calculateTimestampTimeLong(Timestamp status) {
+        LocalDateTime ldt = new LocalDateTime(status.getTime());
+        DateTime time = ldt.toDateTime(DateTimeZone.UTC);
+        return time.getMillis() / 1000;
+//        return ((ChronoLocalDateTime)status.getTimestamp().toLocalDateTime()).toEpochSecond(ZoneOffset.UTC);
+    }
+
     private Timestamp getTimestampForLastLogRedInterval() {
         Calendar c = Calendar.getInstance();
         //default is 72 hours

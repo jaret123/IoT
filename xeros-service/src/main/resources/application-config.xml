@@ -12,7 +12,9 @@
 
 	<import resource="classpath:META-INF/cxf/cxf.xml" />
 	<import resource="classpath:META-INF/cxf/cxf-servlet.xml" />
-	
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+        <property name="entityManagerFactory" ref="entityManagerFactory" />
+    </bean>
 	<bean id="restService" class="com.elyxor.xeros.RSServiceImpl" />
 	<bean id="restServiceFactory" class="org.apache.cxf.jaxrs.spring.SpringResourceFactory">
 		<property name="beanId" value="restService" />
