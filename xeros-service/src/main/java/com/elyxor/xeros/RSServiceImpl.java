@@ -49,6 +49,7 @@ public class RSServiceImpl implements RSService {
 			CollectionClassificationMap ccm = daiCollectionMatcher.match(collectionId);
 			r.entity(ccm);
 		} catch (Exception e) {
+            StackTraceElement[] elements = e.getStackTrace();
 			r = Response.serverError().entity(e.toString());
 		}
 		return r.build();
@@ -154,8 +155,8 @@ public class RSServiceImpl implements RSService {
         String from = info.getQueryParameters().getFirst("fromDate");
         String to = info.getQueryParameters().getFirst("toDate");
 
-        if (from == null && to == null) {
-            return Response.ok("Must enter at least fromDate", MediaType.TEXT_PLAIN).build();
+        if (from == null && to != null) {
+            return Response.ok("Must use fromDate with toDate", MediaType.TEXT_PLAIN).build();
         }
         ResponseBuilder r = Response.ok();
         try {

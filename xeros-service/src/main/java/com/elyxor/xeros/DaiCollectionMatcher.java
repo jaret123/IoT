@@ -100,7 +100,7 @@ public class DaiCollectionMatcher {
 						}
 					}
 					if (autoMap) {
-						Integer classMapId = (int) formulaMeter.getDuration() / 2;						
+						Integer classMapId = Math.round(formulaMeter.getDuration()) / 2;
 						collectionData.setCollectionClassificationMap(createCollectionClassificationMap(collectionId, classMapId + classBase));
 						collectionData.setDaiMeterActual(createDaiMeterActual(collectionData));
 						daiMeterCollectionRepo.save(collectionData);
@@ -266,7 +266,11 @@ public class DaiCollectionMatcher {
 			daia = new DaiMeterActual();
 			Machine m = machines.iterator().next();
 			daia.setActiveDai(m.getDai());
-			daia.setClassification(collectionData.getCollectionClassificationMap().getClassification());
+            Classification classification = collectionData.getCollectionClassificationMap().getClassification();
+            if (classification.getId() == 1) {
+                daia.setExpectedClassification(calculateExpectedClassification(collectionData.getCollectionDetails()));
+            }
+			daia.setClassification(classification);
 			daia.setMachine(collectionData.getMachine());
 			daia.setRunTime(new Float(calculateRunTime(collectionData)).intValue());
 			daia.setColdWater(new Float(calculateColdWater(collectionData)).intValue());
@@ -283,11 +287,14 @@ public class DaiCollectionMatcher {
     private Integer calculateExpectedClassification(Collection<DaiMeterCollectionDetail> collectionDetails) {
         for (DaiMeterCollectionDetail detail : collectionDetails) {
             if (detail.getMeterType().equals("SENSOR_2")) {
-                int dur = (int) Math.floor((double) detail.getDuration());
-                if (!(dur % 2 == 0)) {
-                    dur -= 1;
+                Float duration = detail.getDuration();
+                if (duration != null) {
+                    int dur = (int) Math.floor((double) duration);
+                    if (!(dur % 2 == 0)) {
+                        dur -= 1;
+                    }
+                    return dur / 2;
                 }
-                return dur;
             }
         }
         return null;
@@ -350,29 +357,39 @@ public class DaiCollectionMatcher {
 		}
 		
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {
-			if ( collectionDetail.getMeterType().startsWith("WM")) {
+			Float duration = collectionDetail.getDuration();
+            Float meterVal = collectionDetail.getMeterValue();
+            if ( collectionDetail.getMeterType().startsWith("WM")) {
 				continue;
 			}
 			
-			if ( collectionDetail.getDuration()==0) {
+			if ( duration != null && collectionDetail.getDuration()==0) {
 				continue;
 			}
-			earliestValue = ( collectionDetail.getMeterValue()<earliestValue )?collectionDetail.getMeterValue():earliestValue;
+            if (meterVal != null) {
+                earliestValue = (collectionDetail.getMeterValue() < earliestValue) ? collectionDetail.getMeterValue() : earliestValue;
+            }
 		}
 		for (DaiMeterCollectionDetail collectionDetail : collDetails) {
-			if (collectionDetail.getMeterType().startsWith("WM") ||
-					collectionDetail.getDuration()==0 ||
-					//check ignore array
-					Arrays.asList(ignoreMeterTypes).contains(collectionDetail.getMeterType()) ||
-					collectionDetail.getMeterType().equals(machine.getDoorLockMeterType())) {
-				continue;
-			}
-			float normalizedValue = (collectionDetail.getMeterValue() == earliestValue || collectionDetail.getMeterType().startsWith("WM") )?0:collectionDetail.getMeterValue()-earliestValue;
-			CollectionClassificationMapDetail ccd = new CollectionClassificationMapDetail();
-			ccd.setMeterType(collectionDetail.getMeterType());
-			ccd.setStartTime(normalizedValue);
-			ccd.setDuration(collectionDetail.getDuration());
-			normalizedDetails.add(ccd);
+            Float duration = collectionDetail.getDuration();
+            Float meterVal = collectionDetail.getMeterValue();
+            if (duration != null) {
+                if (collectionDetail.getMeterType().startsWith("WM") ||
+                        collectionDetail.getDuration() == 0 ||
+                        //check ignore array
+                        Arrays.asList(ignoreMeterTypes).contains(collectionDetail.getMeterType()) ||
+                        collectionDetail.getMeterType().equals(machine.getDoorLockMeterType())) {
+                    continue;
+                }
+            }
+            if (meterVal != null) {
+                float normalizedValue = (collectionDetail.getMeterValue() == earliestValue || collectionDetail.getMeterType().startsWith("WM")) ? 0 : collectionDetail.getMeterValue() - earliestValue;
+                CollectionClassificationMapDetail ccd = new CollectionClassificationMapDetail();
+                ccd.setMeterType(collectionDetail.getMeterType());
+                ccd.setStartTime(normalizedValue);
+                ccd.setDuration(duration!=null?duration:0);
+                normalizedDetails.add(ccd);
+            }
 			
 		}
 		if (earliestValue > 86400) {

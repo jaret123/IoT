@@ -1,30 +1,21 @@
 package com.elyxor.xeros.model;
 
 
+import javax.persistence.*;
+import javax.validation.constraints.NotNull;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "xeros_dai_meter_collection_detail")
 public class DaiMeterCollectionDetail {
 
-    private int id;    
+    private int id;
     private String meterType;
-    private float meterValue;
+    private Float meterValue;
     private Timestamp timestamp;
-    private float duration;
+    private Float duration;
     private DaiMeterCollection daiMeterCollection;
     
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
@@ -69,11 +60,11 @@ public class DaiMeterCollectionDetail {
 
 	@NotNull
 	@Column(name = "meter_value", scale=10, precision=2)	
-	public float getMeterValue() {
+	public Float getMeterValue() {
 		return meterValue;
 	}
 
-	public void setMeterValue(float meterValue) {
+	public void setMeterValue(Float meterValue) {
 		this.meterValue = meterValue;
 	}
 
@@ -89,11 +80,11 @@ public class DaiMeterCollectionDetail {
 
 
 	@Column(name = "duration", scale=10, precision=2)	
-	public float getDuration() {
+	public Float getDuration() {
 		return duration;
 	}
 
-	public void setDuration(float duration) {
+	public void setDuration(Float duration) {
 		this.duration = duration;
 	}
 

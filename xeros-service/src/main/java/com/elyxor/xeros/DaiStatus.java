@@ -23,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.File;
@@ -121,10 +120,15 @@ public class DaiStatus {
         }
         return false;
     }
+
     public File getStatusGaps(UriInfo info) {
         String startDate = info.getQueryParameters().getFirst("fromDate");
         String endDate = info.getQueryParameters().getFirst("toDate");
 
+        if (startDate == null && endDate == null) {
+            startDate = "2000-01-01";
+            endDate = "2999-12-31";
+        }
         if (endDate == null) {
             endDate = startDate;
         }
@@ -144,11 +148,24 @@ public class DaiStatus {
             Status current = statusList.get(i);
             Status prev = statusList.get(i+1);
             HSSFRow row = sheet.createRow(k);
-            Machine m = machineRepository.findById(current.getMachineId());
+            Machine m;
+            Location l;
+            Company c;
+            String location = "";
+            String company = "";
+            String machine = "";
 
-            String company = m.getLocation().getCompany().getName();
-            String location = m.getLocation().getName();
-            String machine = m.getName();
+            m = machineRepository.findById(current.getMachineId());
+            if ((m = machineRepository.findById(current.getMachineId())) != null) {
+                machine = m.getName();
+                if ((l = m.getLocation()) != null) {
+                    location = l.getName();
+                    if ((c = l.getCompany()) != null) {
+                        company = c.getName();
+                    }
+                }
+            }
+
             String disconnected = prev.getTimestamp().toString();
             String reconnected = current.getTimestamp().toString();
 
@@ -177,9 +194,7 @@ public class DaiStatus {
         return writeFile(workbook, "statusGaps.xls");
 
     }
-
     public List<Status> calculateStatusGaps(List<Machine> machineList, Timestamp start, Timestamp end){
-        List<Status> statusList = new ArrayList<Status>();
         List<Status> result = new ArrayList<Status>();
 
         long interval = 0;
@@ -194,67 +209,43 @@ public class DaiStatus {
             logger.warn(msg, e);
             return result;
         }
-
-        if (machineList.size() == 0) {
-            machineList = (ArrayList<Machine>) machineRepository.findAll();
-        }
-        for (Machine machine : machineList) {
-        EntityManagerFactory factory = null;
         Session session = null;
         Query query = null;
         ScrollableResults results = null;
-//        try {
-//            factory = (EntityManagerFactory) appConfig.entityManagerFactory(appConfig.dataSource(), appConfig.jpaVendorAdapter());
-//        } catch (Exception e) {
-//            logger.warn(e.getMessage());
-//        }
-
         if (em != null) {
              session = em.unwrap(Session.class);
         }
 
         if (session != null) {
-            query = session.createQuery("SELECT id, machineId, timestamp FROM Status WHERE machine_id = :id AND time_stamp >= :start AND time_stamp <= :end");
+            query = session.createQuery("FROM Status WHERE time_stamp >= :start AND time_stamp <= :end ORDER BY machine_id asc, time_stamp desc");
         }
         if (query != null) {
             query.setParameter("start", start);
             query.setParameter("end", end);
-            query.setParameter("id", machine.getId());
             query.setReadOnly(true);
             query.setFetchSize(2);
             results = query.scroll(ScrollMode.FORWARD_ONLY);
         }
-
-//        statusList = statusRepository.findByMachineIdAndReadingTimestampBetween(machine.getId(), start, end);
-//            for (int i = 0; i < statusList.size() - 1; i++) {
-            while (results != null && results.next()) {
-                String currentString = (String) results.get(2);
-                Timestamp current = Timestamp.valueOf(currentString);
-                Integer currentId = (Integer) results.get(0);
-                String prevString = null;
-                Integer prevId = 0;
-                if (!results.next()) {
-                    break;
-                }
-                prevString = (String) results.get(2);
-                Timestamp prev = Timestamp.valueOf(prevString);
-                prevId = (Integer) results.get(0);
-//                Status current = statusList.get(i);
-//                Status prev = statusList.get(i+1);
-                long currentLong = calculateTimestampTimeLong(current);
-                long prevLong = calculateTimestampTimeLong(prev);
-                long diff = currentLong - prevLong;
-                if (diff > interval) {
-                    result.add(statusRepository.findOne(currentId));
-                    result.add(statusRepository.findOne(prevId));
-                }
+        int i = 0;
+        while (results != null && results.next()) {
+            Status current = (Status) results.get(0);
+            if (!results.next()) {
+                break;
             }
-//            statusList.clear();
-//            statusList = null;
-//            System.gc();
+            Status prev = (Status) results.get(0);
+            long currentLong = calculateTimeLong(current);
+            long prevLong = calculateTimeLong(prev);
+            long diff = currentLong - prevLong;
+            if (diff > interval) {
+                result.add(current);
+                result.add(prev);
+            }
+            session.evict(current);
+            session.evict(prev);
         }
         return result;
     }
+
     public File getLastLog() {
         HSSFWorkbook workbook = new HSSFWorkbook();
         HSSFSheet sheet = null;
@@ -396,18 +387,28 @@ public class DaiStatus {
         else {
             if (company != null) {
                 Integer companyId = Integer.parseInt(company);
-                return getCycleReportsForCompany(from, to, exceptionId, companyId, unknownId);
+                Company co = companyRepository.findOne(companyId);
+                Iterable<Location> locations = co.getLocations();
+                List<Machine> machineList = new ArrayList<Machine>();
+                for (Location loc : locations) {
+                    machineList.addAll(loc.getMachines());
+                }
+                return createCycleReports(machineList, from, to, exceptionId, unknownId);
             }
             else if (location != null) {
                 Integer locationId = Integer.parseInt(location);
-                return getCycleReportsForLocation(from, to, exceptionId, locationId, unknownId);
+                Location loc = locationRepository.findOne(locationId);
+                Iterable<Machine> machineList = loc.getMachines();
+                return createCycleReports(machineList, from, to, exceptionId, unknownId);
             }
             else if (machine != null) {
                 Integer machineId = Integer.parseInt(machine);
-                return getCycleReportsForMachine(from, to, exceptionId, machineId, unknownId);
+                List<Machine> machineList = new ArrayList<Machine>();
+                machineList.add(machineRepository.findOne(machineId));
+                return createCycleReports(machineList, from, to, exceptionId, unknownId);
             }
             else {
-                return getCycleReports(from, to, exceptionId, unknownId);
+                return createCycleReports(machineRepository.findAll(), from, to, exceptionId, unknownId);
             }
         }
     }
@@ -417,9 +418,6 @@ public class DaiStatus {
         Sheet sheet = null;
 
         CellStyle headerStyle = getHeaderStyle(workbook);
-        CellStyle underlineStyle = getUnderlineStyle(workbook);
-        CellStyle moneyStyle = getMoneyStyle(workbook);
-        CellStyle highlightStyle = getVarianceHighlightStyle(workbook);
 
         for (Machine machine : machineList) {
             List<Cycle> cycleList = processException(startDate, endDate, machine, exceptionType, unknownId);
@@ -465,6 +463,7 @@ public class DaiStatus {
 
                     String exception = "";
                     String className = "";
+                    Integer intendedFormula = 0;
                     Classification classification;
                     DaiMeterActual actual;
 
@@ -474,6 +473,10 @@ public class DaiStatus {
                     if ((actual = cycle.getDaiMeterActual())!=null) {
                         exception = actual.getException();
                     }
+                    if (actual != null && classification != null && classification.getId() == 1) {
+                        intendedFormula = actual.getExpectedClassification();
+                    }
+
 
                     Row row = sheet.createRow(i+1);
 
@@ -487,6 +490,9 @@ public class DaiStatus {
                     row.createCell(11).setCellValue(formatDecimal(cycle.getRunTime()));
                     row.createCell(12).setCellValue(exception);
                     row.createCell(13).setCellValue(describeExceptions(exception));
+                    if (intendedFormula != 0) {
+                        row.createCell(14).setCellValue(intendedFormula);
+                    }
 
 
                     List<Cycle> ekCycles = cycleRepository.findCyclesForCycleTime(ekId, new Timestamp(startTime.getMillis()), cycle.getReadingTimestamp());
@@ -529,14 +535,9 @@ public class DaiStatus {
     }
     public File createCycleReports(Iterable<Machine> machineList, String startDate, String endDate, Integer exceptionType, Integer unknownId) {
         HSSFWorkbook workbook = new HSSFWorkbook();
-        FileOutputStream out = null;
-        File file = null;
         HSSFSheet sheet = null;
 
         CellStyle headerStyle = getHeaderStyle(workbook);
-        CellStyle underlineStyle = getUnderlineStyle(workbook);
-        CellStyle moneyStyle = getMoneyStyle(workbook);
-        CellStyle highlightStyle = getVarianceHighlightStyle(workbook);
 
         for (Machine machine : machineList) {
 
@@ -575,6 +576,7 @@ public class DaiStatus {
 
                     String exception = "";
                     String className = "";
+                    Integer intendedFormula = 0;
                     Classification classification;
                     DaiMeterActual actual;
 
@@ -583,6 +585,9 @@ public class DaiStatus {
                     }
                     if ((actual = cycle.getDaiMeterActual())!=null) {
                         exception = actual.getException();
+                    }
+                    if (actual != null && classification != null && classification.getId() == 1) {
+                        intendedFormula = actual.getExpectedClassification();
                     }
 
                     HSSFRow row = sheet.createRow(i+1);
@@ -596,6 +601,9 @@ public class DaiStatus {
                     row.createCell(11).setCellValue(formatDecimal(cycle.getRunTime()));
                     row.createCell(12).setCellValue(exception);
                     row.createCell(13).setCellValue(describeExceptions(exception));
+                    if (intendedFormula != 0) {
+                        row.createCell(14).setCellValue(intendedFormula);
+                    }
 
                     Float total = cycle.getColdWaterVolume()!=null?cycle.getColdWaterVolume():0f;
                     Float hot = cycle.getHotWaterVolume()!=null?cycle.getHotWaterVolume():0f;
@@ -690,11 +698,21 @@ public class DaiStatus {
                     DateTime startTime = readingDateTime.minusMinutes(Math.round(cycle.getRunTime()));
 
                     String readingDate = readingDateTime.toString(dateFormatter);
-                    String cycleEndTime = readingDateTime.toString(dateAndTimeFormatter);
                     String cycleStartTime = startTime.toString(timeFormatter);
 
-                    Classification classification = cycle.getClassification();
-                    String classificationName = classification!=null?classification.getName():"";
+                    Classification classification;
+                    DaiMeterActual actual;
+                    Integer intendedFormula = 0;
+                    String classificationName = "";
+
+                    if ((classification = cycle.getClassification())!=null){
+                        classificationName = classification.getName();
+                    }
+                    actual = cycle.getDaiMeterActual();
+
+                    if (actual != null && classification != null && classification.getId() == 1) {
+                        intendedFormula = actual.getExpectedClassification();
+                    }
 
                     Float total = 0f;
                     Float comparison = getComparisonValue(cycle);
@@ -721,26 +739,26 @@ public class DaiStatus {
                             double manMonthly = formatDecimal((float)(manufacturerVarianceTotal*365/12));
                             double manSavings = formatDecimal((float)(manufacturerVarianceTotal*365/12*costPerGallon));
 
-                            row.createCell(10).setCellValue(variance);
-                            row.createCell(11).setCellValue(yearlyVariance);
-                            row.createCell(12).setCellValue(monthlyVariance);
-                            row.createCell(13).setCellValue(monthlySavings);
-                            row.getCell(13).setCellStyle(moneyStyle);
+                            row.createCell(11).setCellValue(variance);
+                            row.createCell(12).setCellValue(yearlyVariance);
+                            row.createCell(13).setCellValue(monthlyVariance);
+                            row.createCell(14).setCellValue(monthlySavings);
+                            row.getCell(14).setCellStyle(moneyStyle);
 
-                            row.createCell(14).setCellValue(manVariance);
-                            row.createCell(15).setCellValue(manYearly);
-                            row.createCell(16).setCellValue(manMonthly);
-                            row.createCell(17).setCellValue(manSavings);
-                            row.getCell(17).setCellStyle(moneyStyle);
+                            row.createCell(15).setCellValue(manVariance);
+                            row.createCell(16).setCellValue(manYearly);
+                            row.createCell(17).setCellValue(manMonthly);
+                            row.createCell(18).setCellValue(manSavings);
+                            row.getCell(18).setCellStyle(moneyStyle);
                             manufacturerVarianceTotal = 0f;
                         }
                         else {
 
-                            row.createCell(7).setCellValue(variance);
-                            row.createCell(8).setCellValue(yearlyVariance);
-                            row.createCell(9).setCellValue(monthlyVariance);
-                            row.createCell(10).setCellValue(monthlySavings);
-                            row.getCell(10).setCellStyle(moneyStyle);
+                            row.createCell(8).setCellValue(variance);
+                            row.createCell(9).setCellValue(yearlyVariance);
+                            row.createCell(10).setCellValue(monthlyVariance);
+                            row.createCell(11).setCellValue(monthlySavings);
+                            row.getCell(11).setCellStyle(moneyStyle);
                         }
                         varianceTotal = 0f;
                         row = sheet.createRow(sheet.getLastRowNum()+1);
@@ -752,27 +770,28 @@ public class DaiStatus {
                     row.createCell(4).setCellValue(comparison);
 
                     if (manufacturer) {
+                        if (intendedFormula != 0) {
+                            row.createCell(10).setCellValue(intendedFormula);
+                        }
                         row.createCell(8).setCellValue(manufacturerComparison);
                     }
-
-                    if (manufacturer) {
-                        row.createCell(5).setCellValue(manufacturerComparison);
+                    else {
+                        if (intendedFormula != 0) {
+                            row.createCell(7).setCellValue(intendedFormula);
+                        }
                     }
 
                     if (machineMapping != null) {
-                        List<Cycle> ekCycles = cycleRepository.findCyclesForCycleTime(machineMapping.getEkId(), new Timestamp(startTime.getMillis()), cycle.getReadingTimestamp());
+                        List<Cycle> ekCycles = cycleRepository.findCyclesForCycleTime(ekId, new Timestamp(startTime.getMillis()), cycle.getReadingTimestamp());
                         Float coldWater = 0f;
-                        Float hotWater = 0f;
                         for (Cycle ekCycle : ekCycles) {
                             coldWater += ekCycle.getColdWaterVolume();
-                            hotWater += ekCycle.getHotWaterVolume();
                         }
                         total = coldWater;
                         row.createCell(3).setCellValue(total);
                     }
                     else {
                         Float cold = cycle.getColdWaterVolume()!=null?cycle.getColdWaterVolume():0f;
-                        Float hot = cycle.getHotWaterVolume()!=null?cycle.getHotWaterVolume():0f;
                         total = cold;
                         row.createCell(3).setCellValue(formatDecimal(total));
                     }
@@ -873,7 +892,7 @@ public class DaiStatus {
 
     private CellStyle getMoneyStyle(HSSFWorkbook workbook) {
         CellStyle style = workbook.createCellStyle();
-        style.setDataFormat((short)7);
+        style.setDataFormat((short) 7);
         return style;
     }
     private CellStyle getUnderlineStyle(HSSFWorkbook workbook) {
@@ -885,7 +904,6 @@ public class DaiStatus {
     private boolean checkDailySeperator(HSSFRow row, DateTime readingDateTime, CellStyle style) {
         boolean result = false;
         HSSFSheet sheet = row.getSheet();
-        HSSFWorkbook workbook = sheet.getWorkbook();
         int rowNum = row.getRowNum();
         HSSFRow lastRow = sheet.getRow(rowNum - 1);
 
@@ -1036,29 +1054,6 @@ public class DaiStatus {
         return buff.toString();
     }
 
-    private File getCycleReports(String startDate, String endDate, Integer exceptionType, Integer unknownId) {
-        Iterable<Machine> machineList = machineRepository.findAll();
-        return createCycleReports(machineList, startDate, endDate, exceptionType, unknownId);
-    }
-    private File getCycleReportsForMachine(String from, String to, Integer exception, Integer machine, Integer unknownId) {
-        List<Machine> machineList = new ArrayList<Machine>();
-        machineList.add(machineRepository.findOne(machine));
-        return createCycleReports(machineList, from, to, exception, unknownId);
-    }
-    private File getCycleReportsForLocation(String fromDate, String toDate, Integer exceptionId, Integer locationId, Integer unknownId) {
-        Location location = locationRepository.findOne(locationId);
-        Iterable<Machine> machineList = location.getMachines();
-        return createCycleReports(machineList, fromDate, toDate, exceptionId, unknownId);
-    }
-    private File getCycleReportsForCompany(String fromDate, String toDate, Integer exceptionId, Integer companyId, Integer unknownId) {
-        Company company = companyRepository.findOne(companyId);
-        Iterable<Location> locations =company.getLocations();
-        List<Machine> machineList = new ArrayList<Machine>();
-        for (Location location : locations) {
-            machineList.addAll(location.getMachines());
-        }
-        return createCycleReports(machineList, fromDate, toDate, exceptionId, unknownId);
-    }
 
     private List<Cycle> processException(String startDate, String endDate, Machine machine, Integer exceptionType, Integer unknownId) {
         List<Cycle> result = new ArrayList<Cycle>();
@@ -1246,6 +1241,7 @@ public class DaiStatus {
         rowHeader.createCell(11).setCellValue("Run Time");
         rowHeader.createCell(12).setCellValue("Exception Codes");
         rowHeader.createCell(13).setCellValue("Exception Description");
+        rowHeader.createCell(14).setCellValue("Intended Formula");
 
         for (Cell cell: rowHeader) {
             cell.setCellStyle(style);
@@ -1271,7 +1267,8 @@ public class DaiStatus {
         rowHeader.createCell(11).setCellValue("Run Time");
         rowHeader.createCell(12).setCellValue("Exception Codes");
         rowHeader.createCell(13).setCellValue("Exception Description");
-        rowHeader.createCell(14).setCellValue("EK Records");
+        rowHeader.createCell(14).setCellValue("Intended Formula");
+        rowHeader.createCell(15).setCellValue("EK Records");
 
         for (Cell cell: rowHeader) {
             cell.setCellStyle(style);
@@ -1282,11 +1279,6 @@ public class DaiStatus {
     }
     private void initializeStatusGapSheet(HSSFSheet sheet, CellStyle style) {
         HSSFRow header = sheet.createRow(0);
-//        CellStyle style = sheet.getWorkbook().createCellStyle();
-//        HSSFFont font = sheet.getWorkbook().createFont();
-//        font.setBoldweight(Font.BOLDWEIGHT_BOLD);
-//        style.setBorderBottom(CellStyle.BORDER_MEDIUM);
-//        style.setFont(font);
 
         header.createCell(0).setCellValue("Company Name");
         header.createCell(1).setCellValue("Location Name");
@@ -1309,10 +1301,11 @@ public class DaiStatus {
         header.createCell(4).setCellValue("Expected Water");
         header.createCell(5).setCellValue("Variance");
         header.createCell(6).setCellValue("Percentage Variance");
-        header.createCell(7).setCellValue("Daily Variance");
-        header.createCell(8).setCellValue("Yearly Variance");
-        header.createCell(9).setCellValue("Monthly Variance");
-        header.createCell(10).setCellValue("Monthly Savings Not Captured");
+        header.createCell(7).setCellValue("Intended Formula");
+        header.createCell(8).setCellValue("Daily Variance");
+        header.createCell(9).setCellValue("Yearly Variance");
+        header.createCell(10).setCellValue("Monthly Variance");
+        header.createCell(11).setCellValue("Monthly Savings Not Captured");
 
         for (Cell cell : header) {
             cell.setCellStyle(style);
@@ -1331,14 +1324,15 @@ public class DaiStatus {
         header.createCell(7).setCellValue("Percentage Variance");
         header.createCell(8).setCellValue("Manufacturer Variance");
         header.createCell(9).setCellValue("Percentage Manufacturer Variance");
-        header.createCell(10).setCellValue("Daily Variance");
-        header.createCell(11).setCellValue("Yearly Variance");
-        header.createCell(12).setCellValue("Monthly Variance");
-        header.createCell(13).setCellValue("Monthly Savings Not Captured");
-        header.createCell(14).setCellValue("Manufacturer Daily Variance");
-        header.createCell(15).setCellValue("Manufacturer Yearly Variance");
-        header.createCell(16).setCellValue("Manufacturer Monthly Variance");
-        header.createCell(17).setCellValue("Manufacturer Monthly Savings Not Captured");
+        header.createCell(10).setCellValue("Intended Formula");
+        header.createCell(11).setCellValue("Daily Variance");
+        header.createCell(12).setCellValue("Yearly Variance");
+        header.createCell(13).setCellValue("Monthly Variance");
+        header.createCell(14).setCellValue("Monthly Savings Not Captured");
+        header.createCell(15).setCellValue("Manufacturer Daily Variance");
+        header.createCell(16).setCellValue("Manufacturer Yearly Variance");
+        header.createCell(17).setCellValue("Manufacturer Monthly Variance");
+        header.createCell(18).setCellValue("Manufacturer Monthly Savings Not Captured");
 
         for (Cell cell : header) {
             cell.setCellStyle(style);
@@ -1437,13 +1431,6 @@ public class DaiStatus {
         LocalDateTime ldt = new LocalDateTime(status.getTimestamp().getTime());
         DateTime time = ldt.toDateTime(DateTimeZone.UTC);
         return time.getMillis() / 1000;
-//        return ((ChronoLocalDateTime)status.getTimestamp().toLocalDateTime()).toEpochSecond(ZoneOffset.UTC);
-    }
-    private long calculateTimestampTimeLong(Timestamp status) {
-        LocalDateTime ldt = new LocalDateTime(status.getTime());
-        DateTime time = ldt.toDateTime(DateTimeZone.UTC);
-        return time.getMillis() / 1000;
-//        return ((ChronoLocalDateTime)status.getTimestamp().toLocalDateTime()).toEpochSecond(ZoneOffset.UTC);
     }
 
     private Timestamp getTimestampForLastLogRedInterval() {
@@ -1574,9 +1561,5 @@ public class DaiStatus {
         }
         return false;
     }
-    public File getCycleReports(String date) {
-        return getCycleReports(date, date, 0, 0);
-    }
-
 }
 
