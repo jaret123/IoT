@@ -474,7 +474,8 @@ public class DaiStatus {
                         exception = actual.getException();
                     }
                     if (actual != null && classification != null && classification.getId() == 1) {
-                        intendedFormula = actual.getExpectedClassification();
+                        Integer formula = actual.getExpectedClassification();
+                        intendedFormula = formula!=null?formula:0;
                     }
 
 
@@ -587,7 +588,8 @@ public class DaiStatus {
                         exception = actual.getException();
                     }
                     if (actual != null && classification != null && classification.getId() == 1) {
-                        intendedFormula = actual.getExpectedClassification();
+                        Integer formula = actual.getExpectedClassification();
+                        intendedFormula = formula!=null?formula:0;
                     }
 
                     HSSFRow row = sheet.createRow(i+1);
@@ -711,7 +713,8 @@ public class DaiStatus {
                     actual = cycle.getDaiMeterActual();
 
                     if (actual != null && classification != null && classification.getId() == 1) {
-                        intendedFormula = actual.getExpectedClassification();
+                        Integer formula = actual.getExpectedClassification();
+                        intendedFormula = formula!=null?formula:0;
                     }
 
                     Float total = 0f;
