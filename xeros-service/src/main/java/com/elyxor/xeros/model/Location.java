@@ -25,7 +25,7 @@ public class Location {
 		this.id = id;
 	}
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", referencedColumnName = "company_id")
     public Company getCompany() {return company;}
     public void setCompany(Company company) {this.company = company;}

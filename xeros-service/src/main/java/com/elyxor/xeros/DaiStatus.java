@@ -154,8 +154,6 @@ public class DaiStatus {
             String location = "";
             String company = "";
             String machine = "";
-
-            m = machineRepository.findById(current.getMachineId());
             if ((m = machineRepository.findById(current.getMachineId())) != null) {
                 machine = m.getName();
                 if ((l = m.getLocation()) != null) {
@@ -183,6 +181,8 @@ public class DaiStatus {
             row.createCell(4).setCellValue(reconnected);
             row.createCell(5).setCellValue(diffString);
 
+            statusList.remove(i);
+            statusList.remove(i+1);
             k++;
             i++;
         }
@@ -230,6 +230,8 @@ public class DaiStatus {
         while (results != null && results.next()) {
             Status current = (Status) results.get(0);
             if (!results.next()) {
+                results.close();
+                session.flush();
                 break;
             }
             Status prev = (Status) results.get(0);

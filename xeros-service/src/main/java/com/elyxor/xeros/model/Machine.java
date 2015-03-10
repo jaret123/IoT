@@ -89,7 +89,7 @@ public class Machine {
 		this.fuel_type = fuel_type;
 	}
 
-	@ManyToOne(fetch = FetchType.EAGER)
+	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "location_id", referencedColumnName = "location_id")
 	public Location getLocation() {
 		return location;

@@ -22,5 +22,5 @@ public interface DaiMeterActualRepository extends CrudRepository<DaiMeterActual,
     public Collection<DaiMeterActual> findByMachineIdAndReadingTimestampBetween(@Param("id")Integer id, @Param("start")Timestamp start, @Param("end")Timestamp end);
 
     @Query(value = "SELECT * FROM xeros_dai_meter_actual where machine_id = :id AND reading_timestamp >= :start AND reading_timestamp <= :end AND exception IS NULL order by reading_timestamp desc ", nativeQuery = true)
-    public Collection<DaiMeterActual> findByMachineIdAndReadingTimestampBetweenAndExceptionIsNull(Integer id, Timestamp start, Timestamp end);
+    public Collection<DaiMeterActual> findByMachineIdAndReadingTimestampBetweenAndExceptionIsNull(@Param("id") Integer id, @Param("start") Timestamp start, @Param("end") Timestamp end);
 }
