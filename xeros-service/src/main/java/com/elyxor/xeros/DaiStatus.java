@@ -181,8 +181,6 @@ public class DaiStatus {
             row.createCell(4).setCellValue(reconnected);
             row.createCell(5).setCellValue(diffString);
 
-            statusList.remove(i);
-            statusList.remove(i+1);
             k++;
             i++;
         }
