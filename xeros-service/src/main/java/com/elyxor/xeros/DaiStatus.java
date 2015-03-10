@@ -492,7 +492,7 @@ public class DaiStatus {
                     row.createCell(12).setCellValue(exception);
                     row.createCell(13).setCellValue(describeExceptions(exception));
                     if (intendedFormula != 0) {
-                        row.createCell(14).setCellValue(intendedFormula);
+                        row.createCell(15).setCellValue(intendedFormula);
                     }
 
 
