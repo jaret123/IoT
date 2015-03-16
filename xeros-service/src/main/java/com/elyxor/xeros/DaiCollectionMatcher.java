@@ -158,16 +158,25 @@ public class DaiCollectionMatcher {
 
         if (collectionData.getMachine().getManufacturer().equalsIgnoreCase("xeros")) {
             XerosLocalStaticValue xlsv = xlsvRepository.findByClassification(classId);
-            coldDiff = calculatePercentageDiff(xlsv.getColdWater(), coldWater);
-            hotDiff = calculatePercentageDiff(xlsv.getHotWater(), hotWater);
-            timeDiff = calculatePercentageDiff((float) xlsv.getRunTime(), runTime);
+
+            Float cold = xlsv.getColdWater();
+            Float hot = xlsv.getHotWater();
+            Float time = (float) xlsv.getRunTime();
+
+            coldDiff = calculatePercentageDiff(cold!=null?cold:0, coldWater);
+            hotDiff = calculatePercentageDiff(hot!=null?hot:0, hotWater);
+            timeDiff = calculatePercentageDiff(time!=null?time:0, runTime);
         }
         else {
             LocalStaticValue lsv = lsvRepository.findByClassification(classId);
             if (lsv != null) {
-                coldDiff = calculatePercentageDiff(lsv.getColdWater(), coldWater);
-                hotDiff = calculatePercentageDiff(lsv.getHotWater(), hotWater);
-                timeDiff = calculatePercentageDiff((float) lsv.getRunTime(), runTime);
+                Float cold = lsv.getColdWater();
+                Float hot = lsv.getHotWater();
+                Float time = (float) lsv.getRunTime();
+
+                coldDiff = calculatePercentageDiff(cold!=null?cold:0, coldWater);
+                hotDiff = calculatePercentageDiff(hot!=null?hot:0, hotWater);
+                timeDiff = calculatePercentageDiff(time!=null?time:0, runTime);
             }
         }
         if (coldDiff > waterVariance)
