@@ -161,7 +161,8 @@ public class DaiCollectionMatcher {
 
             Float cold = xlsv.getColdWater();
             Float hot = xlsv.getHotWater();
-            Float time = (float) xlsv.getRunTime();
+            Integer timeInt = xlsv.getRunTime();
+            Float time = (float) (timeInt!=null?timeInt:0);
 
             coldDiff = calculatePercentageDiff(cold!=null?cold:0, coldWater);
             hotDiff = calculatePercentageDiff(hot!=null?hot:0, hotWater);
@@ -172,7 +173,8 @@ public class DaiCollectionMatcher {
             if (lsv != null) {
                 Float cold = lsv.getColdWater();
                 Float hot = lsv.getHotWater();
-                Float time = (float) lsv.getRunTime();
+                Integer timeInt = lsv.getRunTime();
+                Float time = (float) (timeInt!=null?timeInt:0);
 
                 coldDiff = calculatePercentageDiff(cold!=null?cold:0, coldWater);
                 hotDiff = calculatePercentageDiff(hot!=null?hot:0, hotWater);
