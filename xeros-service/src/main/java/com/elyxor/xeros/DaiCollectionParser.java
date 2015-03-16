@@ -256,7 +256,7 @@ public class DaiCollectionParser {
 				}
 				daiMeterCollectionRepo.save(dmc);
 			} catch (Exception e) {
-				logger.info("no matched collection map found", e.getMessage());
+				logger.info("no matched collection map found: ", e);
 			}			
 		}
 		return dmc;
