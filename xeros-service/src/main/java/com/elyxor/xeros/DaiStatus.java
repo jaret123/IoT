@@ -211,7 +211,7 @@ public class DaiStatus {
         Query query = null;
         ScrollableResults results = null;
         if (em != null) {
-             session = em.unwrap(Session.class);
+            session = em.unwrap(Session.class);
         }
 
         if (session != null) {
@@ -230,6 +230,7 @@ public class DaiStatus {
             if (!results.next()) {
                 results.close();
                 session.flush();
+                em.close();
                 break;
             }
             Status prev = (Status) results.get(0);

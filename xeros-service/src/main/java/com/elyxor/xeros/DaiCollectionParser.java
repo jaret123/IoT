@@ -1,14 +1,10 @@
 package com.elyxor.xeros;
 
-import java.io.File;
-import java.io.FileReader;
-import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
+import com.elyxor.xeros.model.CollectionClassificationMap;
+import com.elyxor.xeros.model.DaiMeterCollection;
+import com.elyxor.xeros.model.DaiMeterCollectionDetail;
+import com.elyxor.xeros.model.repository.DaiMeterCollectionDetailRepository;
+import com.elyxor.xeros.model.repository.DaiMeterCollectionRepository;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
@@ -22,11 +18,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.elyxor.xeros.model.CollectionClassificationMap;
-import com.elyxor.xeros.model.DaiMeterCollection;
-import com.elyxor.xeros.model.DaiMeterCollectionDetail;
-import com.elyxor.xeros.model.repository.DaiMeterCollectionDetailRepository;
-import com.elyxor.xeros.model.repository.DaiMeterCollectionRepository;
+import java.io.File;
+import java.io.FileReader;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 
 @Transactional
@@ -257,7 +256,7 @@ public class DaiCollectionParser {
 				}
 				daiMeterCollectionRepo.save(dmc);
 			} catch (Exception e) {
-				logger.info("no matched collection map found");
+				logger.info("no matched collection map found", e.getMessage());
 			}			
 		}
 		return dmc;
