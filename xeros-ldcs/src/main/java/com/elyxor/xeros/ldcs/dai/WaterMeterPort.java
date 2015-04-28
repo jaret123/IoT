@@ -1,6 +1,7 @@
 package com.elyxor.xeros.ldcs.dai;
 
 import com.elyxor.xeros.ldcs.HttpFileUploader;
+import com.elyxor.xeros.ldcs.thingworx.XerosWasherThing;
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 import jssc.SerialPort;
@@ -380,6 +381,11 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
     public boolean ping() {
 		return false;
 	}
+
+    @Override public void setXerosWasherThing(XerosWasherThing thing) {
+
+    }
+
     public String initWaterRequest() {return null;}
     public void writeWaterOnlyLog(long[] meters) {
 

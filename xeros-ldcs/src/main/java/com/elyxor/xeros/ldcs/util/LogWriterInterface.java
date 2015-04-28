@@ -8,5 +8,5 @@ public interface LogWriterInterface  {
 	public Path getPath();
 	public String getFilename();
     public File getFile();
-	public void write(String txt) throws IOException;
+	public File write(String txt) throws IOException;
 }
