@@ -1,7 +1,11 @@
 package com.elyxor.xeros.ldcs.dai;
 
 import com.elyxor.xeros.ldcs.AppConfiguration;
+import com.elyxor.xeros.ldcs.thingworx.Client;
+import com.elyxor.xeros.ldcs.thingworx.XerosWasherThing;
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
+import com.thingworx.communications.client.ClientConfigurator;
+import com.thingworx.communications.common.SecurityClaims;
 import jssc.SerialPort;
 import org.quartz.*;
 import org.slf4j.Logger;
@@ -35,6 +39,8 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 
 	PortFinderInterface _pf;
 	private int nextDaiNum = 1;
+
+    private Client _client = null;
 	
 	public void getPortFinder(PortFinderInterface pfi) {
 		if (null != pfi) {
@@ -43,6 +49,32 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			logger.info("Started watching ports for changes");
 		}
 	}
+
+    public void initThingWorxClient() {
+        ClientConfigurator config = new ClientConfigurator();
+
+        // The uri for connecting to Thingworx
+        config.setUri("wss://54.162.102.138:443/Thingworx/WS");
+
+        // Reconnect every 15 seconds if a disconnect occurs or if initial connection cannot be made
+        config.setReconnectInterval(15);
+
+        // Set the security using an Application Key
+        String appKey = "57dedf9d-2cea-4b43-b8d8-751126ba76cb";
+        SecurityClaims claims = SecurityClaims.fromAppKey(appKey);
+        config.setSecurityClaims(claims);
+
+        // Set the name of the client
+        config.setName("XerosGateway");
+        // This client is a SDK
+        config.setAsSDKType();
+
+        try {
+            _client = new Client(config);
+        } catch (Exception e) {
+            logger.warn("could not get client: ", e.getMessage());
+        }
+    }
 		
 	public boolean portAdded(String portName) {
         logger.info("Found new USB device: "+portName);
@@ -61,12 +93,12 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 				return true;
 			}
 		}
-		DaiPortInterface daiPort = new DaiPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix);
+		DaiPortInterface daiPort = new DaiPort(new SerialPort(portName), nextDaiNum, new FileLogWriter(path, daiPrefix+nextDaiNum+"Log.txt"), daiPrefix, null);
 		String daiId = null;
 		String newId = null;
 		int retryCounter = 0;
         int daiIdInt = 0;
-		
+
 		if (daiPort.openPort()) {
             while (retryCounter < 3) {
 			    daiId = daiPort.getRemoteDaiId();
@@ -77,14 +109,6 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
                         logger.warn("failed to parse integer", e.getMessage());
                     }
                     logger.info("DAI ID is: '" +daiIdInt+"'");
-//                    if (daiId.equals("0")) {
-//                        newId = daiPort.setRemoteDaiId(nextDaiNum);
-//                        if (newId != null && !newId.equals("0")) {
-//                            logger.info("Assigned DAI ID " + daiPrefix + nextDaiNum + " to port " + portName);
-//                            nextDaiNum++;
-//                            break;
-//                        }
-//                    }
                     if (daiIdInt > 0) {
                         daiPort.setDaiNum(daiIdInt);
                         logger.info("Found existing DAI with ID "+daiPrefix+daiIdInt+" on port"+portName);
@@ -105,6 +129,28 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
             }
 
             daiPort.setLogWriter(new FileLogWriter(path, daiPrefix+daiPort.getDaiNum()+"Log.txt"));
+            String daiIdentifier = daiPrefix+daiPort.getDaiNum();
+            daiPort.setLogWriter(new FileLogWriter(path, daiIdentifier+"Log.txt"));
+
+            XerosWasherThing thing = new XerosWasherThing(daiIdentifier, daiIdentifier, daiIdentifier, _client);
+
+            try {
+                _client.bindThing(thing);
+            } catch (Exception e) {
+                logger.warn("can't bind thing: ", e.getMessage());
+            }
+            daiPort.setXerosWasherThing(thing);
+
+            boolean tryOnce = true;
+            while (!_client.isConnected() || tryOnce) {
+                try {
+                    tryOnce = false;
+                    _client.start();
+                    Thread.sleep(4000);
+                } catch (Exception e) {
+                    logger.warn("could not start client: ", e.toString());
+                }
+            }
 			portList.put(portName, daiPort);
 			return true;
 		}
@@ -117,7 +163,8 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		if (daiPort != null) {
 			if (daiPort.closePort()) {
 				portList.remove(daiPort.getSerialPort().getPortName());
-				nextDaiNum = daiPort.getDaiNum(); 
+				nextDaiNum = daiPort.getDaiNum();
+                return true;
 			}
 			// port close failed
 			return false;

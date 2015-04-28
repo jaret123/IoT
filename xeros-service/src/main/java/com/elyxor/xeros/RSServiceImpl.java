@@ -8,8 +8,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.UriInfo;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +37,7 @@ public class RSServiceImpl implements RSService {
 			r.entity(parsedCollections);
 		} catch (Exception e) {
 			logger.info("Failed to save", e);
+            StackTraceElement[] elements = e.getStackTrace();
 			r = Response.serverError().entity(e.toString());
 		}
 		return r.build();
@@ -47,6 +50,7 @@ public class RSServiceImpl implements RSService {
 			CollectionClassificationMap ccm = daiCollectionMatcher.match(collectionId);
 			r.entity(ccm);
 		} catch (Exception e) {
+            StackTraceElement[] elements = e.getStackTrace();
 			r = Response.serverError().entity(e.toString());
 		}
 		return r.build();
@@ -139,32 +143,78 @@ public class RSServiceImpl implements RSService {
         try {
             List<Status> statusList = daiStatus.getStatusHistory(machineIdList);
             r.entity(statusList);
+            r.type(MediaType.APPLICATION_JSON_TYPE);
         } catch (Exception e) {
+            r = Response.serverError().entity(e.toString());
+        }
+        Response res = r.build();
+        return res;
+    }
+
+    @Override
+    public Response getStatusGaps(UriInfo info) {
+        String from = info.getQueryParameters().getFirst("fromDate");
+        String to = info.getQueryParameters().getFirst("toDate");
+
+        if (from == null && to != null) {
+            return Response.ok("Must use fromDate with toDate", MediaType.TEXT_PLAIN).build();
+        }
+        ResponseBuilder r = Response.ok();
+        try {
+            r.entity(daiStatus.getStatusGaps(info)).header("Content-Disposition", "attachment; filename=statusgaps.xls");
+        } catch (Exception e) {
+            StackTraceElement[] elements = e.getStackTrace();
             r = Response.serverError().entity(e.toString());
         }
         return r.build();
     }
 
     @Override
-    public Response getStatusGaps(List<Integer> machineIdList) {
+    public Response getSimpleCycleReport(UriInfo info) {
         ResponseBuilder r = Response.ok();
-        try {
-            List<Status> statusList = daiStatus.getStatusGaps(machineIdList);
-            r.entity(statusList);
-        } catch (Exception e) {
-            r = Response.serverError().entity(e.toString());
+        String machine = info.getQueryParameters().getFirst("machine");
+        String company = info.getQueryParameters().getFirst("company");
+        String location = info.getQueryParameters().getFirst("location");
+        String type = info.getQueryParameters().getFirst("type");
+        if (machine != null && company != null) {
+            return Response.ok("Cannot use machine and company together", MediaType.TEXT_PLAIN).build();
         }
-        return r.build();
-    }
-    @Override
-    public Response getStatusGaps() {
-        ResponseBuilder r = Response.ok();
-        try {
-            r.entity(daiStatus.getStatusGaps()).header("Content-Disposition", "attachment; filename=statusgaps.csv");
-        } catch (Exception e) {
-            r = Response.serverError().entity(e.toString());
+        else if (machine != null && location != null) {
+            return Response.ok("Cannot use machine and location together", MediaType.TEXT_PLAIN).build();
         }
-        return r.build();
+        else if (company != null && location != null) {
+            return Response.ok("Cannot use company and location together", MediaType.TEXT_PLAIN).build();
+        }
+//        else if (type != null && type.equals("compare") && (location != null || company != null)){
+//            return Response.ok("Cannot use company or location with compare reports", MediaType.TEXT_PLAIN).build();
+//        }
+//        else if (type != null && type.equals("compare") && machine == null) {
+//            return Response.ok("Must provide machine for compare report", MediaType.TEXT_PLAIN).build();
+//        }
+        else {
+            try {
+                File result = daiStatus.getCycleReports(info);
+                if (result == null) {
+                    return Response.ok("No records found for this query.", MediaType.TEXT_PLAIN).build();
+                }
+                else r = r.entity(result).header("Content-Disposition", "attachment; filename="+result.getName());
+            } catch (Exception e) {
+                StackTraceElement[] elements = e.getStackTrace();
+                r = Response.ok(e.getMessage(), MediaType.TEXT_PLAIN);
+            }
+            return r.build();
+        }
     }
 
+    @Override
+    public Response getLastLog() {
+        ResponseBuilder r = Response.ok();
+        try {
+            r.entity(daiStatus.getLastLog()).header("Content-Disposition", "attachment; filename=lastLogReport.xls");
+        } catch (Exception e) {
+            StackTraceElement[] elements = e.getStackTrace();
+            r = Response.serverError().entity(e.toString());
+        }
+        return r.build();
+    }
 }

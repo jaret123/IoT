@@ -1,6 +1,7 @@
 package com.elyxor.xeros.ldcs.dai;
 
 import com.elyxor.xeros.ldcs.HttpFileUploader;
+import com.elyxor.xeros.ldcs.thingworx.XerosWasherThing;
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 import com.elyxor.xeros.ldcs.util.SerialReader;
@@ -10,6 +11,7 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,11 +42,14 @@ public class DaiPort implements DaiPortInterface {
     boolean meterClearProcessed = false;
 
 
-    public DaiPort (SerialPort port, int num, LogWriterInterface logWriter, String prefix) {
+    private XerosWasherThing _xerosWasherThing;
+
+    public DaiPort(SerialPort port, int num, LogWriterInterface logWriter, String prefix, XerosWasherThing xerosWasherThing) {
 		this.serialPort = port;
 		this.daiNum = num;
 		this._logWriter = logWriter;
 		this.daiPrefix = prefix;
+        this._xerosWasherThing = xerosWasherThing;
 	}
 
 	public boolean openPort() {
@@ -93,7 +98,9 @@ public class DaiPort implements DaiPortInterface {
 //		}
 //		return result;
 	}
-	public String setRemoteDaiId(int id) {
+
+
+    public String setRemoteDaiId(int id) {
 		String result = "";
 		try {
 			this.serialPort.removeEventListener();
@@ -226,14 +233,10 @@ public class DaiPort implements DaiPortInterface {
                 result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
                 Thread.sleep(500);
             }
-
-            //ensure command timeout is cleared before moving on
-            Thread.sleep(4000);
             if (result!=null && result.length() > 40) break;
             result = "";
             retry++;
         }
-        logger.info("water request", "retry: " + retry + " result: " + result);
         this.serialPort.addEventListener(new SerialReader(this));
 		return result;
 	}
@@ -453,7 +456,6 @@ public class DaiPort implements DaiPortInterface {
                     break;
                 }
                 retryCounter++;
-                Thread.sleep(2000);
             }
         } catch (Exception e) {
             logger.warn("Couldn't complete config request", e);
@@ -483,12 +485,17 @@ public class DaiPort implements DaiPortInterface {
 			if (1 < bufferSplit.length) logPrefix = bufferSplit[1].trim();
 			
 			LogWriterInterface writer = new FileLogWriter(this._logWriter.getPath().getParent(), logPrefix+"-"+this._logWriter.getFilename());
-			try {
-				writer.write(this.daiPrefix + editedBuffer);
+			File file = null;
+            try {
+				file = writer.write(this.daiPrefix + editedBuffer);
 			} catch (IOException e) {
 				logger.warn("Failed to write '" + buffer + "' to log file", e);
 			}
 			logger.info("successfully sent log to filewriter");
+
+            if (file != null) {
+                this._xerosWasherThing.parseLogToThingWorx(file);
+            }
 		}
     }
 	public boolean ping() {
@@ -626,6 +633,13 @@ public class DaiPort implements DaiPortInterface {
         return activeStates;
     }
 
+    public XerosWasherThing getXerosWasherThing() {
+        return _xerosWasherThing;
+    }
+
+    public void setXerosWasherThing(XerosWasherThing _xerosWasherThing) {
+        this._xerosWasherThing = _xerosWasherThing;
+    }
     private String parseDaqId(String buffer) {
         String daqId = "-1";
         if (buffer == null || buffer.equals(""))
@@ -633,11 +647,13 @@ public class DaiPort implements DaiPortInterface {
 
         String[] lines = buffer.split("\n");
         for (String line : lines) {
-            if (line.contains("DAI")) {
+            if (line.startsWith("\rDAI") || line.startsWith("DAI")) {
                 String[] lineData = line.split(" ");
                 daqId = lineData[3];
+                break;
             }
         }
         return daqId;
     }
+
 }

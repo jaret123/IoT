@@ -48,7 +48,7 @@ public class PortFinder implements Runnable, PortFinderInterface {
             }
 		}
 	}
-	
+
 	public void setRunning(boolean running) {
 		this.portFinderRunning = running;
 	}

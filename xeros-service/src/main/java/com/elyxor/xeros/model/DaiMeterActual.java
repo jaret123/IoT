@@ -1,16 +1,7 @@
 package com.elyxor.xeros.model;
 
+import javax.persistence.*;
 import java.sql.Timestamp;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
 
 @Entity
 @Table(name = "xeros_dai_meter_actual")
@@ -26,6 +17,10 @@ public class DaiMeterActual {
 	private Float coldWater;
 	private Integer runTime;
 	private Machine machine;
+    private String exception;
+    private Integer expectedClassification;
+
+    private String olsonTimezoneId;
 	
 	
     @Id
@@ -106,8 +101,22 @@ public class DaiMeterActual {
 		this.machine = machine;
 	}
 
+    @Column(name = "exception")
+    public String getException() { return this.exception;}
+    public void setException(String exception) {this.exception = exception;}
+    @Column(name = "olson_timezone_id", length=64)
+    public String getOlsonTimezoneId() {
+        return olsonTimezoneId;
+    }
 
-	
+    public void setOlsonTimezoneId(String olsonTimezoneId) {
+        this.olsonTimezoneId = olsonTimezoneId;
+    }
+
+    @Column(name = "expected_classification")
+    public Integer getExpectedClassification() {return expectedClassification;}
+
+    public void setExpectedClassification(Integer expectedClassification) {this.expectedClassification = expectedClassification;}
 
 	
 }

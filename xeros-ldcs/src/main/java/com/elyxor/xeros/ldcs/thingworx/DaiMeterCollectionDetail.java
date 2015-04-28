@@ -1,14 +1,10 @@
-package com.elyxor.xeros.model;
+package com.elyxor.xeros.ldcs.thingworx;
 
 
-import javax.persistence.*;
-import javax.validation.constraints.NotNull;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-@Entity
-@Table(name = "xeros_dai_meter_collection_detail")
 public class DaiMeterCollectionDetail {
 
     private int id;
@@ -23,9 +19,6 @@ public class DaiMeterCollectionDetail {
     public DaiMeterCollectionDetail() {}
 
 
-    @Id
-    @Column(columnDefinition = "INT unsigned")
-    @GeneratedValue(strategy=GenerationType.AUTO)
 	public int getId() {
 		return id;
 	}
@@ -35,8 +28,6 @@ public class DaiMeterCollectionDetail {
 	}
 
 
-	@ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "collection_id", referencedColumnName = "id")
 	public DaiMeterCollection getDaiMeterCollection() {
 		return daiMeterCollection;
 	}
@@ -47,8 +38,6 @@ public class DaiMeterCollectionDetail {
 	}
 
 
-	@NotNull
-	@Column(name = "meter_type")
 	public String getMeterType() {
 		return meterType;
 	}
@@ -58,8 +47,6 @@ public class DaiMeterCollectionDetail {
 	}
 
 
-	@NotNull
-	@Column(name = "meter_value", scale=10, precision=2)	
 	public Float getMeterValue() {
 		return meterValue;
 	}
@@ -68,8 +55,6 @@ public class DaiMeterCollectionDetail {
 		this.meterValue = meterValue;
 	}
 
-	@NotNull
-	@Column(name = "timestamp")	
 	public Timestamp getTimestamp() {
 		return timestamp;
 	}
@@ -78,8 +63,6 @@ public class DaiMeterCollectionDetail {
 		this.timestamp = timestamp;
 	}
 
-
-	@Column(name = "duration", scale=10, precision=2)	
 	public Float getDuration() {
 		return duration;
 	}

@@ -1,13 +1,13 @@
 package com.elyxor.xeros.ldcs.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class FileLogWriter implements LogWriterInterface {
 	final static Logger logger = LoggerFactory.getLogger(FileLogWriter.class);
@@ -24,8 +24,9 @@ public class FileLogWriter implements LogWriterInterface {
 		return _logFile.toPath();
 	}
     public File getFile() {return _logFile;}
-	@Override
-	public void write(String txt) throws IOException {
+
+    @Override
+	public File write(String txt) throws IOException {
 		FileWriter fileWriter = null;
 		BufferedWriter out = null;
 
@@ -39,5 +40,6 @@ public class FileLogWriter implements LogWriterInterface {
 			if (null != fileWriter) { try { fileWriter.close(); } catch (Exception e2) {} }
 			logger.info("Wrote log to file " + _logFile.getName());
 		}
+        return _logFile;
 	}
 }

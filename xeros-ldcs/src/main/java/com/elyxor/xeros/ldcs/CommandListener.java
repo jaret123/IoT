@@ -1,25 +1,24 @@
 package com.elyxor.xeros.ldcs;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
-
-import org.quartz.SchedulerException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.elyxor.xeros.ldcs.dai.DaiPortInterface;
 import com.elyxor.xeros.ldcs.dai.PortFinder;
 import com.elyxor.xeros.ldcs.dai.PortManager;
 import com.elyxor.xeros.ldcs.dai.PortManagerInterface;
+import org.quartz.SchedulerException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
 
 public class CommandListener implements Runnable {
 
 	final static Logger logger = LoggerFactory.getLogger(CommandListener.class);
 
 	private PortManagerInterface _portManager = null;
-    
+
 	public static void main(String[] args) {
 		CommandListener commandListener = new CommandListener();
 		(new Thread(commandListener)).start();
@@ -30,8 +29,9 @@ public class CommandListener implements Runnable {
 			logger.warn("failed to start scheduler", e);
 		}
 		manager.getPortFinder(new PortFinder());
+        manager.initThingWorxClient();
 	}
-	
+
     public CommandListener setPortManager(PortManagerInterface portManager) {
     	_portManager = portManager;
     	return this;

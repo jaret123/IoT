@@ -1,8 +1,8 @@
 package com.elyxor.xeros.ldcs.dai;
 
+import com.elyxor.xeros.ldcs.thingworx.XerosWasherThing;
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 import jssc.SerialPort;
-import jssc.SerialPortException;
 
 public interface DaiPortInterface {
 
@@ -44,4 +44,5 @@ public interface DaiPortInterface {
 	public void writeLogFile(String s);
 	public boolean ping();
 
+    void setXerosWasherThing(XerosWasherThing thing);
 }

@@ -39,6 +39,8 @@ public class Machine {
 	private Integer useStartTime;
 	private Integer waterOnly;
 	private Integer classificationBase;
+    private String name;
+    private Float waterMeterRate;
 	
     @Id
     @Column(name = "machine_id", columnDefinition = "INT unsigned")
@@ -70,20 +72,20 @@ public class Machine {
 	}
 
 	@Column(name = "steam", scale=10)
-	public int getSteam() {
+	public Integer getSteam() {
 		return steam;
 	}
 
-	public void setSteam(int steam) {
+	public void setSteam(Integer steam) {
 		this.steam = steam;
 	}
 
 	@Column(name = "fuel_type", scale=10)
-	public int getFuel_type() {
+	public Integer getFuel_type() {
 		return fuel_type;
 	}
 
-	public void setFuel_type(int fuel_type) {
+	public void setFuel_type(Integer fuel_type) {
 		this.fuel_type = fuel_type;
 	}
 
@@ -133,14 +135,6 @@ public class Machine {
 
 	public void setSensorStartTimeVariance(Integer sensorStartTimeVariance) {
 		this.sensorStartTimeVariance = sensorStartTimeVariance;
-	}
-
-	public void setSteam(Integer steam) {
-		this.steam = steam;
-	}
-
-	public void setFuel_type(Integer fuel_type) {
-		this.fuel_type = fuel_type;
 	}
 
 	@Column(name="machine_identifier", length=255)
@@ -256,4 +250,12 @@ public class Machine {
 	public void setClassificationBase(Integer classificationBase) {
 		this.classificationBase = classificationBase;
 	}
+
+    @Column (name = "machine_name")
+    public String getName() {return this.name;}
+    public void setName(String name) {this.name = name;}
+
+    @Column (name = "water_meter_rate")
+    public Float getWaterMeterRate() {return this.waterMeterRate;}
+    public void setWaterMeterRate(Float waterMeterRate) {this.waterMeterRate = waterMeterRate;}
 }
