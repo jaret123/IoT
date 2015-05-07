@@ -41,7 +41,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	private int nextDaiNum = 1;
 
     private Client _client = null;
-	
+
 	public void getPortFinder(PortFinderInterface pfi) {
 		if (null != pfi) {
 			_pf = pfi;
@@ -74,6 +74,18 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
         } catch (Exception e) {
             logger.warn("could not get client: ", e.getMessage());
         }
+        Thread thread = new Thread() {
+            public void run() {
+                try {
+                    Thread.sleep(10000);
+                    _client.start();
+                    Thread.sleep(4000);
+                } catch (Exception e) {
+                    logger.warn("could not start client: ", e.toString());
+                }
+            }
+        };
+        thread.start();
     }
 		
 	public boolean portAdded(String portName) {
@@ -141,16 +153,6 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
             }
             daiPort.setXerosWasherThing(thing);
 
-            boolean tryOnce = true;
-            while (!_client.isConnected() || tryOnce) {
-                try {
-                    tryOnce = false;
-                    _client.start();
-                    Thread.sleep(4000);
-                } catch (Exception e) {
-                    logger.warn("could not start client: ", e.toString());
-                }
-            }
 			portList.put(portName, daiPort);
 			return true;
 		}
