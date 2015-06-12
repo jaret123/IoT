@@ -1,6 +1,7 @@
 package com.elyxor.xeros.ldcs.dai;
 
 import com.elyxor.xeros.ldcs.HttpFileUploader;
+import com.elyxor.xeros.ldcs.thingworx.XerosWasherThing;
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
 import com.elyxor.xeros.ldcs.util.LogWriterInterface;
 import com.elyxor.xeros.ldcs.util.SerialReader;
@@ -10,6 +11,7 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,11 +42,14 @@ public class DaiPort implements DaiPortInterface {
     boolean meterClearProcessed = false;
 
 
-    public DaiPort (SerialPort port, int num, LogWriterInterface logWriter, String prefix) {
+    private XerosWasherThing _xerosWasherThing;
+
+    public DaiPort(SerialPort port, int num, LogWriterInterface logWriter, String prefix, XerosWasherThing xerosWasherThing) {
 		this.serialPort = port;
 		this.daiNum = num;
 		this._logWriter = logWriter;
 		this.daiPrefix = prefix;
+        this._xerosWasherThing = xerosWasherThing;
 	}
 
 	public boolean openPort() {
@@ -74,29 +79,35 @@ public class DaiPort implements DaiPortInterface {
 		return result;
 	}
 	public String getRemoteDaiId() {
-		return parseDaqId(this.getConfig());
+        return parseDaqId(this.getConfig());
+//		String result = "";
+//		try {
+//			this.serialPort.removeEventListener();
+//			this.serialPort.writeString("0\n");
+//            Thread.sleep(50);
+//            logger.info(this.serialPort.readString());
+//            this.serialPort.writeString("19\n");
+//			Thread.sleep(1000);
+//			result = this.serialPort.readString();
+//			Thread.sleep(4000); //let the DAQ timeout to avoid setting a new id accidentally
+//			this.serialPort.addEventListener(new SerialReader(this));
+//            logger.info("read dai id: "+result);
+//		}
+//		catch (Exception e) {
+//			logger.warn("Couldn't read dai id", e);
+//		}
+//		return result;
 	}
 
-    private String parseDaqId(String buffer) {
-        String daqId = "-1";
-        if (buffer == null || buffer.equals(""))
-            return daqId;
-
-        String[] lines = buffer.split("\n");
-        for (String line : lines) {
-            if (line.startsWith("\rDAI")) {
-                String[] lineData = line.split(" ");
-                daqId = lineData[3];
-            }
-        }
-        return daqId;
-    }
 
     public String setRemoteDaiId(int id) {
 		String result = "";
 		try {
 			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0 19\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("19\n");
 			Thread.sleep(1000);
 			this.serialPort.readString(); //clear buffer, DAQ writes old daiId
             logger.info("setting new id: " + id);
@@ -115,7 +126,10 @@ public class DaiPort implements DaiPortInterface {
 		String result = "";
 		try {
 			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0 12\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("12\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
 				result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
@@ -134,7 +148,10 @@ public class DaiPort implements DaiPortInterface {
 		String result = "";
 		try {
 			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0 11\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("11\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
 				result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
@@ -152,6 +169,7 @@ public class DaiPort implements DaiPortInterface {
 	public String initWaterRequest() {
         this.setLogFilePath(Paths.get(this._logWriter.getPath().getParent().toString(), "/waterMeters"));
         this.setWaterMeterLogWriter(new FileLogWriter(this.logFilePath, daiPrefix +this.getDaiNum()+ "meterLogging.txt"));
+
         long[] meters = parsePrevMetersFromFile();
         logSent = true;
         if (Arrays.equals(meters, new long[]{0, 0})) {
@@ -162,6 +180,12 @@ public class DaiPort implements DaiPortInterface {
             } catch (Exception e) {
                 logger.warn("unable to complete water request for parsing", e);
             }
+            try {
+                Files.delete(this.getWaterMeterLogWriter().getFile().toPath());
+            } catch (Exception e) {
+                String msg = "could not delete, water meter log file not found";
+                logger.warn(msg,e);
+            }
             this.storePrevMeters(meters);
         }
         return Arrays.toString(meters);
@@ -169,25 +193,27 @@ public class DaiPort implements DaiPortInterface {
 
     private long[] parseMetersFromResponse(String response) {
         long[] result = new long[2];
-        if (response == null) return result;
+        if (response == null || response.equals("")) return result;
+        logger.info("response: " + response);
         String[] lineData = response.split("\n");
-        if (lineData.length > 5) {
-            for (String line : lineData) {
-                if (line.startsWith("WM 0")) {
-                    String[] lineSplit = line.split(",");
-                    result[0] = Long.parseLong(lineSplit[3].trim());
-                }
-                if (line.startsWith("WM 1")) {
-                    String[] lineSplit = line.split(",");
-                    result[1] = Long.parseLong(lineSplit[3].trim());
-                }
+        logger.info("lineData Length: "+lineData.length);
+        for (String line : lineData) {
+            logger.info("line" + line);
+
+            //Cold water, WM 0 for Xeros and WM 2 for Non-Xeros
+            if (line.contains("WM 0") || line.contains("WM 2")) {
+                String[] lineSplit = line.split(",");
+                logger.info("lineSplit Length:" + lineSplit.length);
+                logger.info("lineSplit[3]: " + lineSplit[3]);
+                result[0] = Long.parseLong(lineSplit[3].trim());
             }
-            return result;
-        }
-        else {
-            for (int i = 0; i < 2; i++) {
-                String[] lineSplit = lineData[i + 1].split(",");
-                result[i] = Long.parseLong(lineSplit[3].trim());
+
+            //Hot water, WM1 for Xeros and WM 3 for Non-Xeros
+            if (line.contains("WM 1") || line.contains("WM 3")) {
+                String[] lineSplit = line.split(",");
+                logger.info("lineSplit Length:" + lineSplit.length);
+                logger.info("lineSplit[3]: " + lineSplit[3]);
+                result[1] = Long.parseLong(lineSplit[3].trim());
             }
         }
         return result;
@@ -198,7 +224,10 @@ public class DaiPort implements DaiPortInterface {
         int retry = 0;
         this.serialPort.removeEventListener();
         while (retry < 3) {
-            this.serialPort.writeString("0 13\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("13\n");
             Thread.sleep(1000);
             while (this.serialPort.getInputBufferBytesCount() > 0) {
                 result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
@@ -217,7 +246,10 @@ public class DaiPort implements DaiPortInterface {
         int retry = 0;
         this.serialPort.removeEventListener();
         while (retry < 3) {
-            this.serialPort.writeString("0 11\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("11\n");
             Thread.sleep(1000);
             while (this.serialPort.getInputBufferBytesCount() > 0) {
                 result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
@@ -235,9 +267,16 @@ public class DaiPort implements DaiPortInterface {
         long[] result = null;
         long[] prevMeters = this.parsePrevMetersFromFile();
         long[] currentMeters = this.parseMetersFromResponse(buffer);
+        if (currentMeters[0] == 0 && currentMeters[1] == 0) {
+            logger.warn("no water meter readings found");
+            return result;
+        }
+        logger.info("Captured log file, meter1: "+currentMeters[0]+", meter2: "+currentMeters[1]);
 
         long meter1 = currentMeters[0] - prevMeters[0];
         long meter2 = currentMeters[1] - prevMeters[1];
+
+        logger.info("Water Diff: meter1: "+meter1+", meter2: "+meter2);
 
         if (meter1 == 0 && meter2 == 0) {
             if (!logSent) {
@@ -246,6 +285,19 @@ public class DaiPort implements DaiPortInterface {
                 result[1] = meterDiff2;
                 meterDiff1 = meterDiff2 = 0;
                 logSent = true;
+
+                currentMeters = new long[]{0, 0};
+                clearWaterMeters();
+
+                try {
+                    Files.delete(this.getWaterMeterLogWriter().getFile().toPath());
+                } catch (Exception e) {
+                    String msg = "water meter log file not found";
+                    logger.warn(msg,e);
+                }
+
+                this.storePrevMeters(currentMeters);
+
                 return result;
             }
             return result;
@@ -253,19 +305,6 @@ public class DaiPort implements DaiPortInterface {
         meterDiff1 += meter1;
         meterDiff2 += meter2;
         try {
-            String time = getSystemTime();
-            if (time.startsWith("00") && !meterClearProcessed) {
-                serialPort.writeString("0 113\n");
-                Thread.sleep(500);
-                serialPort.writeString("0 113\n");
-                Thread.sleep(500);
-                serialPort.writeString("0 113\n");
-                Thread.sleep(500);
-                meterClearProcessed = true;
-            }
-            if (time.startsWith("01")) {
-                meterClearProcessed = false;
-            }
             Files.delete(this.getWaterMeterLogWriter().getFile().toPath());
         } catch (Exception e) {
             String msg = "water meter log file not found";
@@ -274,6 +313,30 @@ public class DaiPort implements DaiPortInterface {
         logSent = false;
         this.storePrevMeters(currentMeters);
         return result;
+    }
+
+    private void clearWaterMeters() {
+        int retry = 0;
+        while (retry < 3) {
+            try {
+                this.serialPort.writeString("0\n");
+                Thread.sleep(50);
+                logger.info(this.serialPort.readString());
+                serialPort.writeString("113\n");
+                Thread.sleep(5000);
+                if (!this.serialPort.readString().contains("No Command")) {
+                    logger.info("cleared water logs");
+                    break;
+                }
+                retry++;
+            } catch (Exception e) {
+                String msg = "Failed to clear water meters";
+                logger.warn(msg, e);
+            }
+        }
+        if (retry >= 3) {
+            logger.warn("failed to clear water logs");
+        }
     }
 
     public void writeWaterOnlyLog(long[] meters) {
@@ -309,7 +372,10 @@ public class DaiPort implements DaiPortInterface {
     public String sendRequest() {
 		String result = "";	    		
 		try {
-			this.serialPort.writeString("0 999\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("999\n");
 			Thread.sleep(1000);
 			while (this.serialPort.getInputBufferBytesCount() > 0) {
 				result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
@@ -326,7 +392,10 @@ public class DaiPort implements DaiPortInterface {
         String result = "";
         try {
             this.serialPort.removeEventListener();
-            this.serialPort.writeString("0 16\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("16\n");
             String[] timeSplit = this.getSystemTime().replaceAll(" ","").split(":");
             Thread.sleep(100);
             this.serialPort.writeString(timeSplit[0] + "\n");
@@ -350,7 +419,10 @@ public class DaiPort implements DaiPortInterface {
 		String result = "";
 		try {
 			this.serialPort.removeEventListener();
-			this.serialPort.writeString("0 15\n");
+            this.serialPort.writeString("0\n");
+            Thread.sleep(50);
+            logger.info(this.serialPort.readString());
+            this.serialPort.writeString("15\n");
 			Thread.sleep(5000);
 			result = this.serialPort.readString();
 			
@@ -369,7 +441,10 @@ public class DaiPort implements DaiPortInterface {
         try {
             while (retryCounter < 3) {
                 this.serialPort.removeEventListener();
-                this.serialPort.writeString("0 10\n");
+                this.serialPort.writeString("0\n");
+                Thread.sleep(50);
+                logger.info(this.serialPort.readString());
+                this.serialPort.writeString("10\n");
                 Thread.sleep(500);
                 while (this.serialPort.getInputBufferBytesCount() > 0) {
                     result += this.serialPort.readString(this.serialPort.getInputBufferBytesCount());
@@ -410,12 +485,17 @@ public class DaiPort implements DaiPortInterface {
 			if (1 < bufferSplit.length) logPrefix = bufferSplit[1].trim();
 			
 			LogWriterInterface writer = new FileLogWriter(this._logWriter.getPath().getParent(), logPrefix+"-"+this._logWriter.getFilename());
-			try {
-				writer.write(this.daiPrefix + editedBuffer);
+			File file = null;
+            try {
+				file = writer.write(this.daiPrefix + editedBuffer);
 			} catch (IOException e) {
 				logger.warn("Failed to write '" + buffer + "' to log file", e);
 			}
 			logger.info("successfully sent log to filewriter");
+
+            if (file != null) {
+                this._xerosWasherThing.parseLogToThingWorx(file);
+            }
 		}
     }
 	public boolean ping() {
@@ -552,4 +632,28 @@ public class DaiPort implements DaiPortInterface {
         }
         return activeStates;
     }
+
+    public XerosWasherThing getXerosWasherThing() {
+        return _xerosWasherThing;
+    }
+
+    public void setXerosWasherThing(XerosWasherThing _xerosWasherThing) {
+        this._xerosWasherThing = _xerosWasherThing;
+    }
+    private String parseDaqId(String buffer) {
+        String daqId = "-1";
+        if (buffer == null || buffer.equals(""))
+            return daqId;
+
+        String[] lines = buffer.split("\n");
+        for (String line : lines) {
+            if (line.startsWith("\rDAI") || line.startsWith("DAI")) {
+                String[] lineData = line.split(" ");
+                daqId = lineData[3];
+                break;
+            }
+        }
+        return daqId;
+    }
+
 }

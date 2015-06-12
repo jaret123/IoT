@@ -1,8 +1,8 @@
 package com.elyxor.xeros.ldcs.dai;
 
-import java.util.List;
-
 import org.quartz.SchedulerException;
+
+import java.util.List;
 
 public interface PortManagerInterface {
 	public void getPortFinder(PortFinderInterface pfi);
@@ -11,4 +11,5 @@ public interface PortManagerInterface {
 	public DaiPortInterface findDaiPort(int id);
 	public void shutdownListener();
 	public void startScheduler() throws SchedulerException;
+    public void initThingWorxClient();
 }

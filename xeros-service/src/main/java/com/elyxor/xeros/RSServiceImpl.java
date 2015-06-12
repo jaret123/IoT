@@ -37,6 +37,7 @@ public class RSServiceImpl implements RSService {
 			r.entity(parsedCollections);
 		} catch (Exception e) {
 			logger.info("Failed to save", e);
+            StackTraceElement[] elements = e.getStackTrace();
 			r = Response.serverError().entity(e.toString());
 		}
 		return r.build();

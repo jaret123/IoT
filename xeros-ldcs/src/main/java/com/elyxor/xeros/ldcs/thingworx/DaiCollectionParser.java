@@ -1,0 +1,262 @@
+package com.elyxor.xeros.ldcs.thingworx;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileReader;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+public class DaiCollectionParser {
+	
+	SimpleDateFormat daiSdf = new SimpleDateFormat("HH : mm : ss");
+	SimpleDateFormat daiDurationSdf = new SimpleDateFormat("HH : mm : ss.SSS");
+
+	DateTimeFormatter startDtf = DateTimeFormat.forPattern("HH : mm : ss");
+	DateTimeFormatter durationDtf = DateTimeFormat.forPattern("HH : mm : ss.SSS");
+    DateTimeFormatter collectionDtf = DateTimeFormat.forPattern("dd-MM-yyyy HH : mm : ss");
+	
+	private static Logger logger = LoggerFactory.getLogger(DaiCollectionParser.class);
+
+	class CollectionData {
+		String[] fileHeader = null;
+		float fileWriteTime;
+		String[] elementHeaders;
+		List<Integer> sensorEventCounts;
+		List<List<String>> sensorEventData = new ArrayList<List<String>>();
+		String[] totals;
+		List<String[]> wmData = new ArrayList<String[]>();
+	}
+	
+	
+	private long getMidnightMillis(DateTimeZone tz) {
+        LocalTime time = LocalTime.MIDNIGHT;
+        DateTime today = time.toDateTimeToday(tz);
+        long result = today.getMillis();
+		return LocalTime.MIDNIGHT.toDateTimeToday(tz).getMillis();
+	}
+
+	private long getMidnightMillis() {
+		return LocalTime.MIDNIGHT.toDateTimeToday().getMillis();
+	}
+	
+	public List<DaiMeterCollection> parse(File file, Map<String, String> fileMeta) throws Exception {
+		byte[] inputData = IOUtils.toByteArray(new FileReader(file));
+		StringBuffer fString = new StringBuffer();
+		for ( byte b : inputData ){
+			if( (int)b<10 ) {
+				continue;
+			}
+			fString.append((char)b);
+		}
+
+		List<DaiMeterCollection> parsedCollections = new ArrayList<DaiMeterCollection>();
+		DaiMeterCollection dmc = null;
+		String fLines = fString.toString().replaceAll("\r", "\n");
+		String[] lines = fLines.split("\n");
+		List<String> collectionLines = new ArrayList<String>();
+		for(String line: lines) {
+			if ( dmc==null ) {
+				dmc = new DaiMeterCollection();
+				parsedCollections.add(dmc);
+				dmc.setOlsonTimezoneId(fileMeta.get("olson_timezone_id"));
+				dmc.setFileUploadTime(new Timestamp( Long.parseLong(fileMeta.get("current_system_time")) ));
+				dmc.setFileCreateTime(new Timestamp( Long.parseLong(fileMeta.get("file_create_time")) ));
+			}
+
+			if ( line.trim().startsWith("File") && collectionLines.size()>1 ) {
+				String origHeader = collectionLines.get(collectionLines.size()-1);
+                collectionLines.remove(collectionLines.size()-1);
+				createCollectionModels(dmc, collectionLines);
+				collectionLines.clear();
+				dmc = null;
+				collectionLines.add(origHeader);
+			}
+			collectionLines.add(line);
+		}
+		try {
+			dmc = createCollectionModels(dmc, collectionLines);
+		} catch (Exception ex) {
+			logger.warn("Failed to save", ex);
+		}
+		return parsedCollections;
+	}
+
+	private DaiMeterCollection createCollectionModels(DaiMeterCollection dmc, List<String> lines) {
+		CollectionData cd = new CollectionData();		 
+		boolean inEventData = false;
+		Boolean isNewFormat = null;
+		DateTimeZone tz = null;
+		
+		try {
+			tz = DateTimeZone.forID(dmc.getOlsonTimezoneId());
+		} catch (Exception ex) {
+			logger.info("Failed to get tz for {}", dmc.getOlsonTimezoneId());
+		}
+				
+		for ( String line : lines ) {
+			if (StringUtils.isBlank(line)) {
+				continue;
+			}
+			String[] lineData = line.split(",");
+			String firstEle = lineData[0].trim();
+			
+			if ( cd.fileHeader == null ) {
+				cd.fileHeader = lineData;
+				dmc.setDaiIdentifier(StringUtils.trim(cd.fileHeader[0]));
+				dmc.setMachineIdentifier(StringUtils.trim(cd.fileHeader[1]));
+			} else if ( firstEle.startsWith("File Write") && lineData.length>1 ) {
+				try {
+					DateTime collectionTime = parseTime(StringUtils.trim(lineData[1]), tz);
+					cd.fileWriteTime = collectionTime.getMillis();
+					dmc.setDaiCollectionTime( new Timestamp( collectionTime.getMillis() ) );
+				} catch (Exception ex) {
+					cd.fileWriteTime = Float.parseFloat(lineData[1].trim());
+                    long midMillis = getMidnightMillis(tz);
+                    long writeTime = (long) cd.fileWriteTime * 1000;
+                    long timeZoneOffset = tz.convertUTCToLocal(midMillis + writeTime);
+
+					dmc.setDaiCollectionTime( new Timestamp( timeZoneOffset) );
+				}
+				logger.info(String.format("storing collection data for run %1s", dmc ));
+				inEventData = true;
+			}
+			else if ( firstEle.equals("Event") ) {
+				cd.elementHeaders = new String[lineData.length];
+				for (int lcv = 0; lcv < lineData.length; lcv++ ) {
+					cd.elementHeaders[lcv] = lineData[lcv].trim();
+				}				
+			}
+			else if ( firstEle.startsWith("WM") ) {
+				if ( inEventData ) {
+					inEventData = false;
+				}
+				cd.wmData.add(lineData);
+			}
+			else if (inEventData && !firstEle.startsWith("Event") && (isNewFormat==null||isNewFormat==false||StringUtils.isEmpty(lineData[1])) ) {
+				List<String> eventData = new ArrayList<String>();
+				try {					
+					for( String eValue : lineData) {
+						eventData.add(StringUtils.trim(eValue));						
+					}
+					if ( isNewFormat==null ) {
+						isNewFormat = StringUtils.isEmpty(lineData[1]);
+					}
+					Integer eventId = Integer.parseInt(eventData.get(0));
+					logger.info("parsing event {} : {}", eventData.get(0), eventData);
+					cd.sensorEventData.add(eventData);					
+				} catch(NumberFormatException nfe) {
+					logger.info("not an event: {}", Arrays.toString(lineData));
+				}
+			} else if (!line.equals("###")){
+				List<Integer> eCounts = new ArrayList<Integer>();				 
+				for( String eCount : lineData) {
+					try {
+						eCounts.add(Integer.parseInt(StringUtils.trim(eCount)));
+					} catch(NumberFormatException nfe) {
+						logger.debug(eCount, nfe);
+					}
+				}
+				cd.sensorEventCounts = eCounts;
+			}
+		}
+		
+		List<DaiMeterCollectionDetail> collectionData = new ArrayList<DaiMeterCollectionDetail>();		
+		for( int sensorIx = 0; sensorIx < cd.sensorEventData.size(); sensorIx++ ) {
+			boolean newFormat = StringUtils.isEmpty(StringUtils.trim(cd.sensorEventData.get(sensorIx).get(1)));			
+			for( int lcv=0; lcv < cd.sensorEventCounts.size(); lcv++ ) {
+				
+				int startIx = newFormat?(lcv*3+2):(lcv*3+1);				
+				String startStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(startIx));
+				String durStr = StringUtils.trim(cd.sensorEventData.get(sensorIx).get(startIx+1));
+				DateTime startTime = null;
+				
+				float start = 0;
+				try {
+					try {
+						startTime = parseTime(startStr, tz);
+						start = startTime.getMillis() - this.getMidnightMillis(tz);
+						start = start>0?start/1000:start;
+					} catch (Exception ex) {
+						start = Float.parseFloat(startStr);
+						startTime = new DateTime().withTimeAtStartOfDay().plus((long)start*1000); 
+					}
+				} catch (Exception ex) {
+					logger.debug("Failed to parse {}", startStr);
+				}
+								
+				
+				float duration = 0;
+				try {
+					try {
+						DateTime durationTime = parseTime(durStr, tz);
+						duration = durationTime.getMillis() - this.getMidnightMillis(tz);
+						duration = duration>0?((float)duration)/1000:duration;
+					} catch (Exception ex) {
+						duration = Float.parseFloat(durStr);
+					}
+				} catch (Exception ex) {
+					logger.debug("Failed to parse {}", durStr);
+				}
+				if ( start > 0 ) {
+					logger.info("{}={} {}={}", startIx, start, startIx+1, duration);
+					DaiMeterCollectionDetail dmcd = new DaiMeterCollectionDetail();
+					dmcd.setMeterType(String.format("SENSOR_%1s", lcv+1));
+					dmcd.setMeterValue(start);
+					dmcd.setDuration(duration);
+					dmcd.setTimestamp(new Timestamp(startTime!=null?startTime.getMillis():getMidnightMillis(tz)));
+					collectionData.add(dmcd);
+				}
+			}			
+		}	
+		for(String[] wmEntry : cd.wmData) {
+			DaiMeterCollectionDetail dmcd = new DaiMeterCollectionDetail();
+			dmcd.setMeterType(wmEntry[0].trim().replaceAll(" ", "").replaceAll(":", ""));
+			dmcd.setMeterValue(Float.parseFloat(wmEntry.length>3?wmEntry[3]:wmEntry[1]));
+			dmcd.setDuration(Float.parseFloat(wmEntry[2]));
+			dmcd.setTimestamp(dmc.getDaiCollectionTime());
+			collectionData.add(dmcd);
+		}
+
+		if ( collectionData.size()>0 ) {
+			for(DaiMeterCollectionDetail dmcd : collectionData) {
+				dmcd.setDaiMeterCollection(dmc);
+			}
+			dmc.setCollectionDetails(collectionData);			
+		}
+		return dmc;
+	}
+
+    private DateTime parseTime(String ts) {
+        return this.parseTime(ts, DateTimeZone.UTC);
+    }
+
+	private DateTime parseTime(String ts, DateTimeZone tz) {
+		LocalTime fileWriteTime = null;
+        DateTime collectionTime = null;
+
+        if (ts.length() > 13) {
+            collectionTime = DateTime.parse(ts, collectionDtf);
+            return collectionTime;
+        }
+        try {
+			fileWriteTime = LocalTime.parse(ts, durationDtf);
+		} catch (IllegalArgumentException px) {
+			fileWriteTime = LocalTime.parse(ts, startDtf);
+		}
+		collectionTime = fileWriteTime.toDateTimeToday(tz);
+		return collectionTime;
+	}
+}
