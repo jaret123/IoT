@@ -1,13 +1,13 @@
 package com.elyxor.xeros.ldcs;
 
-import java.io.InputStream;
-import java.util.Properties;
-
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.MapConfiguration;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.InputStream;
+import java.util.Properties;
 
 public class AppConfiguration {
 	
@@ -53,4 +53,6 @@ public class AppConfiguration {
 	public static Integer getWaterOnly() {
 		return getConfig().getInteger("water_only", 0);
 	}
+
+    public static boolean getThingWorx() { return getConfig().getBoolean("thingworx", false);}
 }

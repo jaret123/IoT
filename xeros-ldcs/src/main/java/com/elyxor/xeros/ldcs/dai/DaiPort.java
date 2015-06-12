@@ -39,8 +39,6 @@ public class DaiPort implements DaiPortInterface {
     private long meterDiff2;
 
     private boolean logSent;
-    boolean meterClearProcessed = false;
-
 
     private XerosWasherThing _xerosWasherThing;
 
@@ -80,23 +78,6 @@ public class DaiPort implements DaiPortInterface {
 	}
 	public String getRemoteDaiId() {
         return parseDaqId(this.getConfig());
-//		String result = "";
-//		try {
-//			this.serialPort.removeEventListener();
-//			this.serialPort.writeString("0\n");
-//            Thread.sleep(50);
-//            logger.info(this.serialPort.readString());
-//            this.serialPort.writeString("19\n");
-//			Thread.sleep(1000);
-//			result = this.serialPort.readString();
-//			Thread.sleep(4000); //let the DAQ timeout to avoid setting a new id accidentally
-//			this.serialPort.addEventListener(new SerialReader(this));
-//            logger.info("read dai id: "+result);
-//		}
-//		catch (Exception e) {
-//			logger.warn("Couldn't read dai id", e);
-//		}
-//		return result;
 	}
 
 

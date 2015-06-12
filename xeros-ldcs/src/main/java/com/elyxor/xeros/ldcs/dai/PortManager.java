@@ -7,7 +7,6 @@ import com.elyxor.xeros.ldcs.util.FileLogWriter;
 import com.thingworx.communications.client.ClientConfigurator;
 import com.thingworx.communications.common.SecurityClaims;
 import jssc.SerialPort;
-import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,18 +18,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static org.quartz.CronScheduleBuilder.cronSchedule;
-import static org.quartz.DateBuilder.IntervalUnit;
-import static org.quartz.DateBuilder.futureDate;
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-
 public class PortManager implements PortManagerInterface, PortChangedListenerInterface {
 
 	final static Logger logger = LoggerFactory.getLogger(PortManager.class);
 	private String daiPrefix = AppConfiguration.getDaiName();
 	Integer waterOnly = AppConfiguration.getWaterOnly();
+    boolean isThingWorx = AppConfiguration.getThingWorx();
 	
 	private String currentDir = Paths.get("").toAbsolutePath().getParent().toString();
 	private Path path = Paths.get(currentDir, "/input");
@@ -38,6 +31,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	private static Map<String,DaiPortInterface> portList = new LinkedHashMap<String,DaiPortInterface>();
 
 	PortFinderInterface _pf;
+    JobSchedulerInterface jobScheduler;
 	private int nextDaiNum = 1;
 
     private Client _client = null;
@@ -50,42 +44,51 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		}
 	}
 
-    public void initThingWorxClient() {
-        ClientConfigurator config = new ClientConfigurator();
-
-        // The uri for connecting to Thingworx
-        config.setUri("wss://54.162.102.138:443/Thingworx/WS");
-
-        // Reconnect every 15 seconds if a disconnect occurs or if initial connection cannot be made
-        config.setReconnectInterval(15);
-
-        // Set the security using an Application Key
-        String appKey = "57dedf9d-2cea-4b43-b8d8-751126ba76cb";
-        SecurityClaims claims = SecurityClaims.fromAppKey(appKey);
-        config.setSecurityClaims(claims);
-
-        // Set the name of the client
-        config.setName("XerosGateway");
-        // This client is a SDK
-        config.setAsSDKType();
-
-        try {
-            _client = new Client(config);
-        } catch (Exception e) {
-            logger.warn("could not get client: ", e.getMessage());
+    public JobSchedulerInterface getJobScheduler() {
+        if (jobScheduler == null) {
+            jobScheduler = new JobScheduler(this, waterOnly);
         }
-        Thread thread = new Thread() {
-            public void run() {
-                try {
-                    Thread.sleep(10000);
-                    _client.start();
-                    Thread.sleep(4000);
-                } catch (Exception e) {
-                    logger.warn("could not start client: ", e.toString());
-                }
+        return jobScheduler;
+    }
+
+    public void initThingWorxClient() {
+        if (isThingWorx) {
+            ClientConfigurator config = new ClientConfigurator();
+
+            // The uri for connecting to Thingworx
+            config.setUri("wss://54.162.102.138:443/Thingworx/WS");
+
+            // Reconnect every 15 seconds if a disconnect occurs or if initial connection cannot be made
+            config.setReconnectInterval(15);
+
+            // Set the security using an Application Key
+            String appKey = "57dedf9d-2cea-4b43-b8d8-751126ba76cb";
+            SecurityClaims claims = SecurityClaims.fromAppKey(appKey);
+            config.setSecurityClaims(claims);
+
+            // Set the name of the client
+            config.setName("XerosGateway");
+            // This client is a SDK
+            config.setAsSDKType();
+
+            try {
+                _client = new Client(config);
+            } catch (Exception e) {
+                logger.warn("could not get client: ", e.getMessage());
             }
-        };
-        thread.start();
+            Thread thread = new Thread() {
+                public void run() {
+                    try {
+                        Thread.sleep(10000);
+                        _client.start();
+                        Thread.sleep(4000);
+                    } catch (Exception e) {
+                        logger.warn("could not start client: ", e.toString());
+                    }
+                }
+            };
+            thread.start();
+        }
     }
 		
 	public boolean portAdded(String portName) {
@@ -140,19 +143,19 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
                 daiPort.initWaterRequest();
             }
 
-            daiPort.setLogWriter(new FileLogWriter(path, daiPrefix+daiPort.getDaiNum()+"Log.txt"));
             String daiIdentifier = daiPrefix+daiPort.getDaiNum();
             daiPort.setLogWriter(new FileLogWriter(path, daiIdentifier+"Log.txt"));
 
-            XerosWasherThing thing = new XerosWasherThing(daiIdentifier, daiIdentifier, daiIdentifier, _client);
+            if (isThingWorx) {
+                XerosWasherThing thing = new XerosWasherThing(daiIdentifier, daiIdentifier, daiIdentifier, _client);
 
-            try {
-                _client.bindThing(thing);
-            } catch (Exception e) {
-                logger.warn("can't bind thing: ", e.getMessage());
+                try {
+                    _client.bindThing(thing);
+                } catch (Exception e) {
+                    logger.warn("can't bind thing: ", e.getMessage());
+                }
+                daiPort.setXerosWasherThing(thing);
             }
-            daiPort.setXerosWasherThing(thing);
-
 			portList.put(portName, daiPort);
 			return true;
 		}
@@ -174,8 +177,12 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		// port already removed
 		return false;
 	}
+
+    public Map<String, DaiPortInterface> getPortList() {
+        return portList;
+    }
 	
-	public List<String> getPortList()  {
+	public List<String> getPortNameList()  {
 		List<String> result = new ArrayList<String>();
 		if (!portList.isEmpty()) {
 			for (Entry<String,DaiPortInterface> entry : portList.entrySet()) {
@@ -216,195 +223,4 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			port.closePort();
 		}
 	}
-    
-	//quartz setup for scheduled tasks for water only and clock set
-	SchedulerFactory schedFact = new org.quartz.impl.StdSchedulerFactory();
-	Scheduler sched;
-    Trigger waterOnlyTrigger = newTrigger()
-            .withIdentity("waterOnlyTrigger")
-            .startAt(futureDate(3, IntervalUnit.MINUTE))
-            .withSchedule(simpleSchedule()
-                    .withIntervalInMinutes(15)
-                    .repeatForever())
-            .build();
-    Trigger waterOnlyXerosTrigger = newTrigger()
-            .withIdentity("waterOnlyXerosTrigger")
-            .startAt(futureDate(3, IntervalUnit.MINUTE))
-            .withSchedule(simpleSchedule()
-                    .withIntervalInMinutes(15)
-                    .repeatForever())
-            .build();
-	CronTrigger clockSetTrigger = newTrigger()
-			.withIdentity("clockSetTrigger")
-			.withSchedule(cronSchedule("0 0 1 ? * SUN"))
-			.build();
-	CronTrigger pingTrigger = newTrigger()
-			.withIdentity("pingTrigger")
-			.withSchedule(cronSchedule("0 0 */1 * * ?"))
-			.build();
-    Trigger waterOnlyManualTrigger = newTrigger()
-            .withIdentity("waterOnlyManualTrigger")
-            .startAt(futureDate(2, IntervalUnit.MINUTE))
-            .withSchedule(simpleSchedule()
-                    .withIntervalInMinutes(1)
-                    .repeatForever())
-            .build();
-    Trigger machineStatusTrigger = newTrigger()
-            .withIdentity("machineStatusTrigger")
-            .startAt(futureDate(5, IntervalUnit.MINUTE))
-            .withSchedule(simpleSchedule()
-                    .withIntervalInMinutes(10)
-                    .repeatForever())
-            .build();
-    Trigger machineStatusEkTrigger = newTrigger()
-            .withIdentity("machineStatusEkTrigger")
-            .startAt(futureDate(1, IntervalUnit.MINUTE))
-            .withSchedule(simpleSchedule()
-                    .withIntervalInMinutes(10)
-                    .repeatForever())
-            .build();
-
-
-
-    public void startScheduler() {
-		try {
-			sched = schedFact.getScheduler();
-//			JobDetail pingJob = newJob(PingJob.class) //always set up ping
-//					.withIdentity("pingJob")
-//					.build();
-//			sched.scheduleJob(pingJob, pingTrigger);
-//			logger.info("scheduled ping job, next fire time: "+pingTrigger.getNextFireTime().toString());
-			if (waterOnly==2) { //DAQ-less water only, no clock set necessary
-				JobDetail waterOnlyManualJob = newJob(WaterOnlyManualJob.class)
-						.withIdentity("waterOnlyManualJob")
-						.build();
-				sched.scheduleJob(waterOnlyManualJob, waterOnlyManualTrigger);
-                logger.info("scheduled DAQless water only, next fire time: "+waterOnlyManualTrigger.getNextFireTime().toString());
-
-                JobDetail machineStatusEkJob = newJob(MachineStatusEkJob.class)
-                        .withIdentity("machineStatusEkJob")
-                        .build();
-                sched.scheduleJob(machineStatusEkJob, machineStatusEkTrigger);
-                logger.info("scheduled ek machine status, next fire time: " + machineStatusEkTrigger.getNextFireTime().toString());
-
-				sched.start();
-				return;
-			}
-			//setup clock set if using a DAQ
-			JobDetail clockSetJob = newJob(ClockSetJob.class)
-					.withIdentity("clockSetJob")
-					.build();
-			sched.scheduleJob(clockSetJob, clockSetTrigger);
-			logger.info("scheduled clock set job, next fire time: "+clockSetTrigger.getNextFireTime().toString());
-
-            JobDetail machineStatusJob = newJob(MachineStatusJob.class)
-                    .withIdentity("machineStatusJob")
-                    .build();
-            sched.scheduleJob(machineStatusJob, machineStatusTrigger);
-			logger.info("schedule machine status job, next fire time: "+machineStatusTrigger.getNextFireTime().toString());
-
-			if (waterOnly==1) { //water only request if using DAQ and water only
-				JobDetail waterOnlyJob = newJob(WaterOnlyJob.class)
-						.withIdentity("waterOnlyJob")
-						.build();
-				sched.scheduleJob(waterOnlyJob, waterOnlyTrigger);
-				logger.info("scheduled water only job, next fire time: "+waterOnlyTrigger.getNextFireTime().toString());
-			}
-            if (waterOnly==3) { //water only request using the Digital side of the DAQ
-                JobDetail waterOnlyXerosJob = newJob(WaterOnlyXerosJob.class)
-                        .withIdentity("waterOnlyXerosJob")
-                        .build();
-                sched.scheduleJob(waterOnlyXerosJob, waterOnlyXerosTrigger);
-                logger.info("scheduled water only job, next fire time: "+waterOnlyXerosTrigger.getNextFireTime().toString());
-
-            }
-			sched.start();
-		} catch (Exception ex) {logger.warn("could not start scheduler",ex);}
-	}
-	
-	public static class WaterOnlyJob implements Job {
-		public WaterOnlyJob() {}
-		public void execute(JobExecutionContext context) throws JobExecutionException {
-			logger.info("Executing water only data collection");
-			String buffer = null;
-			for (DaiPortInterface daiPort : portList.values()) {
-                try {
-                    buffer = daiPort.sendWaterRequest();
-                } catch (Exception ex) {logger.warn("unable to complete water meter request", ex);}
-
-                logger.info(buffer);
-                long[] result = daiPort.calculateWaterLog(buffer);
-                if (result!=null) {
-                    daiPort.writeWaterOnlyLog(result);
-                }
-			}
-		}
-	}
-	public static class WaterOnlyManualJob implements Job {
-		public WaterOnlyManualJob() {}
-		public void execute(JobExecutionContext context) throws JobExecutionException {
-			logger.info("Executing water only data collection");
-			String buffer = null;
-			for (DaiPortInterface daiPort : portList.values()) {
-				buffer = daiPort.sendRequest();
-				if (buffer != null && !buffer.equals("")) {
-					daiPort.writeLogFile(buffer);
-				}
-			}
-		}
-	}
-	public static class ClockSetJob implements Job {
-		public ClockSetJob() {}
-		public void execute(JobExecutionContext context) throws JobExecutionException {
-			logger.info("Executing clock set data collection");
-			for (DaiPortInterface daiPort : portList.values()) {
-				daiPort.setClock();
-			}
-		}
-	}
-	public static class PingJob implements Job {
-		public PingJob() {}
-		public void execute(JobExecutionContext context) throws JobExecutionException {
-			logger.info("Executing ping");
-			for (DaiPortInterface daiPort : portList.values()) {
-				daiPort.ping();
-			}
-		}
-	}
-    public static class MachineStatusJob implements Job {
-        public MachineStatusJob() {}
-        public void execute(JobExecutionContext context) throws JobExecutionException {
-            logger.info("Executing machine status update");
-            for (DaiPortInterface daiPort : portList.values()) {
-                daiPort.sendMachineStatus();
-            }
-        }
-    }
-    public static class MachineStatusEkJob implements Job {
-        public MachineStatusEkJob() {}
-        public void execute(JobExecutionContext context) throws JobExecutionException {
-            logger.info("Executing EK machine status update");
-            for (DaiPortInterface daiPort : portList.values()) {
-                daiPort.sendMachineStatus();
-            }
-        }
-    }
-    public static class WaterOnlyXerosJob implements Job {
-        public WaterOnlyXerosJob() {}
-        public void execute(JobExecutionContext context) throws JobExecutionException {
-            logger.info("Executing water only data collection");
-            String buffer = null;
-            for (DaiPortInterface daiPort : portList.values()) {
-                try {
-                    buffer = daiPort.sendXerosWaterRequest();
-                } catch (Exception ex) {logger.warn("unable to complete water meter request", ex);}
-
-                logger.info(buffer);
-                long[] result = daiPort.calculateWaterLog(buffer);
-                if (result!=null) {
-                    daiPort.writeWaterOnlyXerosLog(result);
-                }
-            }
-        }
-    }
 }

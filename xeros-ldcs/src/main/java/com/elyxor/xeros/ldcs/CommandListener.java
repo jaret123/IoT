@@ -4,7 +4,6 @@ import com.elyxor.xeros.ldcs.dai.DaiPortInterface;
 import com.elyxor.xeros.ldcs.dai.PortFinder;
 import com.elyxor.xeros.ldcs.dai.PortManager;
 import com.elyxor.xeros.ldcs.dai.PortManagerInterface;
-import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,11 +22,7 @@ public class CommandListener implements Runnable {
 		CommandListener commandListener = new CommandListener();
 		(new Thread(commandListener)).start();
 		PortManagerInterface manager = commandListener.getPortManager();
-		try {
-			manager.startScheduler();
-		} catch (SchedulerException e) {
-			logger.warn("failed to start scheduler", e);
-		}
+        manager.getJobScheduler().start();
 		manager.getPortFinder(new PortFinder());
         manager.initThingWorxClient();
 	}
@@ -58,7 +53,7 @@ public class CommandListener implements Runnable {
 	}
 
 	public void listPorts(PrintStream out) {
-		for (String port : getPortManager().getPortList()) {
+		for (String port : getPortManager().getPortNameList()) {
 			out.println(port);
 		}    		
 	}
