@@ -491,7 +491,7 @@ public class DaiStatus {
                     row.createCell(11).setCellValue(formatDecimal(cycle.getRunTime()));
                     row.createCell(12).setCellValue(exception);
                     row.createCell(13).setCellValue(describeExceptions(exception));
-                    if (intendedFormula != 0) {
+                    if (intendedFormula != null && intendedFormula != 0) {
                         row.createCell(15).setCellValue(intendedFormula);
                     }
 
@@ -603,7 +603,7 @@ public class DaiStatus {
                     row.createCell(11).setCellValue(formatDecimal(cycle.getRunTime()));
                     row.createCell(12).setCellValue(exception);
                     row.createCell(13).setCellValue(describeExceptions(exception));
-                    if (intendedFormula != 0) {
+                    if (intendedFormula != null && intendedFormula != 0) {
                         row.createCell(14).setCellValue(intendedFormula);
                     }
 
@@ -713,8 +713,7 @@ public class DaiStatus {
                     actual = cycle.getDaiMeterActual();
 
                     if (actual != null && classification != null && classification.getId() == 1) {
-                        Integer formula = actual.getExpectedClassification();
-                        intendedFormula = formula!=null?formula:0;
+                        intendedFormula = actual.getExpectedClassification();
                     }
 
                     Float total = 0f;
@@ -773,13 +772,13 @@ public class DaiStatus {
                     row.createCell(4).setCellValue(comparison);
 
                     if (manufacturer) {
-                        if (intendedFormula != 0) {
+                        if (intendedFormula != null && intendedFormula != 0) {
                             row.createCell(10).setCellValue(intendedFormula);
                         }
                         row.createCell(8).setCellValue(manufacturerComparison);
                     }
                     else {
-                        if (intendedFormula != 0) {
+                        if (intendedFormula != null && intendedFormula != 0) {
                             row.createCell(7).setCellValue(intendedFormula);
                         }
                     }
