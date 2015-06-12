@@ -492,7 +492,7 @@ public class DaiStatus {
                     row.createCell(12).setCellValue(exception);
                     row.createCell(13).setCellValue(describeExceptions(exception));
                     if (intendedFormula != null && intendedFormula != 0) {
-                        row.createCell(15).setCellValue(intendedFormula);
+                        row.createCell(14).setCellValue(intendedFormula);
                     }
 
 
@@ -514,7 +514,7 @@ public class DaiStatus {
                         row.createCell(8).setCellValue(formatDecimal(coldWater - hotWater));
                         row.createCell(9).setCellValue(formatDecimal(hotWater));
                         row.createCell(10).setCellValue(formatDecimal(therms));
-                        row.createCell(14).setCellValue("X");
+                        row.createCell(15).setCellValue("X");
                     }
                     else {
                         Float total = cycle.getColdWaterVolume()!=null?cycle.getColdWaterVolume():0;
