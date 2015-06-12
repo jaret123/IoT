@@ -490,7 +490,7 @@ public class DaiStatus {
                     row.createCell(11).setCellValue(formatDecimal(cycle.getRunTime()));
                     row.createCell(12).setCellValue(exception);
                     row.createCell(13).setCellValue(describeExceptions(exception));
-                    if (intendedFormula != 0) {
+                    if (intendedFormula != null && intendedFormula != 0) {
                         row.createCell(14).setCellValue(intendedFormula);
                     }
 
@@ -601,7 +601,7 @@ public class DaiStatus {
                     row.createCell(11).setCellValue(formatDecimal(cycle.getRunTime()));
                     row.createCell(12).setCellValue(exception);
                     row.createCell(13).setCellValue(describeExceptions(exception));
-                    if (intendedFormula != 0) {
+                    if (intendedFormula != null && intendedFormula != 0) {
                         row.createCell(14).setCellValue(intendedFormula);
                     }
 
@@ -770,13 +770,13 @@ public class DaiStatus {
                     row.createCell(4).setCellValue(comparison);
 
                     if (manufacturer) {
-                        if (intendedFormula != 0) {
+                        if (intendedFormula != null && intendedFormula != 0) {
                             row.createCell(10).setCellValue(intendedFormula);
                         }
                         row.createCell(8).setCellValue(manufacturerComparison);
                     }
                     else {
-                        if (intendedFormula != 0) {
+                        if (intendedFormula != null && intendedFormula != 0) {
                             row.createCell(7).setCellValue(intendedFormula);
                         }
                     }
