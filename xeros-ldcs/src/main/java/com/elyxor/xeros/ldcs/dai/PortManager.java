@@ -2,11 +2,9 @@ package com.elyxor.xeros.ldcs.dai;
 
 import com.elyxor.xeros.ldcs.AppConfiguration;
 import com.elyxor.xeros.ldcs.thingworx.ThingWorxClient;
+import com.elyxor.xeros.ldcs.thingworx.XerosWasherThing;
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
-import com.thingworx.communications.client.ClientConfigurator;
-import com.thingworx.communications.common.SecurityClaims;
 import jssc.SerialPort;
-import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +44,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
     public void setThingWorxClient(ThingWorxClient thingWorxClient) {
         this._client = thingWorxClient;
     }
+
     public JobSchedulerInterface getJobScheduler() {
         if (jobScheduler == null) {
             jobScheduler = new JobScheduler(this, waterOnly);
@@ -112,14 +111,17 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
             String daiIdentifier = daiPrefix+daiPort.getDaiNum();
             daiPort.setLogWriter(new FileLogWriter(path, daiIdentifier+"Log.txt"));
 
-//            XerosWasherThing thing = new XerosWasherThing(daiIdentifier, daiIdentifier, daiIdentifier, _client);
 
-//            try {
-//                _client.bindThing(thing);
-//            } catch (Exception e) {
-//                logger.warn("can't bind thing: ", e.getMessage());
-//            }
-//            daiPort.setXerosWasherThing(thing);
+            if (_client != null) {
+                XerosWasherThing thing = new XerosWasherThing(daiIdentifier, daiIdentifier, daiIdentifier, _client);
+
+                try {
+                    _client.bindThing(thing);
+                } catch (Exception e) {
+                    logger.warn("can't bind thing: ", e.getMessage());
+                }
+                daiPort.setXerosWasherThing(thing);
+            }
 
 			portList.put(portName, daiPort);
 			return true;
@@ -146,8 +148,8 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
     public Map<String, DaiPortInterface> getPortList() {
         return portList;
     }
-	
-	public List<String> getPortNameList()  {
+
+    public List<String> getPortNameList()  {
 		List<String> result = new ArrayList<String>();
 		if (!portList.isEmpty()) {
 			for (Entry<String,DaiPortInterface> entry : portList.entrySet()) {

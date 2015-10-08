@@ -9,7 +9,6 @@ import com.elyxor.xeros.ldcs.reliagate.ReliagatePortManagerInterface;
 import com.elyxor.xeros.ldcs.thingworx.ThingWorxClient;
 import com.thingworx.communications.client.ClientConfigurator;
 import com.thingworx.communications.common.SecurityClaims;
-import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +41,6 @@ public class CommandListener implements Runnable {
             pm.init();
         } else {
             PortManagerInterface manager = commandListener.getPortManager();
-            manager.startScheduler();
             if (thingworx) {
                 manager.setThingWorxClient(commandListener.initThingWorxClient());
             }
@@ -52,7 +50,6 @@ public class CommandListener implements Runnable {
 	}
 
     public ThingWorxClient initThingWorxClient() {
-        ThingWorxClient result = null;
         ClientConfigurator config = new ClientConfigurator();
 
         // The uri for connecting to Thingworx
