@@ -166,7 +166,7 @@ public class DaiCollectionParser {
 					try {
 						eCounts.add(Integer.parseInt(StringUtils.trim(eCount)));
 					} catch(NumberFormatException nfe) {
-						logger.debug(eCount, nfe);
+						logger.warn(eCount, nfe);
 					}
 				}
 				cd.sensorEventCounts = eCounts;
@@ -194,7 +194,7 @@ public class DaiCollectionParser {
 						startTime = new DateTime().withTimeAtStartOfDay().plus((long)start*1000); 
 					}
 				} catch (Exception ex) {
-					logger.debug("Failed to parse {}", startStr);
+					logger.warn("Failed to parse {}", startStr);
 				}
 								
 				
@@ -208,10 +208,10 @@ public class DaiCollectionParser {
 						duration = Float.parseFloat(durStr);
 					}
 				} catch (Exception ex) {
-					logger.debug("Failed to parse {}", durStr);
+					logger.warn("Failed to parse {}", durStr);
 				}
 				if ( start > 0 ) {
-					logger.info("{}={} {}={}", startIx, start, startIx+1, duration);
+					logger.info(startIx+"="+start+" " + startIx+1 + "=" + duration);
 					DaiMeterCollectionDetail dmcd = new DaiMeterCollectionDetail();
 					dmcd.setMeterType(String.format("SENSOR_%1s", lcv+1));
 					dmcd.setMeterValue(start);

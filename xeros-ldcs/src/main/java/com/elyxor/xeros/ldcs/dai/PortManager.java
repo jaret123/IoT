@@ -1,11 +1,8 @@
 package com.elyxor.xeros.ldcs.dai;
 
 import com.elyxor.xeros.ldcs.AppConfiguration;
-import com.elyxor.xeros.ldcs.thingworx.Client;
-import com.elyxor.xeros.ldcs.thingworx.XerosWasherThing;
+import com.elyxor.xeros.ldcs.thingworx.ThingWorxClient;
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
-import com.thingworx.communications.client.ClientConfigurator;
-import com.thingworx.communications.common.SecurityClaims;
 import jssc.SerialPort;
 import org.quartz.*;
 import org.slf4j.Logger;
@@ -40,7 +37,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	PortFinderInterface _pf;
 	private int nextDaiNum = 1;
 
-    private Client _client = null;
+    private ThingWorxClient _client = null;
 
 	public void getPortFinder(PortFinderInterface pfi) {
 		if (null != pfi) {
@@ -50,42 +47,8 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		}
 	}
 
-    public void initThingWorxClient() {
-        ClientConfigurator config = new ClientConfigurator();
-
-        // The uri for connecting to Thingworx
-        config.setUri("wss://54.162.102.138:443/Thingworx/WS");
-
-        // Reconnect every 15 seconds if a disconnect occurs or if initial connection cannot be made
-        config.setReconnectInterval(15);
-
-        // Set the security using an Application Key
-        String appKey = "57dedf9d-2cea-4b43-b8d8-751126ba76cb";
-        SecurityClaims claims = SecurityClaims.fromAppKey(appKey);
-        config.setSecurityClaims(claims);
-
-        // Set the name of the client
-        config.setName("XerosGateway");
-        // This client is a SDK
-        config.setAsSDKType();
-
-        try {
-            _client = new Client(config);
-        } catch (Exception e) {
-            logger.warn("could not get client: ", e.getMessage());
-        }
-        Thread thread = new Thread() {
-            public void run() {
-                try {
-                    Thread.sleep(10000);
-                    _client.start();
-                    Thread.sleep(4000);
-                } catch (Exception e) {
-                    logger.warn("could not start client: ", e.toString());
-                }
-            }
-        };
-        thread.start();
+    public void setThingWorxClient(ThingWorxClient thingWorxClient) {
+        this._client = thingWorxClient;
     }
 		
 	public boolean portAdded(String portName) {
@@ -139,19 +102,23 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
                 logger.info("init request");
                 daiPort.initWaterRequest();
             }
+            if (waterOnly == 3) {
+                logger.info("init xeros request");
+                daiPort.initXerosWaterRequest();
+            }
 
             daiPort.setLogWriter(new FileLogWriter(path, daiPrefix+daiPort.getDaiNum()+"Log.txt"));
             String daiIdentifier = daiPrefix+daiPort.getDaiNum();
             daiPort.setLogWriter(new FileLogWriter(path, daiIdentifier+"Log.txt"));
 
-            XerosWasherThing thing = new XerosWasherThing(daiIdentifier, daiIdentifier, daiIdentifier, _client);
+//            XerosWasherThing thing = new XerosWasherThing(daiIdentifier, daiIdentifier, daiIdentifier, _client);
 
-            try {
-                _client.bindThing(thing);
-            } catch (Exception e) {
-                logger.warn("can't bind thing: ", e.getMessage());
-            }
-            daiPort.setXerosWasherThing(thing);
+//            try {
+//                _client.bindThing(thing);
+//            } catch (Exception e) {
+//                logger.warn("can't bind thing: ", e.getMessage());
+//            }
+//            daiPort.setXerosWasherThing(thing);
 
 			portList.put(portName, daiPort);
 			return true;
@@ -229,7 +196,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
             .build();
     Trigger waterOnlyXerosTrigger = newTrigger()
             .withIdentity("waterOnlyXerosTrigger")
-            .startAt(futureDate(3, IntervalUnit.MINUTE))
+            .startAt(futureDate(4, IntervalUnit.MINUTE))
             .withSchedule(simpleSchedule()
                     .withIntervalInMinutes(15)
                     .repeatForever())
@@ -303,7 +270,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
             sched.scheduleJob(machineStatusJob, machineStatusTrigger);
 			logger.info("schedule machine status job, next fire time: "+machineStatusTrigger.getNextFireTime().toString());
 
-			if (waterOnly==1) { //water only request if using DAQ and water only
+			if (waterOnly==1 || waterOnly==3) { //water only request if using DAQ and water only
 				JobDetail waterOnlyJob = newJob(WaterOnlyJob.class)
 						.withIdentity("waterOnlyJob")
 						.build();
@@ -315,7 +282,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
                         .withIdentity("waterOnlyXerosJob")
                         .build();
                 sched.scheduleJob(waterOnlyXerosJob, waterOnlyXerosTrigger);
-                logger.info("scheduled water only job, next fire time: "+waterOnlyXerosTrigger.getNextFireTime().toString());
+                logger.info("scheduled water only Xeros job, next fire time: "+waterOnlyXerosTrigger.getNextFireTime().toString());
 
             }
 			sched.start();
@@ -400,7 +367,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
                 } catch (Exception ex) {logger.warn("unable to complete water meter request", ex);}
 
                 logger.info(buffer);
-                long[] result = daiPort.calculateWaterLog(buffer);
+                long[] result = daiPort.calculateXerosWaterLog(buffer);
                 if (result!=null) {
                     daiPort.writeWaterOnlyXerosLog(result);
                 }

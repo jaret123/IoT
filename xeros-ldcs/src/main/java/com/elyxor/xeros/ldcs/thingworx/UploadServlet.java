@@ -28,7 +28,7 @@ import java.util.Map;
 public class UploadServlet extends HttpServlet {
 	private static final long serialVersionUID = -7167306752229009722L;
 	
-	private static final Logger logger = LoggerFactory.getLogger(UploadServlet.class);	
+	private static final Logger logger = LoggerFactory.getLogger(UploadServlet.class);
 	private FileItemFactory factory;
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd.HHmmss");
 	private static final int MAX_FILE_SIZE = 30000;

@@ -82,12 +82,12 @@ public class FileWatcher {
 		
 		public void scanFiles() {		
 			if (watchDir.toFile().isDirectory()) {
-				logger.debug("scanning for files in " + watchDir.toString());
+				logger.info("scanning for files in " + watchDir.toString());
 				File pathFile = watchDir.toFile();
 				synchronized(fileLockToken) {
 					File[] files = pathFile.listFiles(fileFilter);				
 					for (File f : files) {
-						logger.debug(String.format("%1s", f.getAbsolutePath()));
+						logger.info(String.format("%1s", f.getAbsolutePath()));
 						Path child = watchDir.resolve(f.getAbsolutePath());
 						new Thread(new FileAcquirer(child)).start();
 					}
@@ -160,19 +160,19 @@ public class FileWatcher {
     			    	hasExclusive = true;
     			    }    			    
     			    catch (OverlappingFileLockException e) {
-    			    	logger.debug("waiting for release of " + file.getName());
+    			    	logger.info("waiting for release of " + file.getName());
     			    	channel.close();
 						Thread.sleep(10000);
     			    }
     			    catch (Exception e) {
-    			    	logger.debug("waiting... " + file.getName());
+    			    	logger.info("waiting... " + file.getName());
     			    }
     		    }
     		    lock.release();
     		    logger.info("locked");
     		    return true;
     		} catch (Exception ex) {
-    			logger.info("no lock", ex);
+    			logger.warn("no lock", ex);
     		}
     		finally {
     			if ( channel!=null ) {

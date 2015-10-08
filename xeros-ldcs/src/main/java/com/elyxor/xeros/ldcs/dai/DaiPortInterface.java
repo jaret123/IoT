@@ -45,4 +45,7 @@ public interface DaiPortInterface {
 	public boolean ping();
 
     void setXerosWasherThing(XerosWasherThing thing);
+
+    String initXerosWaterRequest();
+    long[] calculateXerosWaterLog(String buffer);
 }

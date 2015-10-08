@@ -432,6 +432,14 @@ public class WaterMeterPort implements DaiPortInterface, WaterMeterPortInterface
 
     }
 
+    @Override public String initXerosWaterRequest() {
+        return null;
+    }
+
+    @Override public long[] calculateXerosWaterLog(String buffer) {
+        return new long[0];
+    }
+
     public String initWaterRequest() {return null;}
     public void writeWaterOnlyLog(long[] meters) {
 

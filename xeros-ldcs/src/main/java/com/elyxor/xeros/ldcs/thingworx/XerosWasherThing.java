@@ -198,9 +198,9 @@ public class XerosWasherThing extends VirtualThing implements Runnable {
             double coldWater = 0;
             double hotWater = 0;
             for (DaiMeterCollectionDetail detail : collection.getCollectionDetails()) {
-                if (detail.getMeterType().equals("WM0")) {
+                if (detail.getMeterType().equals("WM0") || detail.getMeterType().equals("WM2")) {
                     coldWater = detail.getDuration();
-                } else if (detail.getMeterType().equals("WM1")) {
+                } else if (detail.getMeterType().equals("WM1") || detail.getMeterType().equals("WM3")) {
                     hotWater = detail.getDuration();
                 }
             }
