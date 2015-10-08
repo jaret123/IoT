@@ -3,6 +3,8 @@ package com.elyxor.xeros.ldcs.dai;
 import com.elyxor.xeros.ldcs.AppConfiguration;
 import com.elyxor.xeros.ldcs.thingworx.ThingWorxClient;
 import com.elyxor.xeros.ldcs.util.FileLogWriter;
+import com.thingworx.communications.client.ClientConfigurator;
+import com.thingworx.communications.common.SecurityClaims;
 import jssc.SerialPort;
 import org.quartz.*;
 import org.slf4j.Logger;
@@ -16,13 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static org.quartz.CronScheduleBuilder.cronSchedule;
-import static org.quartz.DateBuilder.IntervalUnit;
-import static org.quartz.DateBuilder.futureDate;
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-
 public class PortManager implements PortManagerInterface, PortChangedListenerInterface {
 
 	final static Logger logger = LoggerFactory.getLogger(PortManager.class);
@@ -35,6 +30,7 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 	private static Map<String,DaiPortInterface> portList = new LinkedHashMap<String,DaiPortInterface>();
 
 	PortFinderInterface _pf;
+    JobSchedulerInterface jobScheduler;
 	private int nextDaiNum = 1;
 
     private ThingWorxClient _client = null;
@@ -49,6 +45,12 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 
     public void setThingWorxClient(ThingWorxClient thingWorxClient) {
         this._client = thingWorxClient;
+    }
+    public JobSchedulerInterface getJobScheduler() {
+        if (jobScheduler == null) {
+            jobScheduler = new JobScheduler(this, waterOnly);
+        }
+        return jobScheduler;
     }
 		
 	public boolean portAdded(String portName) {
@@ -107,7 +109,6 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
                 daiPort.initXerosWaterRequest();
             }
 
-            daiPort.setLogWriter(new FileLogWriter(path, daiPrefix+daiPort.getDaiNum()+"Log.txt"));
             String daiIdentifier = daiPrefix+daiPort.getDaiNum();
             daiPort.setLogWriter(new FileLogWriter(path, daiIdentifier+"Log.txt"));
 
@@ -141,8 +142,12 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 		// port already removed
 		return false;
 	}
+
+    public Map<String, DaiPortInterface> getPortList() {
+        return portList;
+    }
 	
-	public List<String> getPortList()  {
+	public List<String> getPortNameList()  {
 		List<String> result = new ArrayList<String>();
 		if (!portList.isEmpty()) {
 			for (Entry<String,DaiPortInterface> entry : portList.entrySet()) {
@@ -183,195 +188,4 @@ public class PortManager implements PortManagerInterface, PortChangedListenerInt
 			port.closePort();
 		}
 	}
-    
-	//quartz setup for scheduled tasks for water only and clock set
-	SchedulerFactory schedFact = new org.quartz.impl.StdSchedulerFactory();
-	Scheduler sched;
-    Trigger waterOnlyTrigger = newTrigger()
-            .withIdentity("waterOnlyTrigger")
-            .startAt(futureDate(3, IntervalUnit.MINUTE))
-            .withSchedule(simpleSchedule()
-                    .withIntervalInMinutes(15)
-                    .repeatForever())
-            .build();
-    Trigger waterOnlyXerosTrigger = newTrigger()
-            .withIdentity("waterOnlyXerosTrigger")
-            .startAt(futureDate(4, IntervalUnit.MINUTE))
-            .withSchedule(simpleSchedule()
-                    .withIntervalInMinutes(15)
-                    .repeatForever())
-            .build();
-	CronTrigger clockSetTrigger = newTrigger()
-			.withIdentity("clockSetTrigger")
-			.withSchedule(cronSchedule("0 0 1 ? * SUN"))
-			.build();
-	CronTrigger pingTrigger = newTrigger()
-			.withIdentity("pingTrigger")
-			.withSchedule(cronSchedule("0 0 */1 * * ?"))
-			.build();
-    Trigger waterOnlyManualTrigger = newTrigger()
-            .withIdentity("waterOnlyManualTrigger")
-            .startAt(futureDate(2, IntervalUnit.MINUTE))
-            .withSchedule(simpleSchedule()
-                    .withIntervalInMinutes(1)
-                    .repeatForever())
-            .build();
-    Trigger machineStatusTrigger = newTrigger()
-            .withIdentity("machineStatusTrigger")
-            .startAt(futureDate(5, IntervalUnit.MINUTE))
-            .withSchedule(simpleSchedule()
-                    .withIntervalInMinutes(10)
-                    .repeatForever())
-            .build();
-    Trigger machineStatusEkTrigger = newTrigger()
-            .withIdentity("machineStatusEkTrigger")
-            .startAt(futureDate(1, IntervalUnit.MINUTE))
-            .withSchedule(simpleSchedule()
-                    .withIntervalInMinutes(10)
-                    .repeatForever())
-            .build();
-
-
-
-    public void startScheduler() {
-		try {
-			sched = schedFact.getScheduler();
-//			JobDetail pingJob = newJob(PingJob.class) //always set up ping
-//					.withIdentity("pingJob")
-//					.build();
-//			sched.scheduleJob(pingJob, pingTrigger);
-//			logger.info("scheduled ping job, next fire time: "+pingTrigger.getNextFireTime().toString());
-			if (waterOnly==2) { //DAQ-less water only, no clock set necessary
-				JobDetail waterOnlyManualJob = newJob(WaterOnlyManualJob.class)
-						.withIdentity("waterOnlyManualJob")
-						.build();
-				sched.scheduleJob(waterOnlyManualJob, waterOnlyManualTrigger);
-                logger.info("scheduled DAQless water only, next fire time: "+waterOnlyManualTrigger.getNextFireTime().toString());
-
-                JobDetail machineStatusEkJob = newJob(MachineStatusEkJob.class)
-                        .withIdentity("machineStatusEkJob")
-                        .build();
-                sched.scheduleJob(machineStatusEkJob, machineStatusEkTrigger);
-                logger.info("scheduled ek machine status, next fire time: " + machineStatusEkTrigger.getNextFireTime().toString());
-
-				sched.start();
-				return;
-			}
-			//setup clock set if using a DAQ
-			JobDetail clockSetJob = newJob(ClockSetJob.class)
-					.withIdentity("clockSetJob")
-					.build();
-			sched.scheduleJob(clockSetJob, clockSetTrigger);
-			logger.info("scheduled clock set job, next fire time: "+clockSetTrigger.getNextFireTime().toString());
-
-            JobDetail machineStatusJob = newJob(MachineStatusJob.class)
-                    .withIdentity("machineStatusJob")
-                    .build();
-            sched.scheduleJob(machineStatusJob, machineStatusTrigger);
-			logger.info("schedule machine status job, next fire time: "+machineStatusTrigger.getNextFireTime().toString());
-
-			if (waterOnly==1 || waterOnly==3) { //water only request if using DAQ and water only
-				JobDetail waterOnlyJob = newJob(WaterOnlyJob.class)
-						.withIdentity("waterOnlyJob")
-						.build();
-				sched.scheduleJob(waterOnlyJob, waterOnlyTrigger);
-				logger.info("scheduled water only job, next fire time: "+waterOnlyTrigger.getNextFireTime().toString());
-			}
-            if (waterOnly==3) { //water only request using the Digital side of the DAQ
-                JobDetail waterOnlyXerosJob = newJob(WaterOnlyXerosJob.class)
-                        .withIdentity("waterOnlyXerosJob")
-                        .build();
-                sched.scheduleJob(waterOnlyXerosJob, waterOnlyXerosTrigger);
-                logger.info("scheduled water only Xeros job, next fire time: "+waterOnlyXerosTrigger.getNextFireTime().toString());
-
-            }
-			sched.start();
-		} catch (Exception ex) {logger.warn("could not start scheduler",ex);}
-	}
-	
-	public static class WaterOnlyJob implements Job {
-		public WaterOnlyJob() {}
-		public void execute(JobExecutionContext context) throws JobExecutionException {
-			logger.info("Executing water only data collection");
-			String buffer = null;
-			for (DaiPortInterface daiPort : portList.values()) {
-                try {
-                    buffer = daiPort.sendWaterRequest();
-                } catch (Exception ex) {logger.warn("unable to complete water meter request", ex);}
-
-                logger.info(buffer);
-                long[] result = daiPort.calculateWaterLog(buffer);
-                if (result!=null) {
-                    daiPort.writeWaterOnlyLog(result);
-                }
-			}
-		}
-	}
-	public static class WaterOnlyManualJob implements Job {
-		public WaterOnlyManualJob() {}
-		public void execute(JobExecutionContext context) throws JobExecutionException {
-			logger.info("Executing water only data collection");
-			String buffer = null;
-			for (DaiPortInterface daiPort : portList.values()) {
-				buffer = daiPort.sendRequest();
-				if (buffer != null && !buffer.equals("")) {
-					daiPort.writeLogFile(buffer);
-				}
-			}
-		}
-	}
-	public static class ClockSetJob implements Job {
-		public ClockSetJob() {}
-		public void execute(JobExecutionContext context) throws JobExecutionException {
-			logger.info("Executing clock set data collection");
-			for (DaiPortInterface daiPort : portList.values()) {
-				daiPort.setClock();
-			}
-		}
-	}
-	public static class PingJob implements Job {
-		public PingJob() {}
-		public void execute(JobExecutionContext context) throws JobExecutionException {
-			logger.info("Executing ping");
-			for (DaiPortInterface daiPort : portList.values()) {
-				daiPort.ping();
-			}
-		}
-	}
-    public static class MachineStatusJob implements Job {
-        public MachineStatusJob() {}
-        public void execute(JobExecutionContext context) throws JobExecutionException {
-            logger.info("Executing machine status update");
-            for (DaiPortInterface daiPort : portList.values()) {
-                daiPort.sendMachineStatus();
-            }
-        }
-    }
-    public static class MachineStatusEkJob implements Job {
-        public MachineStatusEkJob() {}
-        public void execute(JobExecutionContext context) throws JobExecutionException {
-            logger.info("Executing EK machine status update");
-            for (DaiPortInterface daiPort : portList.values()) {
-                daiPort.sendMachineStatus();
-            }
-        }
-    }
-    public static class WaterOnlyXerosJob implements Job {
-        public WaterOnlyXerosJob() {}
-        public void execute(JobExecutionContext context) throws JobExecutionException {
-            logger.info("Executing water only data collection");
-            String buffer = null;
-            for (DaiPortInterface daiPort : portList.values()) {
-                try {
-                    buffer = daiPort.sendXerosWaterRequest();
-                } catch (Exception ex) {logger.warn("unable to complete water meter request", ex);}
-
-                logger.info(buffer);
-                long[] result = daiPort.calculateXerosWaterLog(buffer);
-                if (result!=null) {
-                    daiPort.writeWaterOnlyXerosLog(result);
-                }
-            }
-        }
-    }
 }

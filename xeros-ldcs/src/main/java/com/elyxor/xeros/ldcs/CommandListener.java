@@ -42,14 +42,11 @@ public class CommandListener implements Runnable {
             pm.init();
         } else {
             PortManagerInterface manager = commandListener.getPortManager();
-            try {
-                manager.startScheduler();
-            } catch (SchedulerException e) {
-                logger.warn("failed to start scheduler", e);
-            }
+            manager.startScheduler();
             if (thingworx) {
                 manager.setThingWorxClient(commandListener.initThingWorxClient());
             }
+            manager.getJobScheduler().start();
             manager.getPortFinder(new PortFinder());
         }
 	}
@@ -110,7 +107,7 @@ public class CommandListener implements Runnable {
 	}
 
 	public void listPorts(PrintStream out) {
-		for (String port : getPortManager().getPortList()) {
+		for (String port : getPortManager().getPortNameList()) {
 			out.println(port);
 		}    		
 	}

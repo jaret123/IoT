@@ -224,7 +224,7 @@ public class DaiStatus {
             query.setFetchSize(2);
             results = query.scroll(ScrollMode.FORWARD_ONLY);
         }
-        int i = 0;
+
         while (results != null && results.next()) {
             Status current = (Status) results.get(0);
             if (!results.next()) {
@@ -262,9 +262,55 @@ public class DaiStatus {
 
         for (Machine machine : machineRepository.findAll()) {
             Integer machineId = machine.getId();
-            Cycle cycle = cycleRepository.findLastCycleByMachine(machineId);
-            Status status = statusRepository.findByMachineId(machineId);
+
+            Session cycleSession = null;
+            Query cycleQuery = null;
+            ScrollableResults cycleResults = null;
+            if (em != null) {
+                cycleSession = em.unwrap(Session.class);
+            }
+
+            if (cycleSession != null) {
+                cycleQuery = cycleSession.createQuery("FROM Cycle where machine_id = :machineId order by reading_timestamp desc");
+            }
+            if (cycleQuery != null) {
+                cycleQuery.setParameter("machineId", machineId);
+                cycleQuery.setReadOnly(true);
+                cycleQuery.setMaxResults(1);
+                cycleResults = cycleQuery.scroll(ScrollMode.FORWARD_ONLY);
+            }
+
+            Cycle cycle = null;
+            if (cycleResults != null && cycleResults.next()) {
+                cycle = (Cycle) cycleResults.get(0);
+            }
+
+//            Cycle cycle = cycleRepository.findLastCycleByMachine(machineId);
+
             if (cycle != null) {
+
+                Session session = null;
+                Query query = null;
+                ScrollableResults results = null;
+                if (em != null) {
+                    session = em.unwrap(Session.class);
+                }
+
+                if (session != null) {
+                    query = session.createQuery("FROM Status WHERE machine_id = :machineId ORDER BY status_id desc");
+                }
+                if (query != null) {
+                    query.setParameter("machineId", machineId);
+                    query.setReadOnly(true);
+                    query.setMaxResults(1);
+                    results = query.scroll(ScrollMode.FORWARD_ONLY);
+                }
+
+                Status status = null;
+                if (results != null && results.next()) {
+                    status = (Status) results.get(0);
+                }
+
                 if (sheet == null) {
                     sheet = workbook.createSheet(getCurrentDateAndTime());
                     initializeLogSheet(sheet, headerStyle);
@@ -295,11 +341,22 @@ public class DaiStatus {
                         row.getCell(4).setCellStyle(yellowStyle);
                     }
                 }
+                if (session != null && results != null && status != null) {
+                    session.evict(status);
+                    results.close();
+                    session.flush();
+                }
+                if (cycleSession != null && cycleResults != null && cycle != null) {
+                    cycleSession.evict(cycle);
+                    cycleResults.close();
+                    cycleSession.flush();
+                }
                 i++;
             }
         }
+        em.close();
         if (sheet != null) {
-            for (int j=0; j<sheet.getRow(0).getLastCellNum(); j++) {
+            for (int j=0; j<sheet.getRow(0).getPhysicalNumberOfCells(); j++) {
                 sheet.autoSizeColumn(j);
             }
         }

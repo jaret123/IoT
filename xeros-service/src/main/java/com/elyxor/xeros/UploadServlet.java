@@ -1,20 +1,5 @@
 package com.elyxor.xeros;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileItemFactory;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
@@ -27,6 +12,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 @WebServlet(asyncSupported = false, 
             name = "UploadServlet", 
             urlPatterns = {"/upload/*"},
@@ -37,6 +36,7 @@ public class UploadServlet extends HttpServlet {
 	private static final Logger logger = LoggerFactory.getLogger(UploadServlet.class);	
 	private FileItemFactory factory;
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd.HHmmss");
+    private SimpleDateFormat folderFormat = new SimpleDateFormat("yyyyMM");
 	private static final int MAX_FILE_SIZE = 30000;
 	@Autowired private RSService rsService;
 
@@ -75,9 +75,13 @@ public class UploadServlet extends HttpServlet {
 					String slashType = (fullFileName.lastIndexOf("\\") > 0) ? "\\" : "/";
 					String fileName = fullFileName.substring(fullFileName.lastIndexOf(slashType) + 1, fullFileName.length());
 					fileName = String.format( "%1s_%2s", sdf.format(new Date()), fileName );
-					String uploadedFileName = getTempFolder() + "/" + fileName;
+					String uploadedFileName = getTempFolder() + "/" + folderFormat.format(new Date()) + "/" + fileName;
 					logger.info("Resolving " + uploadedFileName );
 					File uploadedFile = new File( uploadedFileName );
+                    if (!uploadedFile.exists() || !uploadedFile.getParentFile().exists()) {
+                        uploadedFile.createNewFile();
+                        uploadedFile.mkdirs();
+                    }
 					logger.info("Writing to " + uploadedFile.getAbsolutePath() );
 					fileItem.write(uploadedFile);
 					f = uploadedFile.getAbsoluteFile();
