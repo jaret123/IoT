@@ -2,10 +2,7 @@ package com.elyxor.xeros.ldcs.reliagate;
 
 import net.wimpi.modbus.ModbusException;
 import net.wimpi.modbus.io.ModbusTCPTransaction;
-import net.wimpi.modbus.msg.ExceptionResponse;
-import net.wimpi.modbus.msg.ModbusResponse;
-import net.wimpi.modbus.msg.ReadInputDiscretesRequest;
-import net.wimpi.modbus.msg.ReadInputDiscretesResponse;
+import net.wimpi.modbus.msg.*;
 import net.wimpi.modbus.net.TCPMasterConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +49,6 @@ public class PollingRunnable implements Runnable {
                 e.printStackTrace();
             }
         }
-
 
         mTransaction = new ModbusTCPTransaction(mConnection);
         mReadRequest = new ReadInputDiscretesRequest(mRef, mCount);

@@ -7,8 +7,7 @@ import com.elyxor.xeros.ldcs.util.FileLogWriter;
 import net.wimpi.modbus.ModbusException;
 import net.wimpi.modbus.io.ModbusTCPTransaction;
 import net.wimpi.modbus.io.ModbusTransaction;
-import net.wimpi.modbus.msg.ReadInputRegistersRequest;
-import net.wimpi.modbus.msg.ReadInputRegistersResponse;
+import net.wimpi.modbus.msg.*;
 import net.wimpi.modbus.net.TCPMasterConnection;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
@@ -168,7 +167,7 @@ public class ReliagatePort implements PollingResultListener {
 
     }
 
-    public void startPolling(boolean isMock) {
+    public boolean startPolling(boolean isMock) {
         logger.info("Starting Reliagate Port Polling.");
 
         if (waterOnly == 1 || waterOnly == 3) {
@@ -180,12 +179,12 @@ public class ReliagatePort implements PollingResultListener {
             if (isMock) {
                 mThread = new Thread(new PollingRunnable(this, mConnection, isMock));
                 mThread.start();
-                return;
+                return true;
             }
             if (mThread == null) {
                 if (mConnection == null) {
                     logger.warn("Polling", "Failed to start, no connection");
-                    return;
+                    return true;
                 }
 
                 mThread = new Thread(new PollingRunnable(this, mConnection, isMock));
@@ -194,6 +193,7 @@ public class ReliagatePort implements PollingResultListener {
 
             }
         }
+        return false;
     }
 
     public TCPMasterConnection getConnection() {
@@ -464,19 +464,28 @@ public class ReliagatePort implements PollingResultListener {
         }
     }
 
-    public void clearWaterCounter(int machineNum) {
-
-    }
-
-    private void onPortChangedNonXeros(int portNum, int newValue) {
-    }
-
-    private void onPortChangedXeros(int portNum, int newValue) {
-
-
-    }
-
-    private void onPortChangedMixed(int portNum, int newValue) {
+    public boolean clearWaterCounter(int machineNum) {
+        ModbusTCPTransaction trans = new ModbusTCPTransaction(mConnection);
+        WriteMultipleCoilsRequest req = null;
+        if (machineNum == 1) {
+            req = new WriteMultipleCoilsRequest(272, 2);
+        } else if (machineNum == 2) {
+            req = new WriteMultipleCoilsRequest(280, 2);
+        }
+        if (req != null) {
+            req.setCoilStatus(0, true);
+            req.setCoilStatus(1, true);
+        }
+//        req.setUnitID(1);
+        trans.setRequest(req);
+        try {
+            trans.execute();
+        } catch (ModbusException e) {
+            e.printStackTrace();
+        }
+        WriteMultipleCoilsResponse response = (WriteMultipleCoilsResponse) trans.getResponse();
+        boolean result = response.getBitCount() == 1;
+        return result;
 
     }
 

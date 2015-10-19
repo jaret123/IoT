@@ -59,4 +59,6 @@ public class AppConfiguration {
     public static String getPortType() {return getConfig().getString("port_type");}
 
     public static Boolean getThingWorx() {return getConfig().getBoolean("thingworx", false);}
+
+    public static Integer getReliagatePortCount() {return getConfig().getInteger("reliagate_ports", 0);}
 }

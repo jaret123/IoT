@@ -1,6 +1,7 @@
 package com.elyxor.xeros.ldcs.reliagate;
 
 
+import com.elyxor.xeros.ldcs.AppConfiguration;
 import com.elyxor.xeros.ldcs.thingworx.ThingWorxClient;
 import net.wimpi.modbus.Modbus;
 import net.wimpi.modbus.io.ModbusTCPTransaction;
@@ -23,25 +24,30 @@ public class ReliagatePortManager implements ReliagatePortManagerInterface {
     ModbusResponse res = null; //the response
 
     private static final Logger logger = LoggerFactory.getLogger(ReliagatePortManager.class);
+    Integer portCount = AppConfiguration.getReliagatePortCount();
 
-    /* Variables for storing thex parameters */
-    InetAddress addr = null; //the slave's address
+    /* Variables for storing the parameters */
+    InetAddress[] addresses = new InetAddress[portCount]; //the slave's address
+    TCPMasterConnection[] connections = new TCPMasterConnection[portCount];
+    ReliagatePort[] ports = new ReliagatePort[portCount];
+
     int port = Modbus.DEFAULT_PORT;
 
     public ThingWorxClient mClient;
 
     @Override public void init() {
+
         try {
-            addr = InetAddress.getByName("192.168.127.254");
-            logger.info("address: " + addr);
-            con = new TCPMasterConnection(addr);
-            con.setPort(port);
-            con.connect();
-            logger.info("connected to port");
+            for (int i = 0; i < portCount; i++) {
+                int addr = 254 - i;
+                addresses[i] = InetAddress.getByName("192.168.127."+addr);
+                connections[i] = new TCPMasterConnection(addresses[i]);
+                connections[i].setPort(port);
+                connections[i].connect();
 
-            ReliagatePort port = new ReliagatePort(con, 1, mClient);
-            port.startPolling(false);
-
+                ports[i] = new ReliagatePort(connections[i], i+1, mClient);
+                ports[i].startPolling(false);
+            }
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }

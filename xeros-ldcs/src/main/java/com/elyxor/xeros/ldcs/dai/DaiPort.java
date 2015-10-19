@@ -28,7 +28,6 @@ public class DaiPort implements DaiPortInterface {
 	private int daiNum;
 	private String daiPrefix;
 
-
     private LogWriterInterface _logWriter;
 
     private Path logFilePath;
@@ -399,13 +398,17 @@ public class DaiPort implements DaiPortInterface {
         while (retry < 3) {
             try {
                 this.serialPort.writeString("0\n");
-                Thread.sleep(50);
+                Thread.sleep(100);
                 logger.info(this.serialPort.readString());
                 serialPort.writeString("113\n");
                 Thread.sleep(5000);
-                if (!this.serialPort.readString().contains("No Command")) {
-                    logger.info("cleared water logs");
-                    break;
+                String result = this.serialPort.readString();
+                if (result != null) {
+                    logger.info("result length: " + result.length());
+                    if (result.length() < 2) {
+                        logger.info("cleared water logs");
+                        break;
+                    }
                 }
                 retry++;
             } catch (Exception e) {
@@ -422,11 +425,12 @@ public class DaiPort implements DaiPortInterface {
         while (retry < 3) {
             try {
                 this.serialPort.writeString("0\n");
-                Thread.sleep(50);
+                Thread.sleep(100);
                 logger.info(this.serialPort.readString());
                 serialPort.writeString("211\n");
                 Thread.sleep(5000);
-                if (!this.serialPort.readString().contains("No Command")) {
+                String result = this.serialPort.readString();
+                if (result != null && (result.length() < 2)) {
                     logger.info("cleared xeros water logs");
                     break;
                 }
