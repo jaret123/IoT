@@ -36,20 +36,29 @@ public class ReliagatePortManager implements ReliagatePortManagerInterface {
     public ThingWorxClient mClient;
 
     @Override public void init() {
+        logger.info("Reliagate Port Manager Init: PortCount: " + portCount);
 
         try {
             for (int i = 0; i < portCount; i++) {
+                logger.info("Reliagate Port Manager Init: Adding Port: " + i);
+
                 int addr = 254 - i;
                 addresses[i] = InetAddress.getByName("192.168.127."+addr);
                 connections[i] = new TCPMasterConnection(addresses[i]);
                 connections[i].setPort(port);
+                logger.info("Reliagate Port Manager Init: Connecting Port with address: " + addresses[i]);
+                logger.info("Reliagate Port Manager Init: Connecting Port with connection: " + connections[i]);
+                logger.info("Reliagate Port Manager Init: Connecting Port with port: " + connections[i].getPort());
+
                 connections[i].connect();
 
                 ports[i] = new ReliagatePort(connections[i], i+1, mClient);
+                logger.info("Reliagate Port Manager Init: Connected, beginning Polling");
+
                 ports[i].startPolling(false);
             }
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            logger.warn(e.getMessage() != null ? e.getMessage() : "");
         }
     }
 

@@ -30,7 +30,13 @@ public class PollingRunnable implements Runnable {
 
     public PollingRunnable(PollingResultListener listener, TCPMasterConnection connection, boolean isMock) {
         this.mListener = listener;
-        this.mConnection = connection;
+        this.mConnection = new TCPMasterConnection(connection.getAddress());
+        this.mConnection.setPort(connection.getPort());
+        try {
+            this.mConnection.connect();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         this.mIsMock = isMock;
     }
     @Override public void run() {
@@ -54,7 +60,6 @@ public class PollingRunnable implements Runnable {
         mReadRequest = new ReadInputDiscretesRequest(mRef, mCount);
 
         mTransaction.setRequest(mReadRequest);
-
         while (true) {
             try {
                 mTransaction.execute();

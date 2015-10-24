@@ -60,7 +60,10 @@ public class ReliagatePort implements PollingResultListener {
     private boolean mIsMock;
 
     private TCPMasterConnection mConnection;
+    private TCPMasterConnection mWaterConnection;
+
     private Thread mThread;
+    private Thread mWaterThread;
 
     private PrintWriter mOut;
 
@@ -84,19 +87,23 @@ public class ReliagatePort implements PollingResultListener {
         logger.info("Starting Reliagate Port Number: " + portNum);
         this.mConnection = connection;
         this.mClient = client;
+        daiPrefix = AppConfiguration.getDaiName() + portNum;
         initList();
         initConfig();
-        daiPrefix = AppConfiguration.getDaiName() + portNum;
+        logger.info("Starting Reliagate Port Name: " + daiPrefix);
+
         mWriter = new FileLogWriter(path, daiPrefix+"Log.txt");
         machine1EventLog = new ArrayList<PortEvent>();
         machine2EventLog = new ArrayList<PortEvent>();
         waterOnly = AppConfiguration.getWaterOnly();
 
-        if (waterOnly == 1) {
-            mMachine1WaterLogWriter = new FileLogWriter(path, "/waterMeters/" + daiPrefix + "-Machine1Water-Log.txt");
+        if (waterOnly == 1 || waterOnly == 3) {
+            mMachine2WaterLogWriter = new FileLogWriter(path, "/waterMeters/" + daiPrefix + "-Machine2Water-Log.txt");
+            logger.info("Machine 2 Water Meter Log Writer File: " + mMachine2WaterLogWriter.getFilename());
         }
         if (waterOnly == 3) {
-            mMachine2WaterLogWriter = new FileLogWriter(path, "/waterMeters/" + daiPrefix + "-Machine2Water-Log.txt");
+            mMachine1WaterLogWriter = new FileLogWriter(path, "/waterMeters/" + daiPrefix + "-Machine1Water-Log.txt");
+            logger.info("Machine 1 Water Meter Log Writer File: " + mMachine1WaterLogWriter.getFilename());
         }
     }
 
@@ -105,17 +112,18 @@ public class ReliagatePort implements PollingResultListener {
         String xeros2Prefix = daiPrefix + "Xeros2";
         String std1Prefix = daiPrefix + "Std1";
         String std2Prefix = daiPrefix + "Std2";
+
         switch (portConfig) {
             case CONFIG_MIXED:
-                machine1DoorLockTrue = 0;
+                machine1DoorLockTrue = 1;
                 machine2DoorLockTrue = 1;
 
                 mMachine1Thing = new XerosWasherThing(xeros1Prefix, xeros1Prefix, xeros1Prefix, mClient);
                 mMachine2Thing = new XerosWasherThing(std1Prefix, std1Prefix, std1Prefix, mClient);
                 break;
             case CONFIG_XEROS:
-                machine1DoorLockTrue = 0;
-                machine2DoorLockTrue = 0;
+                machine1DoorLockTrue = 1;
+                machine2DoorLockTrue = 1;
 
                 mMachine1Thing = new XerosWasherThing(xeros1Prefix, xeros1Prefix, xeros1Prefix, mClient);
                 mMachine2Thing = new XerosWasherThing(xeros2Prefix, xeros2Prefix, xeros2Prefix, mClient);
@@ -128,8 +136,8 @@ public class ReliagatePort implements PollingResultListener {
                 mMachine2Thing = new XerosWasherThing(std2Prefix, std2Prefix, std2Prefix, mClient);
                 break;
             default:
-                machine1DoorLockTrue = 0;
-                machine2DoorLockTrue = 0;
+                machine1DoorLockTrue = 1;
+                machine2DoorLockTrue = 1;
 
                 mMachine1Thing = new XerosWasherThing(xeros1Prefix, xeros1Prefix, xeros1Prefix, mClient);
                 mMachine2Thing = new XerosWasherThing(std1Prefix, std1Prefix, std1Prefix, mClient);
@@ -171,27 +179,26 @@ public class ReliagatePort implements PollingResultListener {
         logger.info("Starting Reliagate Port Polling.");
 
         if (waterOnly == 1 || waterOnly == 3) {
-            mThread = new Thread(new WaterOnlyPollingRunnable(this, waterOnly));
+            mWaterThread = new Thread(new WaterOnlyPollingRunnable(this, waterOnly));
+            mWaterThread.start();
+        }
+
+        mIsMock = isMock;
+        if (isMock) {
+            mThread = new Thread(new PollingRunnable(this, mConnection, isMock));
             mThread.start();
-        } else {
-
-            mIsMock = isMock;
-            if (isMock) {
-                mThread = new Thread(new PollingRunnable(this, mConnection, isMock));
-                mThread.start();
-                return true;
+            return true;
+        }
+        if (mThread == null) {
+            if (mConnection == null) {
+                logger.warn("Polling", "Failed to start, no connection");
+                return false;
             }
-            if (mThread == null) {
-                if (mConnection == null) {
-                    logger.warn("Polling", "Failed to start, no connection");
-                    return true;
-                }
 
-                mThread = new Thread(new PollingRunnable(this, mConnection, isMock));
-                mThread.start();
-                logger.info("Polling Started.");
-
-            }
+            mThread = new Thread(new PollingRunnable(this, mConnection, isMock));
+            mThread.start();
+            logger.info("Polling Started.");
+            return true;
         }
         return false;
     }
@@ -265,11 +272,11 @@ public class ReliagatePort implements PollingResultListener {
                 }
             }
         } else if (newValue == 1) {
-            logger.info("Other Event - Started");
+            logger.info("Other Event - Started, PortNumber: " + portNum);
 
             portStartTimes[portNum] = new DateTime();
         } else if (newValue == 0) {
-            logger.info("Other Event - Stopped");
+            logger.info("Other Event - Stopped, PortNumber: " + portNum);
 
             if (portStartTimes[portNum] != null) {
                 if (portNum < 8) {
@@ -593,5 +600,21 @@ public class ReliagatePort implements PollingResultListener {
 
     public void setMachine2WaterLogWriter(FileLogWriter machine2WaterLogWriter) {
         mMachine2WaterLogWriter = machine2WaterLogWriter;
+    }
+
+    public FileLogWriter getWriter() {
+        return mWriter;
+    }
+
+    public void setWriter(FileLogWriter writer) {
+        mWriter = writer;
+    }
+
+    public String getDaiPrefix() {
+        return daiPrefix;
+    }
+
+    public void setDaiPrefix(String daiPrefix) {
+        this.daiPrefix = daiPrefix;
     }
 }

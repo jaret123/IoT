@@ -17,34 +17,40 @@ public class WaterOnlyPollingRunnable implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(WaterOnlyPollingRunnable.class);
     private ReliagatePort mPort;
-    private int[] machine1MeterDiff;
-    private int[] machine2MeterDiff;
+    private int[] machine1MeterDiff = new int[2];
+    private int[] machine2MeterDiff = new int[2];
     private boolean machine1LogSent;
     private boolean machine2LogSent;
     private int mWaterOnly;
+
+    private boolean isRunning;
 
     public WaterOnlyPollingRunnable(ReliagatePort mPort, int waterOnly) {
         this.mPort = mPort;
         this.mWaterOnly = waterOnly;
         if (mWaterOnly == 1 || mWaterOnly == 3) {
-            initMachine1Water();
+            initMachine2Water();
         }
         if (mWaterOnly == 3) {
-            initMachine2Water();
+            initMachine1Water();
         }
     }
 
     @Override public void run() {
-        if (mWaterOnly == 1 || mWaterOnly == 3) {
-            calculateMachine1Readings();
-        }
-        if (mWaterOnly == 3) {
-            calculateMachine2Readings();
-        }
-        try {
-            Thread.sleep(60 * 1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        isRunning = true;
+
+        while (isRunning) {
+            if (mWaterOnly == 1 || mWaterOnly == 3) {
+                calculateMachine2Readings();
+            }
+            if (mWaterOnly == 3) {
+                calculateMachine1Readings();
+            }
+            try {
+                Thread.sleep(30 * 1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -63,7 +69,7 @@ public class WaterOnlyPollingRunnable implements Runnable {
         machine2LogSent = true;
         if (Arrays.equals(meters, new int[]{0, 0})) {
             machine2LogSent = false;
-            meters = calculateMachine1Readings();
+            meters = calculateMachine2Readings();
         }
         return Arrays.toString(meters);
     }
@@ -102,7 +108,7 @@ public class WaterOnlyPollingRunnable implements Runnable {
                     String msg = "Machine 1 Water Meter Log File Not Found";
                     logger.warn(msg, e);
                 }
-
+                writeMachine1WaterLog(result);
                 storeMachine1PrevMeters(current);
 
                 return result;
@@ -156,6 +162,7 @@ public class WaterOnlyPollingRunnable implements Runnable {
                     logger.warn(msg, e);
                 }
 
+                writeMachine2WaterLog(result);
                 storeMachine2PrevMeters(current);
 
                 return result;
@@ -167,7 +174,7 @@ public class WaterOnlyPollingRunnable implements Runnable {
         try {
             Files.delete(mPort.getMachine2WaterLogWriter().getFile().toPath());
         } catch (IOException e) {
-            String msg = "Machine 1 Water Meter Log File Not Found";
+            String msg = "Machine 2 Water Meter Log File Not Found";
             logger.warn(msg, e);
         }
         machine2LogSent = false;
@@ -255,6 +262,35 @@ public class WaterOnlyPollingRunnable implements Runnable {
         }
         return prev;
     }
+
+    public void writeMachine1WaterLog(int[] meters) {
+        try {
+            mPort.getWriter().write(mPort.getDaiPrefix() + ", Xeros , \nFile Write Time: , "
+                    + getSystemTimeAndDate() + "\n"
+                    + "WM2: , 0 , 0 , "
+                    + meters[0] + "\n"
+                    + "WM3: , 0 , 0 , "
+                    + meters[1]);
+        } catch (IOException e) {
+            logger.warn("failed to write " + Arrays.toString(meters) + "to log file.");
+        }
+        logger.info("wrote water meter log to file");
+    }
+
+    public void writeMachine2WaterLog(int[] meters) {
+        try {
+            mPort.getWriter().write(mPort.getDaiPrefix() + ", Std , \nFile Write Time: , "
+                    + getSystemTimeAndDate() + "\n"
+                    + "WM2: , 0 , 0 , "
+                    + meters[0] + "\n"
+                    + "WM3: , 0 , 0 , "
+                    + meters[1]);
+        } catch (IOException e) {
+            logger.warn("failed to write " + Arrays.toString(meters) + "to log file.");
+        }
+        logger.info("wrote water meter log to file");
+    }
+
     private String getSystemTimeAndDate() {
         String result = "";
         SimpleDateFormat timingFormat = new SimpleDateFormat("dd-MM-yyyy kk : mm : ss");
@@ -262,6 +298,11 @@ public class WaterOnlyPollingRunnable implements Runnable {
         return result;
     }
 
+    public boolean isRunning() {
+        return isRunning;
+    }
 
-
+    public void setRunning(boolean isRunning) {
+        this.isRunning = isRunning;
+    }
 }

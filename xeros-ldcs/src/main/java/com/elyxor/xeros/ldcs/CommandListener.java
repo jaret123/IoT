@@ -7,7 +7,6 @@ import com.elyxor.xeros.ldcs.dai.PortManagerInterface;
 import com.elyxor.xeros.ldcs.reliagate.ReliagatePortManager;
 import com.elyxor.xeros.ldcs.reliagate.ReliagatePortManagerInterface;
 import com.elyxor.xeros.ldcs.thingworx.ThingWorxClient;
-import com.elyxor.xeros.ldcs.thingworx.XerosWasherThing;
 import com.thingworx.communications.client.ClientConfigurator;
 import com.thingworx.communications.common.SecurityClaims;
 import org.slf4j.Logger;
@@ -37,6 +36,8 @@ public class CommandListener implements Runnable {
             ReliagatePortManagerInterface pm = new ReliagatePortManager();
 
             if (thingworx) {
+                logger.info("Initializing Thingworx");
+
                 pm.setThingWorxClient(commandListener.initThingWorxClient());
             }
             pm.init();
@@ -50,56 +51,56 @@ public class CommandListener implements Runnable {
         }
 	}
 
+//    public ThingWorxClient initThingWorxClient() {
+//        ClientConfigurator config = new ClientConfigurator();
+//
+//        // The uri for connecting to Thingworx
+//        config.setUri("ws://54.162.102.138/Thingworx/WS");
+//        // Reconnect every 15 seconds if a disconnect occurs or if initial connection cannot be made
+//        config.setReconnectInterval(15);
+//
+//        // Set the security using an Application Key
+//        String appKey = "57dedf9d-2cea-4b43-b8d8-751126ba76cb";
+//        SecurityClaims claims = SecurityClaims.fromAppKey(appKey);
+//        config.setSecurityClaims(claims);
+//
+//        // Set the name of the client
+//        config.setName("XerosGateway");
+//        // This client is a SDK
+//        config.setAsSDKType();
+//
+//        try {
+//            mClient = new ThingWorxClient(config);
+//            XerosWasherThing thing = new XerosWasherThing("Thing","Thing","Thing",mClient);
+//            mClient.bindThing(thing);
+//        } catch (Exception e) {
+//            logger.warn("could not get client: ", e.getMessage());
+//        }
+//        Thread thread = new Thread() {
+//            public void run() {
+//                try {
+//                    mClient.start();
+//                } catch (Exception e) {
+//                    logger.warn("could not start client: ", e.toString());
+//                }
+//            }
+//        };
+//        thread.start();
+//        return mClient;
+//    }
+
+
     public ThingWorxClient initThingWorxClient() {
         ClientConfigurator config = new ClientConfigurator();
 
         // The uri for connecting to Thingworx
-        config.setUri("ws://54.162.102.138/Thingworx/WS");
-        // Reconnect every 15 seconds if a disconnect occurs or if initial connection cannot be made
-        config.setReconnectInterval(15);
-
-        // Set the security using an Application Key
-        String appKey = "57dedf9d-2cea-4b43-b8d8-751126ba76cb";
-        SecurityClaims claims = SecurityClaims.fromAppKey(appKey);
-        config.setSecurityClaims(claims);
-
-        // Set the name of the client
-        config.setName("XerosGateway");
-        // This client is a SDK
-        config.setAsSDKType();
-
-        try {
-            mClient = new ThingWorxClient(config);
-            XerosWasherThing thing = new XerosWasherThing("Thing","Thing","Thing",mClient);
-            mClient.bindThing(thing);
-        } catch (Exception e) {
-            logger.warn("could not get client: ", e.getMessage());
-        }
-        Thread thread = new Thread() {
-            public void run() {
-                try {
-                    mClient.start();
-                } catch (Exception e) {
-                    logger.warn("could not start client: ", e.toString());
-                }
-            }
-        };
-        thread.start();
-        return mClient;
-    }
-
-
-    public ThingWorxClient initThingWorxClientProd() {
-        ClientConfigurator config = new ClientConfigurator();
-
-        // The uri for connecting to Thingworx
-        config.setUri("ws://xeros-prod.cloud.thingworx.com:443/Thingworx/WS");
+        config.setUri("wss://xeros-prod.cloud.thingworx.com:443/Thingworx/WS");
 
         // Reconnect every 15 seconds if a disconnect occurs or if initial connection cannot be made
         config.setReconnectInterval(15);
 
         // Set the security using an Application Key
-        String appKey = "e95b6b01-b9b4-4cf9-8e53-4532b884f631";
+        String appKey = "34aba539-b7d1-4571-8f4d-1968789eda75";
         SecurityClaims claims = SecurityClaims.fromAppKey(appKey);
         config.setSecurityClaims(claims);
 
@@ -111,11 +112,12 @@ public class CommandListener implements Runnable {
         if (mClient == null) {
             try {
                 mClient = new ThingWorxClient(config);
-                mClient.connect();
             } catch (Exception e) {
                 logger.warn("could not get client: ", e.getMessage());
             }
         }
+        logger.info("Thingworx Initialized: Client: " + mClient);
+
         return mClient;
     }
 
