@@ -172,10 +172,10 @@ public class XerosWasherGlobalThing extends VirtualThing implements Runnable {
 
     public void sendEventToThingworx(int portNum, DateTime startTime) {
         ValueCollection event = new ValueCollection();
-        event.put(SENSOR_NAME, new StringPrimitive(GlobalControllerPortMap.mCoilMap.get(portNum)));
+        event.put(SENSOR_NAME, new StringPrimitive(GlobalControllerPortMap.findPort(portNum).getPortName()));
         event.put(START_TIME, new DatetimePrimitive(startTime));
         event.put(DURATION, new NumberPrimitive(DateTime.now().minus(startTime.getMillis()).getMillis()));
-        super.queueEvent(GlobalControllerPortMap.mCoilMap.get(portNum), DateTime.now(), event);
+        super.queueEvent(GlobalControllerPortMap.findPort(portNum).getPortName(), DateTime.now(), event);
         try {
             super.updateSubscribedEvents(60000);
         } catch (Exception e) {
@@ -185,7 +185,7 @@ public class XerosWasherGlobalThing extends VirtualThing implements Runnable {
 
     public void sendProperty(int portNum, int value) {
         try {
-            super.setProperty(GlobalControllerPortMap.mRegisterMap.get(portNum), value);
+            super.setProperty(GlobalControllerPortMap.findPort(portNum).getPortName(), value);
             super.updateSubscribedProperties(15000);
         } catch (Exception e) {
             logger.warn(TAG, "failed to update property " + GlobalControllerPortMap.mRegisterMap.get(portNum));

@@ -1,81 +1,93 @@
 package com.elyxor.xeros.ldcs.reliagate;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by will on 11/12/15.
  */
 public class GlobalControllerPortMap {
-    public static final Map<Integer, String> mCoilMap;
-    public static final Map<Integer, String> mRegisterMap;
+    public static final List<GlobalControllerModbusPort> mCoilMap;
+    public static final List<GlobalControllerModbusPort> mRegisterMap;
 
     static {
-        Map<Integer, String> map = new HashMap<Integer, String>();
-        map.put(10, "SystemEnabled");
-        map.put(11, "BwDoseDone");
-        map.put(18, "ColdWaterFillStep");
-        map.put(19, "HotWaterFillStep");
-        map.put(20, "BwDosingStep");
-        map.put(21, "CupDosingStep");
-        map.put(22, "TankToSumpStep");
-        map.put(23, "MachineHeatStep");
-        map.put(24, "TankHeatStep");
-        map.put(25, "BeadsStep");
-        map.put(26, "DrainStep");
-        map.put(27, "TumbleStep");
-        map.put(28, "ExtractStep");
-        map.put(29, "TankSprayStep");
-        map.put(30, "SumpSprayStep");
-        map.put(32, "BwDosingEnabled");
-        map.put(33, "EndOfWashProgramStep");
-        map.put(34, "DrumRotationFault");
-        map.put(35, "ExternalDosingFault");
-        map.put(36, "SumpLevelOverflow");
-        map.put(37, "BeadPulseTimeout");
-        map.put(38, "SumpLevelOutOfRange");
-        map.put(39, "TankLevelOutOfRange");
-        map.put(40, "TankTempOutOfRange");
-        map.put(41, "TankEmpty");
-        map.put(42, "SumpWaterFillEvent");
-        map.put(43, "ExtraWaterAddedEvent");
-        map.put(44, "OutOfBalanceWarningAlarm");
-        map.put(45, "OutOfBalanceAlarm");
-        map.put(46, "DrumDoorNotClosedAlarm");
-        map.put(47, "TankHeatingAlarm");
-        map.put(48, "BeadPumpOLAlarm");
-        map.put(49, "WaterPumpOLAlarm");
-        map.put(50, "PlcBatteryAlarm");
-        map.put(51, "InverterFailedToStartAlarm");
-        map.put(52, "TankNoFillAlarm");
-        map.put(53, "SumpNoFillAlarm");
-        map.put(54, "BwFail");
-        map.put(55, "SumpTempOutOfRangeAlarm");
-        map.put(56, "SumpTopUpActiveEvent");
-        map.put(57, "SumpRefillActiveEvent");
-        map.put(58, "EStopPushedAlarm");
-        map.put(59, "InverterFaultAlarm");
-        map.put(70, "CycleStart");
-        map.put(71, "CycleStop");
-        map.put(72, "CyclePause");
-        map.put(73, "BwStart");
-        map.put(74, "DoseCup");
-        map.put(75, "DrumMotorOk");
-        map.put(76, "DrumDoorLocked");
+        List<GlobalControllerModbusPort> map = new ArrayList<GlobalControllerModbusPort>();
+        map.add(new GlobalControllerModbusPort(10, "SystemEnabled", 0));
+        map.add(new GlobalControllerModbusPort(11, "BwDoseDone", 0));
+        map.add(new GlobalControllerModbusPort(18, "ColdWaterFillStep", 0));
+        map.add(new GlobalControllerModbusPort(19, "HotWaterFillStep", 0));
+        map.add(new GlobalControllerModbusPort(20, "BwDosingStep", 0));
+        map.add(new GlobalControllerModbusPort(21, "CupDosingStep", 0));
+        map.add(new GlobalControllerModbusPort(22, "TankToSumpStep", 0));
+        map.add(new GlobalControllerModbusPort(23, "MachineHeatStep", 0));
+        map.add(new GlobalControllerModbusPort(24, "TankHeatStep", 0));
+        map.add(new GlobalControllerModbusPort(25, "BeadsStep", 0));
+        map.add(new GlobalControllerModbusPort(26, "DrainStep", 0));
+        map.add(new GlobalControllerModbusPort(27, "TumbleStep", 0));
+        map.add(new GlobalControllerModbusPort(28, "ExtractStep", 0));
+        map.add(new GlobalControllerModbusPort(29, "TankSprayStep", 0));
+        map.add(new GlobalControllerModbusPort(30, "SumpSprayStep", 0));
+        map.add(new GlobalControllerModbusPort(32, "BwDosingEnabled", 0));
+        map.add(new GlobalControllerModbusPort(33, "EndOfWashProgramStep", 0));
+        map.add(new GlobalControllerModbusPort(34, "DrumRotationFault", 0));
+        map.add(new GlobalControllerModbusPort(35, "ExternalDosingFault", 0));
+        map.add(new GlobalControllerModbusPort(36, "SumpLevelOverflow", 0));
+        map.add(new GlobalControllerModbusPort(37, "BeadPulseTimeout", 0));
+        map.add(new GlobalControllerModbusPort(38, "SumpLevelOutOfRange", 0));
+        map.add(new GlobalControllerModbusPort(39, "TankLevelOutOfRange", 0));
+        map.add(new GlobalControllerModbusPort(40, "TankTempOutOfRange", 0));
+        map.add(new GlobalControllerModbusPort(41, "TankEmpty", 0));
+        map.add(new GlobalControllerModbusPort(42, "SumpWaterFillEvent", 0));
+        map.add(new GlobalControllerModbusPort(43, "ExtraWaterAddedEvent", 0));
+        map.add(new GlobalControllerModbusPort(44, "OutOfBalanceWarningAlarm", 0));
+        map.add(new GlobalControllerModbusPort(45, "OutOfBalanceAlarm", 0));
+        map.add(new GlobalControllerModbusPort(46, "DrumDoorNotClosedAlarm", 0));
+        map.add(new GlobalControllerModbusPort(47, "TankHeatingAlarm", 0));
+        map.add(new GlobalControllerModbusPort(48, "BeadPumpOLAlarm", 0));
+        map.add(new GlobalControllerModbusPort(49, "WaterPumpOLAlarm", 0));
+        map.add(new GlobalControllerModbusPort(50, "PlcBatteryAlarm", 0));
+        map.add(new GlobalControllerModbusPort(51, "InverterFailedToStartAlarm", 0));
+        map.add(new GlobalControllerModbusPort(52, "TankNoFillAlarm", 0));
+        map.add(new GlobalControllerModbusPort(53, "SumpNoFillAlarm", 0));
+        map.add(new GlobalControllerModbusPort(54, "BwFail", 0));
+        map.add(new GlobalControllerModbusPort(55, "SumpTempOutOfRangeAlarm", 0));
+        map.add(new GlobalControllerModbusPort(56, "SumpTopUpActiveEvent", 0));
+        map.add(new GlobalControllerModbusPort(57, "SumpRefillActiveEvent", 0));
+        map.add(new GlobalControllerModbusPort(58, "EStopPushedAlarm", 0));
+        map.add(new GlobalControllerModbusPort(59, "InverterFaultAlarm", 0));
+        map.add(new GlobalControllerModbusPort(70, "CycleStart", 0));
+        map.add(new GlobalControllerModbusPort(71, "CycleStop", 0));
+        map.add(new GlobalControllerModbusPort(72, "CyclePause", 0));
+        map.add(new GlobalControllerModbusPort(73, "BwStart", 0));
+        map.add(new GlobalControllerModbusPort(74, "DoseCup", 0));
+        map.add(new GlobalControllerModbusPort(75, "DrumMotorOk", 0));
+        map.add(new GlobalControllerModbusPort(76, "DrumDoorLocked", 0));
         mCoilMap = map;
 
-        HashMap<Integer, String> registerMap = new HashMap<Integer, String>();
-        registerMap.put(100, "TankLevel");
-        registerMap.put(110, "TankTemp");
-        registerMap.put(120, "SumpLevel");
-        registerMap.put(130, "SumpTemp");
-        registerMap.put(140, "BwProgramNo");
-        registerMap.put(150, "DrumGs");
-        registerMap.put(160, "CurrentProgTime");
-        registerMap.put(170, "AdjustedProgTime");
+        List<GlobalControllerModbusPort> registerMap = new ArrayList<GlobalControllerModbusPort>();
+        registerMap.add(new GlobalControllerModbusPort(100, "TankLevel", 0));
+        registerMap.add(new GlobalControllerModbusPort(110, "TankTemp", 0));
+        registerMap.add(new GlobalControllerModbusPort(120, "SumpLevel", 0));
+        registerMap.add(new GlobalControllerModbusPort(130, "SumpTemp", 0));
+        registerMap.add(new GlobalControllerModbusPort(140, "BwProgramNo", 0));
+        registerMap.add(new GlobalControllerModbusPort(150, "DrumGs", 0));
+        registerMap.add(new GlobalControllerModbusPort(160, "CurrentProgTime", 0));
+        registerMap.add(new GlobalControllerModbusPort(170, "AdjustedProgTime", 0));
         mRegisterMap = registerMap;
     }
 
+    public static GlobalControllerModbusPort findPort(int portAddress) {
+        GlobalControllerModbusPort result = new GlobalControllerModbusPort();
+        List<GlobalControllerModbusPort> portList = new ArrayList<GlobalControllerModbusPort>();
 
+        portList.addAll(mCoilMap);
+        portList.addAll(mRegisterMap);
 
+        for (GlobalControllerModbusPort port : portList) {
+            if (port.getPortAddress() == portAddress) {
+                result =  port;
+            }
+        }
+        return result;
+    }
 }

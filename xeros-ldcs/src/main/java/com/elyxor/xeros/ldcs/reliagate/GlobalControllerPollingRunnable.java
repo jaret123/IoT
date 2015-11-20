@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -32,8 +33,8 @@ public class GlobalControllerPollingRunnable implements Runnable {
     private int mRef4 = 70;
     private int mCount4 = 7;
 
-    private Map<Integer, String> mCoilMap;
-    private Map<Integer, String> mRegisterMap;
+    private List<GlobalControllerModbusPort> mCoilList;
+    private List<GlobalControllerModbusPort> mRegisterList;
 
     private Map<Integer, Integer> mPreviousCoilStatus;
     private Map<Integer, Integer> mPreviousRegisterStatus;
@@ -52,11 +53,11 @@ public class GlobalControllerPollingRunnable implements Runnable {
         }
         this.mIsMock = isMock;
 
-        this.mCoilMap = GlobalControllerPortMap.mCoilMap;
-        this.mRegisterMap = GlobalControllerPortMap.mRegisterMap;
+        this.mCoilList = GlobalControllerPortMap.mCoilMap;
+        this.mRegisterList = GlobalControllerPortMap.mRegisterMap;
 
-        this.mPreviousCoilStatus = new HashMap<Integer, Integer>(mCoilMap.size());
-        this.mPreviousRegisterStatus = new HashMap<Integer, Integer>(mRegisterMap.size());
+        this.mPreviousCoilStatus = new HashMap<Integer, Integer>(mCoilList.size());
+        this.mPreviousRegisterStatus = new HashMap<Integer, Integer>(mRegisterList.size());
     }
     @Override public void run() {
 
@@ -84,7 +85,8 @@ public class GlobalControllerPollingRunnable implements Runnable {
 
 
         while (true) {
-            for (Integer key : mCoilMap.keySet()) {
+            for (GlobalControllerModbusPort port : mCoilList) {
+                int key = port.getPortAddress();
                 ModbusTCPTransaction trans = new ModbusTCPTransaction(mConnection);
                 ReadCoilsRequest request = new ReadCoilsRequest(key, 1);
                 trans.setRequest(request);
@@ -98,7 +100,18 @@ public class GlobalControllerPollingRunnable implements Runnable {
                     logger.warn(TAG, ((ExceptionResponse)response).getHexMessage());
                 }
                 else {
-                    int value = ((ReadCoilsResponse) response).getCoilStatus(0) ? 1 : 0;
+
+                    //is the port currently "on"
+                    boolean coilStatus = ((ReadCoilsResponse) response).getCoilStatus(0);
+
+                    //is the port normally "off"
+                    boolean portRestingFalse = port.getOffValue() == 0;
+
+                    //if currently off, and at resting is off, set to off state. If currently on, and at resting is off, set to on state.
+                    //if currently on, and at resting is on, set to off state. If currently off, and at resting is on, set to on state.
+                    int value = coilStatus == portRestingFalse ? 0 : 1;
+
+//                    int value = ((ReadCoilsResponse) response).getCoilStatus(0) ? 1 : 0;
                     if (mPreviousCoilStatus.get(key) == null) {
                         logger.info("Response Value was null, inserting key: "+key + " and value: " + value);
 
@@ -115,7 +128,8 @@ public class GlobalControllerPollingRunnable implements Runnable {
                 }
             }
 
-            for (Integer key : mRegisterMap.keySet()) {
+            for (GlobalControllerModbusPort port : mRegisterList) {
+                int key = port.getPortAddress();
                 ModbusTCPTransaction trans = new ModbusTCPTransaction(mConnection);
                 ReadInputRegistersRequest request = new ReadInputRegistersRequest(key, 1);
                 trans.setRequest(request);
