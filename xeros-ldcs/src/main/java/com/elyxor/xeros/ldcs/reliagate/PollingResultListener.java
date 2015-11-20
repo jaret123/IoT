@@ -5,4 +5,6 @@ package com.elyxor.xeros.ldcs.reliagate;
  */
 public interface PollingResultListener {
     void onPortChanged(int portNum, int newValue);
+
+    void onRegisterChanged(int portNum, int value);
 }

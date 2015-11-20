@@ -61,4 +61,6 @@ public class AppConfiguration {
     public static Boolean getThingWorx() {return getConfig().getBoolean("thingworx", false);}
 
     public static Integer getReliagatePortCount() {return getConfig().getInteger("reliagate_ports", 0);}
+
+    public static Boolean isGlobalController() {return getConfig().getBoolean("global", false);}
 }

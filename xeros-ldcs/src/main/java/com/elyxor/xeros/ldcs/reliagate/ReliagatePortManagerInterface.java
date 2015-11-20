@@ -8,4 +8,5 @@ import com.elyxor.xeros.ldcs.thingworx.ThingWorxClient;
 public interface ReliagatePortManagerInterface {
     void init();
     public void setThingWorxClient(ThingWorxClient client);
+    public ReliagatePort[] getReliagatePorts();
 }
