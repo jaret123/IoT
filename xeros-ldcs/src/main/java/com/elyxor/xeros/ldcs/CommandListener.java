@@ -4,6 +4,7 @@ import com.elyxor.xeros.ldcs.dai.DaiPortInterface;
 import com.elyxor.xeros.ldcs.dai.PortFinder;
 import com.elyxor.xeros.ldcs.dai.PortManager;
 import com.elyxor.xeros.ldcs.dai.PortManagerInterface;
+import com.elyxor.xeros.ldcs.reliagate.MockReliagatePortManager;
 import com.elyxor.xeros.ldcs.reliagate.ReliagatePortManager;
 import com.elyxor.xeros.ldcs.reliagate.ReliagatePortManagerInterface;
 import com.elyxor.xeros.ldcs.thingworx.ThingWorxClient;
@@ -28,18 +29,17 @@ public class CommandListener implements Runnable {
         CommandListener commandListener = new CommandListener();
         (new Thread(commandListener)).start();
 
-//        if (true) {
-//
-//            ReliagatePortManagerInterface mockPm = new MockReliagatePortManager();
-//            mockPm.setThingWorxClient(commandListener.initThingWorxClient());
-//            mockPm.init();
-//
-//            return;
-//        }
-
         String portType = AppConfiguration.getPortType();
         Boolean thingworx = AppConfiguration.getThingWorx();
+        Boolean isMock = AppConfiguration.getMock();
 
+        if (isMock) {
+            ReliagatePortManagerInterface mockPm = new MockReliagatePortManager();
+            mockPm.setThingWorxClient(commandListener.initThingWorxClient());
+            mockPm.init();
+
+            return;
+        }
 
         if (portType != null && portType.equals("reliagate")) {
             logger.info("Starting Reliagate Port Manager");

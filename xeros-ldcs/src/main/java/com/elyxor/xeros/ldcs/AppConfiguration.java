@@ -63,4 +63,6 @@ public class AppConfiguration {
     public static Integer getReliagatePortCount() {return getConfig().getInteger("reliagate_ports", 0);}
 
     public static Boolean isGlobalController() {return getConfig().getBoolean("global", false);}
+
+    public static Boolean getMock() {return getConfig().getBoolean("mock", false);}
 }

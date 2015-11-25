@@ -61,27 +61,23 @@ public class GlobalControllerPollingRunnable implements Runnable {
     }
     @Override public void run() {
 
-//        while (mIsMock) {
-//            try {
-//                mListener.onPortChanged(58, 1);
-//                Thread.sleep(1000);
-//                mListener.onPortChanged(58, 0);
-//                for (Map.Entry<Integer, String> entry : GlobalControllerPortMap.mCoilMap.entrySet()) {
-//                    mListener.onPortChanged(entry.getKey(), 1);
-//                    Thread.sleep(3000);
-//                    mListener.onPortChanged(entry.getKey(), 0);
-//                }
-//                for (Map.Entry<Integer, String> entry : GlobalControllerPortMap.mRegisterMap.entrySet()) {
-//                    mListener.onRegisterChanged(entry.getKey(), (int) (Math.random() * 50));
-//                    Thread.sleep(5000);
-//                    mListener.onRegisterChanged(entry.getKey(), (int) (Math.random() * 50));
-//                }
-//
-//                Thread.sleep(2000);
-//            } catch (Exception e) {
-//                logger.warn(TAG, "Interrupted Exception");
-//            }
-//        }
+        while (mIsMock) {
+            try {
+                for (GlobalControllerModbusPort port : GlobalControllerPortMap.mCoilMap) {
+                    mListener.onPortChanged(port.getPortAddress(), 1);
+                    Thread.sleep(3000);
+                    mListener.onPortChanged(port.getPortAddress(), 0);
+                }
+                for (GlobalControllerModbusPort port : GlobalControllerPortMap.mRegisterMap) {
+                    mListener.onRegisterChanged(port.getPortAddress(), (int) (Math.random() * 50));
+                    Thread.sleep(5000);
+                    mListener.onRegisterChanged(port.getPortAddress(), (int) (Math.random() * 50));
+                }
+                Thread.sleep(2000);
+            } catch (Exception e) {
+                logger.warn(TAG, "Interrupted Exception");
+            }
+        }
 
 
         while (true) {

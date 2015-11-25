@@ -319,7 +319,8 @@ public class GlobalControllerPort implements PollingResultListener {
 //                    writeEventLog(machine2EventLog, 2);
 //                }
 //            }
-        } else if (newValue == 1) {
+        }
+        if (newValue == 1) {
             logger.info("Other Event - Started, PortNumber: " + portNum);
             coilStartTimes.put(portNum, new DateTime());
         } else if (newValue == 0) {
