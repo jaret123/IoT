@@ -25,8 +25,7 @@ public class ReliagatePortManager implements ReliagatePortManagerInterface {
 
     private static final Logger logger = LoggerFactory.getLogger(ReliagatePortManager.class);
 
-    Integer portCount = 1;
-//    Integer portCount = AppConfiguration.getReliagatePortCount();
+    Integer portCount = AppConfiguration.getReliagatePortCount();
     Boolean isGlobal = AppConfiguration.isGlobalController();
 
     /* Variables for storing the parameters */
