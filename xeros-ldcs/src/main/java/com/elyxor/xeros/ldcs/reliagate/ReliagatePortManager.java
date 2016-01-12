@@ -44,27 +44,29 @@ public class ReliagatePortManager implements ReliagatePortManagerInterface {
     @Override public void init() {
         logger.info("Reliagate Port Manager Init: PortCount: " + portCount);
 
-        try {
-            for (int i = 0; i < portCount; i++) {
-                logger.info("Reliagate GC Port Init: Adding Port: " + i);
+        if (AppConfiguration.isGlobalController()) {
+            try {
+                for (int i = 0; i < portCount; i++) {
+                    logger.info("Reliagate GC Port Init: Adding Port: " + i);
 
-                int addr = 150 + i;
-                globalAddresses[i] = InetAddress.getByName("192.168.127." + addr);
-                globalConnections[i] = new TCPMasterConnection(globalAddresses[i]);
-                globalConnections[i].setPort(port);
-                logger.info("Reliagate Port Manager Init: Connecting Port with address: " + globalAddresses[i]);
-                logger.info("Reliagate Port Manager Init: Connecting Port with connection: " + globalConnections[i]);
-                logger.info("Reliagate Port Manager Init: Connecting Port with port: " + globalConnections[i].getPort());
+                    int addr = 150 + i;
+                    globalAddresses[i] = InetAddress.getByName("192.168.127." + addr);
+                    globalConnections[i] = new TCPMasterConnection(globalAddresses[i]);
+                    globalConnections[i].setPort(port);
+                    logger.info("Reliagate Port Manager Init: Connecting Port with address: " + globalAddresses[i]);
+                    logger.info("Reliagate Port Manager Init: Connecting Port with connection: " + globalConnections[i]);
+                    logger.info("Reliagate Port Manager Init: Connecting Port with port: " + globalConnections[i].getPort());
 
-                globalConnections[i].connect();
+                    globalConnections[i].connect();
 
-                globalPorts[i] = new GlobalControllerPort(this, globalConnections[i], i + 1, mClient);
-                logger.info("Reliagate Port Manager Init: Connected, beginning Polling");
+                    globalPorts[i] = new GlobalControllerPort(this, globalConnections[i], i + 1, mClient);
+                    logger.info("Reliagate Port Manager Init: Connected, beginning Polling");
 
-                globalPorts[i].startPolling(false);
+                    globalPorts[i].startPolling(false);
+                }
+            } catch (Exception e) {
+                logger.warn(e.getMessage() != null ? e.getMessage() : "");
             }
-        } catch (Exception e) {
-            logger.warn(e.getMessage() != null ? e.getMessage() : "");
         }
 
         try {

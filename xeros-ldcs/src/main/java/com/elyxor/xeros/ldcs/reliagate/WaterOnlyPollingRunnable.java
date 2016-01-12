@@ -81,7 +81,7 @@ public class WaterOnlyPollingRunnable implements Runnable {
         int[] prev = parseMachine1PrevReadingsFromFile();
 
         if (current[0] == 0 && current[1] == 0) {
-            logger.warn("no machine 1 water meter readings found");
+//            logger.warn("no machine 1 water meter readings found");
             return result;
         }
         logger.info("Captured machine 1 water readings, meter1: "+current[0]
@@ -134,7 +134,7 @@ public class WaterOnlyPollingRunnable implements Runnable {
         int[] prev = parseMachine2PrevReadingsFromFile();
 
         if (current[0] == 0 && current[1] == 0) {
-            logger.warn("no machine 2 water meter readings found");
+//            logger.warn("no machine 2 water meter readings found");
             return result;
         }
         logger.info("Captured machine 2 water readings, meter1: "+current[0]

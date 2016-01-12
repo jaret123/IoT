@@ -37,6 +37,7 @@ public class ReliagatePort implements PollingResultListener {
     private static final int CONFIG_MIXED = 0;
     private static final int CONFIG_XEROS = 1;
     private static final int CONFIG_NON_XEROS = 2;
+    private static final int CONFIG_XEROS_INVERT = 3;
 
     private static final int PORT_NUM_MACHINE_1_DOOR_LOCK = 2;
     private static final int PORT_NUM_MACHINE_2_DOOR_LOCK = 10;
@@ -135,6 +136,13 @@ public class ReliagatePort implements PollingResultListener {
                 machine2DoorLockTrue = 1;
 
                 mMachine1Thing = new XerosWasherThing(std1Prefix, std1Prefix, std1Prefix, mClient);
+                mMachine2Thing = new XerosWasherThing(std2Prefix, std2Prefix, std2Prefix, mClient);
+                break;
+            case CONFIG_XEROS_INVERT:
+                machine1DoorLockTrue = 0;
+                machine2DoorLockTrue = 0;
+
+                mMachine1Thing = new XerosWasherThing(xeros1Prefix, xeros1Prefix, xeros1Prefix, mClient);
                 mMachine2Thing = new XerosWasherThing(std2Prefix, std2Prefix, std2Prefix, mClient);
                 break;
             default:
@@ -236,7 +244,6 @@ public class ReliagatePort implements PollingResultListener {
                 if (!machine1EventLog.isEmpty()) {
                     logger.info("Machine 1 Writing Log: "+machine1EventLog);
 
-                    writeEventLog(machine1EventLog, 1);
                 }
                 clearWaterCounter(1);
                 portStartTimes[portNum] = new DateTime();
@@ -496,10 +503,17 @@ public class ReliagatePort implements PollingResultListener {
         } catch (ModbusException e) {
             e.printStackTrace();
         }
-        WriteMultipleCoilsResponse response = (WriteMultipleCoilsResponse) trans.getResponse();
-        boolean result = response.getBitCount() == 1;
+        boolean result = false;
+        WriteMultipleCoilsResponse response = null;
+        try {
+            response = (WriteMultipleCoilsResponse) trans.getResponse();
+        } catch (Exception e) {
+            result = false;
+        }
+        if (response != null) {
+            result = response.getBitCount() == 1;
+        }
         return result;
-
     }
 
     public int[] getMachine1WaterReadings() {
@@ -513,8 +527,22 @@ public class ReliagatePort implements PollingResultListener {
         } catch (ModbusException e) {
             e.printStackTrace();
         }
-        ReadInputRegistersResponse response = (ReadInputRegistersResponse) trans.getResponse();
-        return new int[]{response.getRegisterValue(1), response.getRegisterValue(3)};
+        ReadInputRegistersResponse response = null;
+        int[] result = new int[]{0,0};
+        try {
+            response = (ReadInputRegistersResponse) trans.getResponse();
+        } catch (Exception e) {
+            logger.warn("getWaterMeter1 - error converting response");
+
+        }
+        if (response != null) {
+            try {
+                result = new int[]{response.getRegisterValue(1), response.getRegisterValue(3)};
+            } catch (Exception e) {
+                logger.warn("getWaterMeter1 - error getting response register values");
+            }
+        }
+        return result;
     }
 
     public int[] getMachine2WaterReadings() {
@@ -528,9 +556,21 @@ public class ReliagatePort implements PollingResultListener {
         } catch (ModbusException e) {
             e.printStackTrace();
         }
-        ReadInputRegistersResponse response = (ReadInputRegistersResponse) trans.getResponse();
-        return new int[]{response.getRegisterValue(1), response.getRegisterValue(3)};
-
+        ReadInputRegistersResponse response = null;
+        try {
+            response = (ReadInputRegistersResponse) trans.getResponse();
+        } catch (Exception e) {
+            logger.warn("getWaterMeter2 - error converting response");
+        }
+        int[] result = new int[]{0,0};
+        if (response != null) {
+            try {
+                result = new int[]{response.getRegisterValue(1), response.getRegisterValue(3)};
+            } catch (Exception e) {
+                logger.warn("getWaterMeter2 - error getting response register values");
+            }
+        }
+        return result;
     }
 
     private String getWaterReadings() {

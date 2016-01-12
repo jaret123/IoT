@@ -55,11 +55,11 @@ public class GlobalControllerPortMap {
         map.add(new GlobalControllerModbusPort(57, "SumpRefillActiveEvent", 0));
         map.add(new GlobalControllerModbusPort(58, "EStopPushedAlarm", 0));
         map.add(new GlobalControllerModbusPort(59, "InverterFaultAlarm", 0));
-        map.add(new GlobalControllerModbusPort(70, "CycleStart", 0));
+        map.add(new GlobalControllerModbusPort(70, "CycleStart", 1));
         map.add(new GlobalControllerModbusPort(71, "CycleStop", 0));
         map.add(new GlobalControllerModbusPort(72, "CyclePause", 0));
         map.add(new GlobalControllerModbusPort(73, "BwStart", 0));
-        map.add(new GlobalControllerModbusPort(74, "DoseCup", 0));
+        map.add(new GlobalControllerModbusPort(74, "DoseCup", 1));
         map.add(new GlobalControllerModbusPort(75, "DrumMotorOk", 0));
         map.add(new GlobalControllerModbusPort(76, "DrumDoorLocked", 0));
         mCoilMap = map;

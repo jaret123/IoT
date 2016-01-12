@@ -42,15 +42,17 @@ public class GlobalControllerPollingRunnable implements Runnable {
     public GlobalControllerPollingRunnable(PollingResultListener listener, TCPMasterConnection connection, boolean isMock) {
         this.mListener = listener;
         if (!isMock) {
-            this.mConnection = new TCPMasterConnection(connection.getAddress());
-            this.mConnection.setPort(connection.getPort());
 
-            try {
-                this.mConnection.connect();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            this.mConnection = connection;
+//            this.mConnection.setPort(connection.getPort());
+//
+//            try {
+//                this.mConnection.connect();
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
         }
+
         this.mIsMock = isMock;
 
         this.mCoilList = GlobalControllerPortMap.mCoilMap;

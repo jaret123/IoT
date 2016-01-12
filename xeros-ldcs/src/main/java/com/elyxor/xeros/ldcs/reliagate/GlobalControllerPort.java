@@ -284,42 +284,45 @@ public class GlobalControllerPort implements PollingResultListener {
                 map.put(portNum, DateTime.now());
                 currentCycleEvents.add(map);
             }
-//            else {
-//                logger.info("Xeros GC Cycle Start - Stopped");
-//
-//                machine1Started = false;
-//                if (portStartTimes[portNum] != null) {
-//                    logger.info("Machine 1 Writing Log: "+machine1EventLog);
-//                    machine1EventLog.add(createCycleEvent(portNum));
-//                    writeEventLog(machine1EventLog, 1);
-//                }
-//            }
-        } else if (portNum == PORT_NUM_CYCLE_END) {
-            logger.info("Xeros GC Cycle End Event");
-
-            if (newValue == 1) {
-                logger.info("Xeros GC Cycle End Event - Start Event");
+            else {
+                logger.info("Xeros GC Cycle Start - Stopped");
 
                 machine1Started = false;
-//                if (coilStartTimes.get(portNum) != null) {
-                logger.info("Machine 1 Writing Log: "+machine1EventLog);
-                Map<Integer, DateTime> map = new HashMap<Integer, DateTime>();
-                map.put(portNum, DateTime.now());
-                currentCycleEvents.add(map);
-                writeEventLog(currentCycleEvents);
-//                }
+                if (portStartTimes[portNum] != null) {
+                    logger.info("Machine 1 Writing Log: "+machine1EventLog);
+                    Map<Integer, DateTime> map = new HashMap<Integer, DateTime>();
+                    map.put(portNum, DateTime.now());
+                    currentCycleEvents.add(map);
+                    writeEventLog(currentCycleEvents);
+                }
             }
-//            else {
-//                logger.info("Machine 1 Door Lock Event - Stopped");
-//
-//                machine2Started = false;
-//                if (portStartTimes[portNum] != null) {
-//                    logger.info("Machine 1 Writing Log: "+machine1EventLog);
-//                    machine2EventLog.add(createCycleEvent(portNum));
-//                    writeEventLog(machine2EventLog, 2);
-//                }
-//            }
         }
+//        else if (portNum == PORT_NUM_CYCLE_END) {
+//            logger.info("Xeros GC Cycle End Event");
+//
+//            if (newValue == 1) {
+//                logger.info("Xeros GC Cycle End Event - Start Event");
+//
+//                machine1Started = false;
+////                if (coilStartTimes.get(portNum) != null) {
+//                logger.info("Machine 1 Writing Log: "+machine1EventLog);
+//                Map<Integer, DateTime> map = new HashMap<Integer, DateTime>();
+//                map.put(portNum, DateTime.now());
+//                currentCycleEvents.add(map);
+//                writeEventLog(currentCycleEvents);
+////                }
+//            }
+////            else {
+////                logger.info("Machine 1 Door Lock Event - Stopped");
+////
+////                machine2Started = false;
+////                if (portStartTimes[portNum] != null) {
+////                    logger.info("Machine 1 Writing Log: "+machine1EventLog);
+////                    machine2EventLog.add(createCycleEvent(portNum));
+////                    writeEventLog(machine2EventLog, 2);
+////                }
+////            }
+//        }
         if (newValue == 1) {
             logger.info("Other Event - Started, PortNumber: " + portNum);
             coilStartTimes.put(portNum, new DateTime());
