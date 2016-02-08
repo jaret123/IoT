@@ -64,19 +64,30 @@ public class CommandListener implements Runnable {
     public ThingWorxClient initThingWorxClient() {
         ClientConfigurator config = new ClientConfigurator();
 
+        String url = AppConfiguration.getThingWorxUrl();
+        String apiKey = AppConfiguration.getThingWorxApiKey();
+        String daiName = AppConfiguration.getDaiName();
+
+        if (url == null) {
+            logger.warn("Could not initialize ThingWorx, no URL in ldcs.properties");
+            return null;
+        }
+        if (apiKey == null) {
+            logger.warn("Could not initialize ThingWorx, no API Key in ldcs.properties");
+            return null;
+        }
         // The uri for connecting to Thingworx
-        config.setUri("wss://xeros-sandbox.cloud.thingworx.com:443/Thingworx/WS");
+        config.setUri(url);
 
         // Reconnect every 15 seconds if a disconnect occurs or if initial connection cannot be made
         config.setReconnectInterval(15);
 
         // Set the security using an Application Key
-        String appKey = "18854936-4cc9-457d-aa19-319795e0c37b";
-        SecurityClaims claims = SecurityClaims.fromAppKey(appKey);
+        SecurityClaims claims = SecurityClaims.fromAppKey(apiKey);
         config.setSecurityClaims(claims);
 
         // Set the name of the client
-        config.setName("XerosGateway");
+        config.setName(daiName + "Gateway");
 
         // This client is a SDK
         config.setAsSDKType();

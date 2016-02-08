@@ -65,4 +65,11 @@ public class AppConfiguration {
     public static Boolean isGlobalController() {return getConfig().getBoolean("global", false);}
 
     public static Boolean getMock() {return getConfig().getBoolean("mock", false);}
+
+    public static String getThingWorxUrl() {return getConfig().getString("thingworx_url", "wss://xeros-prod.cloud.thingworx.com:443/Thingworx/WS");}
+
+    public static String getThingWorxApiKey() {return getConfig().getString("thingworx_key", "253f9e18-9dce-49c0-8cea-028cb51e8729");}
+
+    public static double getDoorLockMin() {return getConfig().getDouble("door_lock_min", .5);}
+
 }

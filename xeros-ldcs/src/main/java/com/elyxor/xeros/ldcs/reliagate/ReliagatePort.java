@@ -29,6 +29,7 @@ public class ReliagatePort implements PollingResultListener {
 
     private static final Logger logger = LoggerFactory.getLogger(ReliagatePort.class);
     private final DateTimeFormatter timeFormatter = DateTimeFormat.forPattern("HH : mm : ss");
+    private final DateTimeFormatter timeAndDateFormatter = DateTimeFormat.forPattern("dd-MM-yyyy HH : mm : ss");
     private final Integer portConfig = AppConfiguration.getPortConfig();
 
     private String daiPrefix;
@@ -83,14 +84,17 @@ public class ReliagatePort implements PollingResultListener {
     private ThingWorxClient mClient;
     private XerosWasherThing mMachine1Thing;
     private XerosWasherThing mMachine2Thing;
-    private ReliagatePortManager mManager;
+    private ReliagatePortManagerInterface mManager;
 
-    public ReliagatePort(ReliagatePortManager manager, TCPMasterConnection connection, int portNum, ThingWorxClient client) {
+    private double doorLockMin;
+
+    public ReliagatePort(ReliagatePortManagerInterface manager, TCPMasterConnection connection, int portNum, ThingWorxClient client) {
         logger.info("Starting Reliagate Port Number: " + portNum);
         this.mManager = manager;
         this.mConnection = connection;
         this.mClient = client;
         daiPrefix = AppConfiguration.getDaiName() + portNum;
+        this.doorLockMin = AppConfiguration.getDoorLockMin() * 1000; //Convert to ms
         initList();
         initConfig();
         logger.info("Starting Reliagate Port Name: " + daiPrefix);
@@ -252,9 +256,13 @@ public class ReliagatePort implements PollingResultListener {
 
                 machine1Started = false;
                 if (portStartTimes[portNum] != null) {
-                    logger.info("Machine 1 Writing Log: "+machine1EventLog);
-                    machine1EventLog.add(createCycleEvent(portNum));
-                    writeEventLog(machine1EventLog, 1);
+                    if (checkDoorLockMin(portStartTimes[portNum])) {
+                        logger.info("Machine 1 Writing Log: " + machine1EventLog);
+                        machine1EventLog.add(createCycleEvent(portNum));
+                        writeEventLog(machine1EventLog, 1);
+                    } else {
+                        logger.info("Machine 1 Door Lock too short, clearing logs");
+                    }
                 }
             }
         } else if (portNum == PORT_NUM_MACHINE_2_DOOR_LOCK) {
@@ -265,19 +273,24 @@ public class ReliagatePort implements PollingResultListener {
 
                 machine2Started = true;
                 if (!machine2EventLog.isEmpty()) {
-                    logger.info("Machine 1 Writing Log: "+machine1EventLog);
+                    logger.info("Machine 2 Writing Log: "+machine1EventLog);
                     writeEventLog(machine2EventLog, 2);
                 }
                 clearWaterCounter(2);
                 portStartTimes[portNum] = new DateTime();
             } else {
-                logger.info("Machine 1 Door Lock Event - Stopped");
+                logger.info("Machine 2 Door Lock Event - Stopped");
 
                 machine2Started = false;
                 if (portStartTimes[portNum] != null) {
-                    logger.info("Machine 1 Writing Log: "+machine1EventLog);
-                    machine2EventLog.add(createCycleEvent(portNum));
-                    writeEventLog(machine2EventLog, 2);
+                    if (checkDoorLockMin(portStartTimes[portNum])) {
+                        logger.info("Machine 2 Writing Log: " + machine1EventLog);
+                        machine2EventLog.add(createCycleEvent(portNum));
+                        writeEventLog(machine2EventLog, 2);
+                    } else {
+                        logger.info("Machine 2 Door Lock too short, clearing logs");
+                        machine2EventLog.clear();
+                    }
                 }
             }
         } else if (newValue == 1) {
@@ -295,6 +308,12 @@ public class ReliagatePort implements PollingResultListener {
                 }
             }
         }
+    }
+
+    private boolean checkDoorLockMin(DateTime dateTime) {
+        DateTime now = new DateTime();
+        Period diff = new Period(dateTime, now);
+        return diff.toStandardDuration().getMillis() > doorLockMin;
     }
 
     @Override public void onRegisterChanged(int portNum, int value) {
@@ -361,7 +380,7 @@ public class ReliagatePort implements PollingResultListener {
 
         sb.append("\n");
         sb.append("File Write Time: , ");
-        sb.append(new DateTime().toString(timeFormatter));
+        sb.append(new DateTime().toString(timeAndDateFormatter));
         sb.append("\n\n");
 
         for (int i = 0; i < eventLog.size(); i++) {
@@ -418,7 +437,8 @@ public class ReliagatePort implements PollingResultListener {
             sb.append(waterMeters[1]);
             sb.append("\n");
 
-            clearWaterCounter(1);
+            if (!mIsMock)
+                clearWaterCounter(1);
 
         } else if (machineNum == 2) {
             int[] waterMeters;
@@ -442,9 +462,8 @@ public class ReliagatePort implements PollingResultListener {
             sb.append(" , ");
             sb.append(waterMeters[1]);
             sb.append("\n");
-
-            clearWaterCounter(2);
-
+            if (!mIsMock)
+                clearWaterCounter(2);
         }
     }
 
@@ -662,5 +681,12 @@ public class ReliagatePort implements PollingResultListener {
 
     public void setDaiPrefix(String daiPrefix) {
         this.daiPrefix = daiPrefix;
+    }
+
+    public XerosWasherThing getMachine1Thing() {
+        return this.mMachine1Thing;
+    }
+    public XerosWasherThing getMachine2Thing() {
+        return this.mMachine2Thing;
     }
 }

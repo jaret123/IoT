@@ -1,13 +1,16 @@
 package com.elyxor.xeros.ldcs.reliagate;
 
 import org.apache.commons.io.IOUtils;
+import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
 
 /**
@@ -16,6 +19,9 @@ import java.util.Arrays;
 public class WaterOnlyPollingRunnable implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(WaterOnlyPollingRunnable.class);
+
+    private final DateTimeFormatter timeAndDateFormatter = DateTimeFormat.forPattern("dd-MM-yyyy HH : mm : ss");
+
     private ReliagatePort mPort;
     private int[] machine1MeterDiff = new int[2];
     private int[] machine2MeterDiff = new int[2];
@@ -264,37 +270,55 @@ public class WaterOnlyPollingRunnable implements Runnable {
     }
 
     public void writeMachine1WaterLog(int[] meters) {
+        File file = null;
         try {
-            mPort.getWriter().write(mPort.getDaiPrefix() + ", Xeros , \nFile Write Time: , "
+            file = mPort.getWriter().write(mPort.getDaiPrefix() + ", Xeros , \nFile Write Time: , "
                     + getSystemTimeAndDate() + "\n"
-                    + "WM2: , 0 , 0 , "
+                    + "WM0: , "
+                    + meters[0] + " , "
+                    + meters[0] + " , "
                     + meters[0] + "\n"
-                    + "WM3: , 0 , 0 , "
+                    + "WM1: , "
+                    + meters[1] + " , "
+                    + meters[1] + " , "
                     + meters[1]);
         } catch (IOException e) {
             logger.warn("failed to write " + Arrays.toString(meters) + "to log file.");
         }
         logger.info("wrote water meter log to file");
+        if (file != null && mPort.getMachine1Thing() != null) {
+            mPort.getMachine1Thing().parseLogToThingWorx(mPort.getWriter().getFile());
+        }
     }
 
     public void writeMachine2WaterLog(int[] meters) {
+        File file = null;
         try {
-            mPort.getWriter().write(mPort.getDaiPrefix() + ", Std , \nFile Write Time: , "
+            file = mPort.getWriter().write(mPort.getDaiPrefix() + ", Std , \nFile Write Time: , "
                     + getSystemTimeAndDate() + "\n"
-                    + "WM2: , 0 , 0 , "
+                    + "WM2: , "
+                    + meters[0] + " , "
+                    + meters[0] + " , "
                     + meters[0] + "\n"
-                    + "WM3: , 0 , 0 , "
+                    + "WM3: , "
+                    + meters[1] + " , "
+                    + meters[1] + " , "
                     + meters[1]);
         } catch (IOException e) {
             logger.warn("failed to write " + Arrays.toString(meters) + "to log file.");
         }
         logger.info("wrote water meter log to file");
+        if (file != null && mPort.getMachine2Thing() != null) {
+            mPort.getMachine2Thing().parseLogToThingWorx(mPort.getWriter().getFile());
+        }
+
     }
 
     private String getSystemTimeAndDate() {
         String result = "";
-        SimpleDateFormat timingFormat = new SimpleDateFormat("dd-MM-yyyy kk : mm : ss");
-        result = timingFormat.format(System.currentTimeMillis());
+//        SimpleDateFormat timingFormat = new SimpleDateFormat("dd-MM-yyyy kk : mm : ss");
+//        result = timingFormat.format(System.currentTimeMillis());
+        result = new DateTime().toString(timeAndDateFormatter);
         return result;
     }
 

@@ -274,8 +274,10 @@ public class XerosWasherGlobalThing extends VirtualThing implements Runnable {
             for (DaiMeterCollectionDetail detail : collection.getCollectionDetails()) {
                 if (detail.getMeterType().equals("WM0") || detail.getMeterType().equals("WM2")) {
                     coldWater = detail.getDuration();
+                    logger.debug("Thingworx cold water: " + coldWater);
                 } else if (detail.getMeterType().equals("WM1") || detail.getMeterType().equals("WM3")) {
                     hotWater = detail.getDuration();
+                    logger.debug("Thingworx hot water: " + coldWater);
                 }
             }
             this.createCycleCompleteEvent(0, 0, coldWater, 0, 0, hotWater);

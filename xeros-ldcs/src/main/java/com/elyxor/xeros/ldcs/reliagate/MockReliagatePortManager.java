@@ -10,11 +10,11 @@ public class MockReliagatePortManager implements ReliagatePortManagerInterface {
     private ThingWorxClient mClient;
 
     @Override public void init() {
-//        ReliagatePort port = new ReliagatePort(null, 1, mClient);
-//        port.startPolling(true);
+        ReliagatePort port = new ReliagatePort(this, null, 1, mClient);
+        port.startPolling(true);
 
-        GlobalControllerPort gcPort = new GlobalControllerPort(this, null, 1, mClient);
-        gcPort.startPolling(true);
+//        GlobalControllerPort gcPort = new GlobalControllerPort(this, null, 1, mClient);
+//        gcPort.startPolling(true);
     }
 
     @Override public void setThingWorxClient(ThingWorxClient client) {

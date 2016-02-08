@@ -33,11 +33,25 @@
 			<directory>src/main/resources</directory>
 			<outputDirectory>/conf</outputDirectory>
 			<includes>
+                <include>ldcs.properties</include>
 				<include>application.properties</include>
 				<include>logback.xml</include>
 			</includes>
 		</fileSet>
-	</fileSets>
+        <fileSet>
+            <directory>./</directory>
+            <outputDirectory>/input/waterMeters</outputDirectory>
+            <excludes>
+                <exclude>*/**</exclude>
+            </excludes>
+        </fileSet><fileSet>
+            <directory>./</directory>
+            <outputDirectory>/archive</outputDirectory>
+            <excludes>
+                <exclude>*/**</exclude>
+            </excludes>
+        </fileSet>
+    </fileSets>
 	<dependencySets>
 		<dependencySet>
 			<outputDirectory>/lib</outputDirectory>			
