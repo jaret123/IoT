@@ -45,6 +45,7 @@ public class ReliagatePortManager implements ReliagatePortManagerInterface {
         logger.info("Reliagate Port Manager Init: PortCount: " + portCount);
 
         if (AppConfiguration.isGlobalController()) {
+            GlobalControllerPortMap map = new GlobalControllerPortMap();
             try {
                 for (int i = 0; i < portCount; i++) {
                     logger.info("Reliagate GC Port Init: Adding Port: " + i);

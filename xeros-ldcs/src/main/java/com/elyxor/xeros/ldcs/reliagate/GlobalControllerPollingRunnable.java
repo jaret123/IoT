@@ -54,23 +54,23 @@ public class GlobalControllerPollingRunnable implements Runnable {
         }
 
         this.mIsMock = isMock;
+        GlobalControllerPortMap portMap = new GlobalControllerPortMap();
 
-        this.mCoilList = GlobalControllerPortMap.mCoilMap;
-        this.mRegisterList = GlobalControllerPortMap.mRegisterMap;
+        this.mCoilList = portMap.getCoilMap();
+        this.mRegisterList = portMap.getRegisterMap();
 
         this.mPreviousCoilStatus = new HashMap<Integer, Integer>(mCoilList.size());
         this.mPreviousRegisterStatus = new HashMap<Integer, Integer>(mRegisterList.size());
     }
     @Override public void run() {
-
         while (mIsMock) {
             try {
-                for (GlobalControllerModbusPort port : GlobalControllerPortMap.mCoilMap) {
+                for (GlobalControllerModbusPort port : mCoilList) {
                     mListener.onPortChanged(port.getPortAddress(), 1);
                     Thread.sleep(3000);
                     mListener.onPortChanged(port.getPortAddress(), 0);
                 }
-                for (GlobalControllerModbusPort port : GlobalControllerPortMap.mRegisterMap) {
+                for (GlobalControllerModbusPort port : mRegisterList) {
                     mListener.onRegisterChanged(port.getPortAddress(), (int) (Math.random() * 50));
                     Thread.sleep(5000);
                     mListener.onRegisterChanged(port.getPortAddress(), (int) (Math.random() * 50));

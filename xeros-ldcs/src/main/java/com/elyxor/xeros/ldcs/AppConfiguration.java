@@ -6,12 +6,17 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
 
 public class AppConfiguration {
 	
 	private static Configuration config = null;
+	private static Configuration portConfig = null;
 	private static Logger logger = LoggerFactory.getLogger(AppConfiguration.class);
 	
 	public static Configuration getConfig() {
@@ -40,6 +45,22 @@ public class AppConfiguration {
 			logger.error("Failed to build configuration", ex);
 		}
 		return config;
+	}
+
+	public static Configuration getPortListConfig() {
+		String globalControllerPortListFile = System.getProperty("properties.file", "portlist.properties");
+		if (StringUtils.isNotBlank(globalControllerPortListFile)) {
+			logger.info("Loading port list from [{}]", globalControllerPortListFile);
+			InputStream input = AppConfiguration.class.getClassLoader().getResourceAsStream(globalControllerPortListFile);
+			Properties props = new Properties();
+			try {
+				props.load(input);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			portConfig = new MapConfiguration(props);
+		}
+		return portConfig;
 	}
 	
 	public static String getServiceUrl() {
@@ -71,5 +92,17 @@ public class AppConfiguration {
     public static String getThingWorxApiKey() {return getConfig().getString("thingworx_key", "253f9e18-9dce-49c0-8cea-028cb51e8729");}
 
     public static double getDoorLockMin() {return getConfig().getDouble("door_lock_min", .5);}
+
+	public static List<String> getGlobalControllerPortList() {
+		List<String> result = new ArrayList<String>();
+		Configuration config = getPortListConfig();
+		Iterator<String> iterator = config.getKeys();
+		while (iterator.hasNext()) {
+			String key = iterator.next();
+			ArrayList<String> value = (ArrayList<String>) config.getProperty(key);
+			result.add(key + "=" + value.get(0) + "," + value.get(1));
+		}
+		return result;
+	}
 
 }
