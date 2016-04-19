@@ -5,3 +5,8 @@ target/
 /xeros-ldcs/logs
 /.idea/
 /xeros-service/src/main/resources/local.properties
+*.iml
+*.DS_Store
+logs
+*META-INF
+local.properties
