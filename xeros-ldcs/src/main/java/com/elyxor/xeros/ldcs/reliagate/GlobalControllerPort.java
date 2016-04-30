@@ -71,14 +71,12 @@ public class GlobalControllerPort implements PollingResultListener {
 
     private PrintWriter mOut;
 
-    private int mCount = 50;
+    private int mCount;
 
-    private DateTime[] portStartTimes = new DateTime[mCount];
+    private DateTime[] portStartTimes;
 
-    private Map<Integer, DateTime> coilStartTimes = new HashMap<Integer, DateTime>(mCount);
+    private Map<Integer, DateTime> coilStartTimes;
     private List<Map<Integer, DateTime>> currentCycleEvents = new ArrayList<Map<Integer, DateTime>>();
-
-    private int[] portEventCounts = new int[mCount];
 
     private String currentDir = Paths.get("").toAbsolutePath().getParent().toString();
     private Path path = Paths.get(currentDir, "/input");
@@ -104,6 +102,13 @@ public class GlobalControllerPort implements PollingResultListener {
         this.mConnection = connection;
         this.mClient = client;
         this.mPortNum = portNum;
+
+        GlobalControllerPortMap map = new GlobalControllerPortMap();
+
+        mCount = map.getMaxPortNum();
+        portStartTimes = new DateTime[mCount];
+        coilStartTimes = new HashMap<Integer, DateTime>(mCount);
+
         daiPrefix = AppConfiguration.getDaiName() + portNum;
         initList();
         initConfig();
@@ -288,7 +293,9 @@ public class GlobalControllerPort implements PollingResultListener {
                 logger.info("Xeros GC Cycle Start - Stopped");
 
                 machine1Started = false;
-                if (portStartTimes[portNum] != null) {
+                if (portNum > portStartTimes.length - 1) {
+                    logger.warn("PortNum outside portlist Range, check portlist settings");
+                } else if (portStartTimes[portNum] != null) {
                     logger.info("Machine 1 Writing Log: "+machine1EventLog);
                     Map<Integer, DateTime> map = new HashMap<Integer, DateTime>();
                     map.put(portNum, DateTime.now());

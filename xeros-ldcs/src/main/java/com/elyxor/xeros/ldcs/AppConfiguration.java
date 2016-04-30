@@ -8,10 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 public class AppConfiguration {
 	
@@ -48,10 +45,11 @@ public class AppConfiguration {
 	}
 
 	public static Configuration getPortListConfig() {
+		Configuration portConfig = new MapConfiguration(new HashMap<String, Object>());
 		String globalControllerPortListFile = System.getProperty("properties.file", "portlist.properties");
-		if (StringUtils.isNotBlank(globalControllerPortListFile)) {
-			logger.info("Loading port list from [{}]", globalControllerPortListFile);
-			InputStream input = AppConfiguration.class.getClassLoader().getResourceAsStream(globalControllerPortListFile);
+		InputStream input = AppConfiguration.class.getClassLoader().getResourceAsStream("portlist.properties");
+		if (input != null) {
+			logger.info("Loading port list from [{}]", "portlist.properties");
 			Properties props = new Properties();
 			try {
 				props.load(input);

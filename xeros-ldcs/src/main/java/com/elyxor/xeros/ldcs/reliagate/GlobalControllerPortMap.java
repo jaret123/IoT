@@ -40,6 +40,20 @@ public class GlobalControllerPortMap {
         return mRegisterMap;
     }
 
+    public int getMaxPortNum() {
+        int max = 0;
+        for (GlobalControllerModbusPort port : mCoilMap) {
+            if (port.getPortAddress() > max) {
+                max = port.getPortAddress();
+            }
+        }
+        for (GlobalControllerModbusPort port : mRegisterMap) {
+            if (port.getPortAddress() > max) {
+                max = port.getPortAddress();
+            }
+        }
+        return max;
+    }
 //    static {
 //        List<GlobalControllerModbusPort> map = new ArrayList<GlobalControllerModbusPort>();
 //        map.add(new GlobalControllerModbusPort(10, "SystemEnabled", 0));
