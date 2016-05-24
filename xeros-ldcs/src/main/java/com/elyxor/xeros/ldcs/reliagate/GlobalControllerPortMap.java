@@ -120,7 +120,7 @@ public class GlobalControllerPortMap {
 //        mRegisterMap = registerMap;
 //    }
 //
-    public static GlobalControllerModbusPort findPort(int portAddress) {
+    public GlobalControllerModbusPort findPort(int portAddress) {
         GlobalControllerModbusPort result = new GlobalControllerModbusPort();
         List<GlobalControllerModbusPort> portList = new ArrayList<GlobalControllerModbusPort>();
 

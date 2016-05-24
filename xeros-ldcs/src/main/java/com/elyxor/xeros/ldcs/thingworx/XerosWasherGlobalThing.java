@@ -119,6 +119,8 @@ public class XerosWasherGlobalThing extends VirtualThing implements Runnable {
 
     final static Logger logger = LoggerFactory.getLogger(XerosWasherGlobalThing.class);
 
+    private GlobalControllerPortMap map;
+
     @Override
 	public void run() {
 		try {
@@ -165,17 +167,17 @@ public class XerosWasherGlobalThing extends VirtualThing implements Runnable {
 
         defineDataShapeDefinition("CycleComplete", cycleFields);
 
-
+        this.map = new GlobalControllerPortMap();
         // Populate the thing shape with the properties, services, and events that are annotated in this code
 		super.initializeFromAnnotations();
 	}
 
     public void sendEventToThingworx(int portNum, DateTime startTime) {
         ValueCollection event = new ValueCollection();
-        event.put(SENSOR_NAME, new StringPrimitive(GlobalControllerPortMap.findPort(portNum).getPortName()));
+        event.put(SENSOR_NAME, new StringPrimitive(map.findPort(portNum).getPortName()));
         event.put(START_TIME, new DatetimePrimitive(startTime));
         event.put(DURATION, new NumberPrimitive(DateTime.now().minus(startTime.getMillis()).getMillis()));
-        super.queueEvent(GlobalControllerPortMap.findPort(portNum).getPortName(), DateTime.now(), event);
+        super.queueEvent(map.findPort(portNum).getPortName(), DateTime.now(), event);
         try {
             super.updateSubscribedEvents(60000);
         } catch (Exception e) {
@@ -185,10 +187,10 @@ public class XerosWasherGlobalThing extends VirtualThing implements Runnable {
 
     public void sendProperty(int portNum, int value) {
         try {
-            super.setProperty(GlobalControllerPortMap.findPort(portNum).getPortName(), value);
+            super.setProperty(map.findPort(portNum).getPortName(), value);
             super.updateSubscribedProperties(15000);
         } catch (Exception e) {
-            logger.warn(TAG, "failed to update property " + GlobalControllerPortMap.mRegisterMap.get(portNum));
+            logger.warn(TAG, "failed to update property " + map.getRegisterMap().get(portNum));
         }
     }
 

@@ -124,8 +124,17 @@ public class GlobalControllerPollingRunnable implements Runnable {
                         mPreviousCoilStatus.put(key, value);
                     }
                 }
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
-
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             for (GlobalControllerModbusPort port : mRegisterList) {
                 int key = port.getPortAddress();
                 ModbusTCPTransaction trans = new ModbusTCPTransaction(mConnection);
@@ -152,9 +161,12 @@ public class GlobalControllerPollingRunnable implements Runnable {
                         mPreviousRegisterStatus.put(key, value);
                     }
                 }
-
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
-
         }
     }
 }
