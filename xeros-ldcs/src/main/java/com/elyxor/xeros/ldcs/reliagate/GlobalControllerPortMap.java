@@ -9,8 +9,8 @@ import java.util.List;
  * Created by will on 11/12/15.
  */
 public class GlobalControllerPortMap {
-    public static List<GlobalControllerModbusPort> mCoilMap = new ArrayList<GlobalControllerModbusPort>();
-    public static List<GlobalControllerModbusPort> mRegisterMap = new ArrayList<GlobalControllerModbusPort>();
+    public static List<GlobalControllerModbusPort> mCoilMap = new ArrayList<GlobalControllerModbusPort>(500);
+    public static List<GlobalControllerModbusPort> mRegisterMap = new ArrayList<GlobalControllerModbusPort>(500);
 
     public GlobalControllerPortMap() {
         List<String> portList = AppConfiguration.getGlobalControllerPortList();

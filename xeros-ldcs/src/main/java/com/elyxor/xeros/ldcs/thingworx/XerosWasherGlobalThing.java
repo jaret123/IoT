@@ -190,7 +190,7 @@ public class XerosWasherGlobalThing extends VirtualThing implements Runnable {
             super.setProperty(map.findPort(portNum).getPortName(), value);
             super.updateSubscribedProperties(15000);
         } catch (Exception e) {
-            logger.warn(TAG, "failed to update property " + map.getRegisterMap().get(portNum));
+            logger.warn(TAG, "failed to update property " + map.findPort(portNum));
         }
     }
 
