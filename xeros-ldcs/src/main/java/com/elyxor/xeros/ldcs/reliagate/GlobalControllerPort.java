@@ -96,6 +96,10 @@ public class GlobalControllerPort implements PollingResultListener {
     private ReliagatePortManagerInterface mManager;
     private int mPortNum;
 
+    private int mDoorLockTrue = 1;
+
+    private GlobalControllerPortMap mMap;
+
     public GlobalControllerPort(ReliagatePortManagerInterface manager, TCPMasterConnection connection, int portNum, ThingWorxClient client) {
         logger.info("Starting GC Port Number: " + portNum);
         this.mManager = manager;
@@ -103,9 +107,9 @@ public class GlobalControllerPort implements PollingResultListener {
         this.mClient = client;
         this.mPortNum = portNum;
 
-        GlobalControllerPortMap map = new GlobalControllerPortMap();
+        mMap = new GlobalControllerPortMap();
 
-        mCount = map.getMaxPortNum();
+        mCount = mMap.getMaxPortNum();
         portStartTimes = new DateTime[mCount];
         coilStartTimes = new HashMap<Integer, DateTime>(mCount);
 
@@ -115,6 +119,8 @@ public class GlobalControllerPort implements PollingResultListener {
         logger.info("Starting GC Port Name: " + daiPrefix);
 
         mWriter = new FileLogWriter(path, daiPrefix+"Log.txt");
+
+
 //        machine1EventLog = new ArrayList<PortEvent>();
 //        machine2EventLog = new ArrayList<PortEvent>();
 //        waterOnly = AppConfiguration.getWaterOnly();
@@ -270,6 +276,8 @@ public class GlobalControllerPort implements PollingResultListener {
 
     @Override public void onPortChanged(int portNum, int newValue) {
 
+        int portOffValue = mMap.findPort(PORT_NUM_CYCLE_START).getOffValue();
+        int portOnValue = portOffValue == 1 ? 0 : 1;
         //first check if port is a door lock, if so, it may indicate the beginning or end of a cycle
 
         //if door lock for machine 1 or 2 is now locked, cycle has started. Write any old events, clear the event log and the water meters,
@@ -277,7 +285,7 @@ public class GlobalControllerPort implements PollingResultListener {
         if (portNum == PORT_NUM_CYCLE_START) {
             logger.info("Xeros GC Cycle Start Event");
 
-            if (newValue == 1) {
+            if (newValue == portOnValue) {
                 logger.info("Xeros CG Cycle Start Event - Started at " + DateTime.now().toString());
                 machine1Started = true;
                 if (!currentCycleEvents.isEmpty()) {
@@ -330,10 +338,10 @@ public class GlobalControllerPort implements PollingResultListener {
 ////                }
 ////            }
 //        }
-        if (newValue == 1) {
+        if (newValue == portOnValue) {
             logger.info("Other Event - Started, PortNumber: " + portNum);
             coilStartTimes.put(portNum, new DateTime());
-        } else if (newValue == 0) {
+        } else if (newValue == portOffValue) {
             logger.info("Other Event - Stopped, PortNumber: " + portNum);
             DateTime time = coilStartTimes.get(portNum);
             if (time != null) {
